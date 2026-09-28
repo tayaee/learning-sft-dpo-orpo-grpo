@@ -12,3 +12,4 @@ train.jsonl
 # vim/에디터 swap 파일
 *.swp
 *.pkl
+*.log
