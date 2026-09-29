@@ -1,0 +1,110 @@
+# =====================================================================
+# GRPO (RL) SMOKE TEST config for Qwen2.5-1.5B-Instruct
+# =====================================================================
+# 목적: 파이프라인 점검용. sample_rl-grpo 20 prompts + max_steps 3 → 십수분 내 완주.
+#   - 데이터: data/sample_rl-grpo.jsonl (기존 파일 그대로 — 이미 소량)
+#   - 시작점: SFT merge 모델 (real 과 동일 — SFT 가 먼저 필요)
+#   - 출력은 outputs/qwen2.5-1.5b-rl-grpo-smoke 로 분리
+#
+# 검증 포인트:
+#   ① reward_funcs 로드 정상  ② rewards/mean 로그  ③ 어댑터 저장  ④ merge 성공
+# =====================================================================
+
+base_model: ./data/sft-mini-out/merged
+model_type: Qwen2ForCausalLM
+tokenizer_type: AutoTokenizer
+
+# ----- precision -----
+bf16: true
+tf32: true
+flash_attention: false
+attn_implementation: sdpa
+
+# ----- GRPO settings -----
+rl: grpo
+
+trl:
+  use_vllm: false
+  num_generations: 4
+  max_completion_length: 512
+  temperature: 0.9
+  top_p: 0.95
+  beta: 0.04
+  epsilon: 0.2
+  loss_type: grpo
+  reward_funcs:
+    - reward_fn.format_reward
+    - reward_fn.structure_reward
+    - reward_fn.length_reward
+    - reward_fn.keyword_reward
+  reward_weights:
+    - 0.3
+    - 0.3
+    - 0.2
+    - 0.2
+  scale_rewards: true
+  mask_truncated_completions: true
+  log_completions: true
+  num_completions_to_print: 2
+
+ref_model: Qwen/Qwen2.5-1.5B-Instruct
+
+# ----- dataset -----
+datasets:
+  - path: data/grpo-mini-in/sample_rl-grpo.jsonl
+
+skip_prepare_dataset: true
+val_set_size: 0.0
+dataset_prepared_path: ./data/grpo-mini-out/dataset_prepared
+
+# ----- context -----
+sequence_len: 1024
+pad_to_sequence_len: true
+
+# ----- LoRA -----
+adapter: lora
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - gate_proj
+  - up_proj
+  - down_proj
+
+# ----- output -----
+output_dir: ./data/grpo-mini-out/adapter
+
+# ----- training -----
+max_steps: 3                           # smoke: 3 step 만 돌고 종료
+micro_batch_size: 1
+gradient_accumulation_steps: 4               # num_generations(4) 의 배수여야 함
+generation_batch_size: 4
+learning_rate: 1.0e-6
+lr_scheduler_type: constant_with_warmup
+warmup_steps: 1
+weight_decay: 0.0
+optimizer: adamw_torch
+logging_steps: 1
+save_steps: 3
+save_total_limit: 1
+
+# ----- memory -----
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+
+# ----- Liger -----
+plugins:
+  - axolotl.integrations.liger.LigerPlugin
+
+# ----- logging -----
+wandb_project:
+wandb_entity:
+wandb_watch:
+wandb_name:
+wandb_log_model:
+hub_model_id:

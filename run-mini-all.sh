@@ -1,7 +1,12 @@
 #!/bin/bash
 # mini pipeline driver — runs each stage's mini scripts and captures file changes.
 set -u
-cd /home/user1/git/learning-sft-and-rl
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+ROOT_DIR="$SCRIPT_DIR"
+while [ ! -f "$ROOT_DIR/pyproject.toml" ] && [ "$ROOT_DIR" != "/" ]; do ROOT_DIR="$(dirname "$ROOT_DIR")"; done
+cd "$ROOT_DIR" || exit 1
+export PYTHONPATH="$ROOT_DIR/library/function:$ROOT_DIR/library/script${PYTHONPATH:+:$PYTHONPATH}"
+source "$ROOT_DIR/library/script/scripts_common.sh"  # noqa: cross-stage driver stays at root
 
 OUT=files-changed.txt
 : > "$OUT"
@@ -58,7 +63,7 @@ run_one() {
 # === STAGE 1: SFT ===
 stage_header sft mini
 stage_in_config sft mini
-for s in sft-mini-05-review-sft-config-mini.sh sft-mini-06-run-axolotl-mini.sh sft-mini-07-merge-mini.sh sft-mini-11-lm-eval-sft-mini.sh sft-mini-12-eval-compare-mini.sh; do
+for s in phase/sft/algorithm/lora/tool/axolotl/sft-mini-05-review-sft-config-mini.sh phase/sft/algorithm/lora/tool/axolotl/sft-mini-06-run-axolotl-mini.sh phase/sft/algorithm/lora/tool/axolotl/sft-mini-07-merge-mini.sh phase/sft/algorithm/lora/tool/axolotl/sft-mini-11-lm-eval-sft-mini.sh phase/sft/algorithm/lora/tool/axolotl/sft-mini-12-eval-compare-mini.sh; do
   run_one "$s" || { echo "FAILED: $s" >> "$OUT"; break; }
 done
 stage_out sft mini
@@ -66,7 +71,7 @@ stage_out sft mini
 # === STAGE 2: DPO ===
 stage_header dpo mini
 stage_in_config dpo mini
-for s in rl-dpo-mini-01-make-rl-dpo-data.sh rl-dpo-mini-02-sanity-check-rl-dpo-data-mini.sh rl-dpo-mini-03-review-rl-dpo-config-mini.sh rl-dpo-mini-04-run-axolotl-mini.sh rl-dpo-mini-05-test-models-mini.sh rl-dpo-mini-06-merge-mini.sh rl-dpo-mini-09-lm-eval-rl-dpo-mini.sh rl-dpo-mini-10-eval-compare-mini.sh; do
+for s in phase/pref/algorithm/dpo/tool/axolotl/rl-dpo-mini-01-make-rl-dpo-data.sh phase/pref/algorithm/dpo/tool/axolotl/rl-dpo-mini-02-sanity-check-rl-dpo-data-mini.sh phase/pref/algorithm/dpo/tool/axolotl/rl-dpo-mini-03-review-rl-dpo-config-mini.sh phase/pref/algorithm/dpo/tool/axolotl/rl-dpo-mini-04-run-axolotl-mini.sh phase/pref/algorithm/dpo/tool/axolotl/rl-dpo-mini-05-test-models-mini.sh phase/pref/algorithm/dpo/tool/axolotl/rl-dpo-mini-06-merge-mini.sh phase/pref/algorithm/dpo/tool/axolotl/rl-dpo-mini-09-lm-eval-rl-dpo-mini.sh phase/pref/algorithm/dpo/tool/axolotl/rl-dpo-mini-10-eval-compare-mini.sh; do
   run_one "$s" || { echo "FAILED: $s" >> "$OUT"; break; }
 done
 stage_out dpo mini
@@ -74,7 +79,7 @@ stage_out dpo mini
 # === STAGE 3: ORPO ===
 stage_header orpo mini
 stage_in_config orpo mini
-for s in rl-orpo-mini-01-make-orpo-data-mini.sh rl-orpo-mini-02-sanity-check-orpo-data-mini.sh rl-orpo-mini-03-review-orpo-config-mini.sh rl-orpo-mini-04-run-axolotl-mini.sh rl-orpo-mini-05-merge-mini.sh rl-orpo-mini-06-test-model-mini.sh rl-orpo-mini-08-reward-eval-mini.sh rl-orpo-mini-09-lm-eval-rl-orpo-mini.sh rl-orpo-mini-10-eval-compare-mini.sh; do
+for s in phase/pref/algorithm/orpo/tool/axolotl/rl-orpo-mini-01-make-orpo-data-mini.sh phase/pref/algorithm/orpo/tool/axolotl/rl-orpo-mini-02-sanity-check-orpo-data-mini.sh phase/pref/algorithm/orpo/tool/axolotl/rl-orpo-mini-03-review-orpo-config-mini.sh phase/pref/algorithm/orpo/tool/axolotl/rl-orpo-mini-04-run-axolotl-mini.sh phase/pref/algorithm/orpo/tool/axolotl/rl-orpo-mini-05-merge-mini.sh phase/pref/algorithm/orpo/tool/axolotl/rl-orpo-mini-06-test-model-mini.sh phase/pref/algorithm/orpo/tool/axolotl/rl-orpo-mini-08-reward-eval-mini.sh phase/pref/algorithm/orpo/tool/axolotl/rl-orpo-mini-09-lm-eval-rl-orpo-mini.sh phase/pref/algorithm/orpo/tool/axolotl/rl-orpo-mini-10-eval-compare-mini.sh; do
   run_one "$s" || { echo "FAILED: $s" >> "$OUT"; break; }
 done
 stage_out orpo mini
@@ -82,7 +87,7 @@ stage_out orpo mini
 # === STAGE 4: GRPO ===
 stage_header grpo mini
 stage_in_config grpo mini
-for s in rl-grpo-mini-01-review-data-mini.sh rl-grpo-mini-02-review-reward-fn.sh rl-grpo-mini-03-review-rl-grpo-config-mini.sh rl-grpo-mini-04-run-axolotl-mini.sh rl-grpo-mini-05-test-model-mini.sh rl-grpo-mini-06-merge-mini.sh rl-grpo-mini-09-lm-eval-rl-grpo-mini.sh rl-grpo-mini-10-eval-compare-mini.sh; do
+for s in phase/rl/algorithm/grpo/tool/axolotl/rl-grpo-mini-01-review-data-mini.sh phase/rl/algorithm/grpo/tool/axolotl/rl-grpo-mini-02-review-reward-fn.sh phase/rl/algorithm/grpo/tool/axolotl/rl-grpo-mini-03-review-rl-grpo-config-mini.sh phase/rl/algorithm/grpo/tool/axolotl/rl-grpo-mini-04-run-axolotl-mini.sh phase/rl/algorithm/grpo/tool/axolotl/rl-grpo-mini-05-test-model-mini.sh phase/rl/algorithm/grpo/tool/axolotl/rl-grpo-mini-06-merge-mini.sh phase/rl/algorithm/grpo/tool/axolotl/rl-grpo-mini-09-lm-eval-rl-grpo-mini.sh phase/rl/algorithm/grpo/tool/axolotl/rl-grpo-mini-10-eval-compare-mini.sh; do
   run_one "$s" || { echo "FAILED: $s" >> "$OUT"; break; }
 done
 stage_out grpo mini

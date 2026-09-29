@@ -1,0 +1,28 @@
+# overlay for infra/colab-t4 (Colab free, T4 Turing sm_75 16GB, CUDA 12, ephemeral).
+# 적용: phase/.../tool/axolotl/config/*.yaml(base)에 아래 키를 덮어씀 (수동 또는 yq).
+# 전제: pyproject의 aarch64 전용 핀 해제 + torch cu124 계열. 세션마다 pip/HF 재수행.
+
+bf16: false
+fp16: true                        # Turing은 bf16 미지원
+tf32: false
+flash_attention: false            # flash-attn은 Ampere(sm_80)+ 필요
+attn_implementation: sdpa
+
+sequence_len: 512
+sample_packing: false             # 메모리 여유 확보
+micro_batch_size: 1
+gradient_accumulation_steps: 32   # effective 32 유지 (1x32)
+
+adapter: qlora
+load_in_4bit: true                # 16GB 상주를 위한 QLoRA 전환
+lora_r: 8
+lora_alpha: 16
+
+plugins: []                       # liger(Triton) 비활성 권장 — Turing 호환성
+
+save_total_limit: 1               # 12h 세션·용량 대비 최소 유지
+# output_dir: /content/drive/MyDrive/<path>   # Drive 유지 원하면 지정
+
+# A100 세션이 잡히면 위에서 아래만 되돌리면 됨:
+# bf16: true / fp16 제거 / sequence_len: 1024 / micro_batch_size: 4 /
+# gradient_accumulation_steps: 8 / adapter: lora (load_in_4bit 제거).

@@ -1,0 +1,96 @@
+# =====================================================================
+# DPO (RL) demo config for Qwen2.5-1.5B-Instruct on Korean reasoning
+# =====================================================================
+# Stage 2: DPO on top of SFT'd model, using synthetic preference pairs
+#   - chosen = original SFT response (coherent CoT)
+#   - rejected = base model response WITHOUT SFT training
+# DPO pushes the model away from base behavior toward the SFT distribution
+# and refines consistency on the Korean reasoning style.
+#
+# Input:  data/train_rl-dpo.jsonl with {prompt, chosen, rejected}
+# Output: ./outputs/qwen2.5-1.5b-rl-dpo-merged (full model, ready for inference)
+# =====================================================================
+
+base_model: ./data/sft-full-out/merged
+model_type: Qwen2ForCausalLM
+tokenizer_type: AutoTokenizer
+
+# ----- precision -----
+bf16: true
+tf32: true
+flash_attention: false
+
+# ----- DPO settings -----
+rl: dpo
+dpo_beta: 0.1              # KL strength (higher = closer to ref)
+dpo_loss_type: [sigmoid]    # standard DPO loss
+dpo_label_smoothing: 0.0
+dpo_max_prompt_len: 768
+dpo_max_length: 1024
+
+# ----- reference model (for DPO KL) -----
+ref_model: Qwen/Qwen2.5-1.5B-Instruct    # base model as reference
+
+# ----- dataset -----
+datasets:
+  - path: data/dpo-full-in/train_rl-dpo.jsonl   # full 전용 (symlink → out)
+    type: passthrough    # data is {prompt, chosen, rejected} text; no transform needed
+
+val_set_size: 0.01
+dataset_prepared_path: ./data/dpo-full-out/dataset_prepared
+
+# ----- context -----
+sequence_len: 1024
+pad_to_sequence_len: true
+
+# ----- LoRA on top of SFT'd model -----
+adapter: lora
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - gate_proj
+  - up_proj
+  - down_proj
+
+# lora_model_dir: 학습 중에는 설정하지 않음 (재개 시 어댑터 입력 경로 전용)
+# merge 출력 경로(`./outputs/qwen2.5-1.5b-rl-dpo-merge/merged`)는
+# 별도 `axolotl merge-lora` 의 `--output-dir` 으로 지정 (rl-dpo-06-merge.sh 참고).
+
+# ----- output -----
+output_dir: ./data/dpo-full-out/adapter
+
+# ----- training -----
+num_epochs: 1
+micro_batch_size: 2
+gradient_accumulation_steps: 8       # effective batch = 16
+learning_rate: 5.0e-6               # DPO wants ~10-20x lower LR than SFT
+lr_scheduler_type: cosine
+warmup_ratio: 0.05
+weight_decay: 0.0
+optimizer: adamw_torch
+logging_steps: 5
+save_total_limit: 2
+evals_per_epoch: 0
+saves_per_epoch: 1
+
+# ----- memory -----
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+
+# ----- Liger -----
+plugins:
+  - axolotl.integrations.liger.LigerPlugin
+
+# ----- logging -----
+wandb_project:
+wandb_entity:
+wandb_watch:
+wandb_name:
+wandb_log_model:
+hub_model_id:

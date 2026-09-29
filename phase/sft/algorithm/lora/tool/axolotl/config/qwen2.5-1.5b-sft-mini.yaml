@@ -1,0 +1,89 @@
+# =====================================================================
+# SFT SMOKE TEST config for Qwen2.5-1.5B-Instruct
+# =====================================================================
+# 목적: 파이프라인 점검용. train.jsonl 앞부분 200건 + max_steps 10 → 수분 내 완주.
+#   - 데이터: data/train-smoke.jsonl (sft-06-run-axolotl.sh smoke 가 자동 생성)
+#   - 출력은 outputs/qwen2.5-1.5b-sft-smoke 로 분리 (real run 오염 방지)
+#
+# 검증 포인트:
+#   ① 데이터 로드 & chat_template 정상  ② loss 감소 추이 로그
+#   ③ 어댑터 저장  ④ merge-lora 성공
+# =====================================================================
+
+base_model: Qwen/Qwen2.5-1.5B-Instruct
+model_type: Qwen2ForCausalLM
+tokenizer_type: AutoTokenizer
+
+# ----- precision -----
+bf16: true
+tf32: true
+flash_attention: false
+attn_implementation: sdpa
+
+# ----- dataset -----
+datasets:
+  - path: .
+    data_files: data/sft-mini-in/train-sft.jsonl   # mini 전용 (full 과 분리, symlink → out)
+    type: chat_template
+    chat_template: chatml
+    field_messages: messages
+
+val_set_size: 0.0
+dataset_prepared_path: ./data/sft-mini-out/dataset_prepared
+
+# ----- context -----
+sequence_len: 1024
+sample_packing: true
+pad_to_sequence_len: true
+
+# ----- LoRA -----
+adapter: lora
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - gate_proj
+  - up_proj
+  - down_proj
+
+# ----- output -----
+output_dir: ./data/sft-mini-out/adapter
+
+# ----- training -----
+max_steps: 10                          # smoke: 10 step 만 돌고 종료
+micro_batch_size: 1                    # smoke: 안전하게 1
+gradient_accumulation_steps: 2
+learning_rate: 2.0e-4
+lr_scheduler_type: cosine
+warmup_steps: 1
+weight_decay: 0.0
+optimizer: adamw_torch
+logging_steps: 1
+save_steps: 10
+save_total_limit: 1
+evals_per_epoch: 0
+
+# ----- memory -----
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+
+# ----- Liger -----
+plugins:
+  - axolotl.integrations.liger.LigerPlugin
+liger_rope: true
+liger_rms_norm: true
+liger_swiglu: true
+liger_fused_linear_cross_entropy: true
+
+# ----- logging -----
+wandb_project:
+wandb_entity:
+wandb_watch:
+wandb_name:
+wandb_log_model:
+hub_model_id:

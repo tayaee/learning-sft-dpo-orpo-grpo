@@ -1,0 +1,127 @@
+# =====================================================================
+# GRPO (RL) demo config for Qwen2.5-1.5B-Instruct on Korean reasoning
+# =====================================================================
+# Stage 3: GRPO on top of SFT'd model, using rule-based rewards
+#   - Start from SFT'd model (./outputs/qwen2.5-1.5b-sft-merge)
+#   - No preference pairs needed; only (prompt) + reward function
+#   - Reward functions in library/function/reward_fn.py:
+#       1) format_reward    —  ブロック  존재
+#       2) structure_reward —  ###  헤더 존재
+#       3) length_reward    —  적절한 길이 (300–1500자)
+#       4) keyword_reward   —  한국어 학술 용어 사용
+#       5) diversity_reward —  문장 다양성 (중복 페널티)
+#
+# NOTE: GRPO 기본은 vLLM 서버 필수 (속도). 본 데모는 use_vllm: false 로
+#       transformers generation 사용 — 학습은 느리지만 vLLM 설치 불필요.
+#       성능 필요 시:  uv add vllm 후 use_vllm: true 로 변경.
+# =====================================================================
+
+base_model: ./data/sft-full-out/merged
+model_type: Qwen2ForCausalLM
+tokenizer_type: AutoTokenizer
+
+# ----- precision -----
+bf16: true
+tf32: true
+flash_attention: false
+attn_implementation: sdpa
+
+# ----- GRPO settings -----
+rl: grpo
+
+trl:
+  use_vllm: false                                # vLLM 미설치 → transformers generation
+  num_generations: 4                             # G (group size)
+  max_completion_length: 512
+  temperature: 0.9
+  top_p: 0.95
+  beta: 0.04                                     # KL constraint (vs reference)
+  epsilon: 0.2                                   # PPO-clip range
+  loss_type: grpo
+  reward_funcs:
+    - reward_fn.format_reward
+    - reward_fn.structure_reward
+    - reward_fn.length_reward
+    - reward_fn.keyword_reward
+  reward_weights:
+    - 0.3
+    - 0.3
+    - 0.2
+    - 0.2
+  scale_rewards: true
+  mask_truncated_completions: true
+  log_completions: true
+  num_completions_to_print: 2
+
+# ----- reference model -----
+# beta > 0 이면 reference model 이 KL divergence 계산에 사용됨
+# SFT'd 모델을 시작점으로, base 모델을 reference 로 (DPO 와 동일)
+ref_model: Qwen/Qwen2.5-1.5B-Instruct
+
+# ----- dataset -----
+datasets:
+  - path: data/grpo-full-in/sample_rl-grpo.jsonl
+
+skip_prepare_dataset: true
+val_set_size: 0.0
+dataset_prepared_path: ./data/grpo-full-out/dataset_prepared
+
+# ----- context -----
+sequence_len: 1024
+pad_to_sequence_len: true
+
+# ----- LoRA on top of SFT'd model -----
+adapter: lora
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - gate_proj
+  - up_proj
+  - down_proj
+
+# lora_model_dir: 학습 중에는 설정하지 않음 (재개 시 어댑터 입력 경로 전용)
+# merge 출력 경로(`./outputs/qwen2.5-1.5b-rl-grpo-merge/merged`)는
+# 별도 `axolotl merge-lora` 의 `--output-dir` 으로 지정 (rl-grpo-06-merge.sh 참고).
+
+# ----- output -----
+output_dir: ./data/grpo-full-out/adapter
+
+# ----- training -----
+# GRPO 는 GPU 메모리 많이 사용 (generations + policy + ref)
+# → 작은 batch, 짧은 step 으로 시작
+# 학습 pipeline 시연 목적이라 step 수를 의도적으로 줄임 (200 → 30).
+# 충분한 학습이 필요하면 max_steps 를 200~ 으로 늘리면 됨.
+max_steps: 30
+micro_batch_size: 1
+gradient_accumulation_steps: 4               # effective batch = 4
+generation_batch_size: 4                     # num_generations * prompts_per_step
+learning_rate: 1.0e-6                       # GRPO 매우 낮게 (DPO 보다도 낮음)
+lr_scheduler_type: constant_with_warmup
+warmup_steps: 10
+weight_decay: 0.0
+optimizer: adamw_torch
+logging_steps: 1
+save_steps: 30
+save_total_limit: 2
+
+# ----- memory -----
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+
+# ----- Liger -----
+plugins:
+  - axolotl.integrations.liger.LigerPlugin
+
+# ----- logging -----
+wandb_project:
+wandb_entity:
+wandb_watch:
+wandb_name:
+wandb_log_model:
+hub_model_id:

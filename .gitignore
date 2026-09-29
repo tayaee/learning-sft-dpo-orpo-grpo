@@ -13,3 +13,9 @@ train.jsonl
 *.swp
 *.pkl
 *.log
+
+# unsloth 참조 예제 산출물 (source/unsloth/example/sft-basic --save-local 기본값)
+unsloth-output/
+
+# run-mini-all.sh 산출물
+files-changed.txt

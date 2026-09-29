@@ -1,0 +1,101 @@
+# =====================================================================
+# ORPO (RL) real-run config for Qwen2.5-1.5B-Instruct on Korean reasoning
+# =====================================================================
+# ORPO = SFT 손실 + odds-ratio 선호 손실을 한 번에 학습.
+#   - reference model 이 필요 없음 (DPO 와의 가장 큰 차이)
+#   - (prompt, chosen, rejected) 삼중 데이터 사용 (DPO 와 포맷 동일)
+#   - orpo_alpha: 선호 손실 가중치 (너무 크면 SFT 성능 붕괴)
+#
+# Input:  data/train_rl-orpo.jsonl with {prompt, chosen, rejected}
+# Output: ./outputs/qwen2.5-1.5b-rl-orpo/          (LoRA adapter)
+#         ./outputs/qwen2.5-1.5b-rl-orpo-merge/merged/   (merge 후)
+#
+# Smoke test 는 configs/qwen2.5-1.5b-rl-orpo-smoke.yaml 사용.
+# =====================================================================
+
+base_model: ./data/sft-full-out/merged
+model_type: Qwen2ForCausalLM
+tokenizer_type: AutoTokenizer
+
+# ----- precision -----
+bf16: true
+tf32: true
+flash_attention: false
+attn_implementation: sdpa
+
+# ----- ORPO settings -----
+rl: orpo
+orpo_alpha: 1.0            # trl ORPOConfig.beta 로 매핑됨 (odds-ratio loss 가중치)
+                           # ※ axolotl 0.18 스키마에는 orpo_alpha 만 존재 (orpo_beta 없음)
+
+# ----- dataset -----
+# 주의: train_files 라는 키는 axolotl 에 없음. path 에 단일 파일을 직접 지정해야
+# data/ 디렉터리 전체가 로드되는 사고를 막을 수 있음.
+datasets:
+  - path: data/orpo-full-in/train_rl-orpo.jsonl    # full 전용 (symlink → out)
+    type: passthrough               # 메시지 리스트 {prompt, chosen[], rejected[]} 그대로 전달
+    chat_template: chatml
+
+skip_prepare_dataset: true   # axolotl 사전처리(문자열 전제 길이필터) 생략 — TRL 이 직접 토크나이즈
+val_set_size: 0.01
+dataset_prepared_path: ./data/orpo-full-out/dataset_prepared
+
+# ----- context -----
+sequence_len: 1024
+pad_to_sequence_len: true
+
+# ----- LoRA on top of SFT'd model -----
+adapter: lora
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - gate_proj
+  - up_proj
+  - down_proj
+
+# lora_model_dir: 학습 중에는 설정하지 않음 (재개 시 어댑터 입력 경로 전용)
+# merge 출력 경로는 별도 `axolotl merge-lora` 의 --output-dir 로 지정
+# (rl-orpo-05-merge.sh 참고).
+
+# ----- output -----
+output_dir: ./data/orpo-full-out/adapter
+
+# ----- training -----
+# Real run: 페어 1000개 × 2 epoch ≈ 125 steps (effective batch 16).
+# DGX Spark 에서 대략 1–2시간. ORPO 는 DPO 보다 LR 을 약간 높게 쓴다
+# (SFT 항이 포함되어 있어 reference-model 드리프트 제약이 없음).
+num_epochs: 2
+micro_batch_size: 2
+gradient_accumulation_steps: 8        # effective batch = 16
+learning_rate: 1.0e-5                 # DPO(5e-6) 보다 2× 높음 — ORPO 관례
+lr_scheduler_type: cosine
+warmup_ratio: 0.05
+weight_decay: 0.0
+optimizer: adamw_torch
+logging_steps: 5
+save_total_limit: 2
+evals_per_epoch: 0
+saves_per_epoch: 1
+
+# ----- memory -----
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+
+# ----- Liger -----
+plugins:
+  - orpo_passthrough_plugin.ORPOPassthroughPlugin   # orpo+passthrough 조합 활성화
+  - axolotl.integrations.liger.LigerPlugin
+
+# ----- logging -----
+wandb_project:
+wandb_entity:
+wandb_watch:
+wandb_name:
+wandb_log_model:
+hub_model_id:

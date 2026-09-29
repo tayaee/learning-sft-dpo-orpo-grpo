@@ -1,0 +1,14 @@
+# overlay for infra/runpod-h100-1x (x86_64, Hopper sm_90 80GB, CUDA 12).
+# 적용: phase/.../tool/axolotl/config/*.yaml(base)에 아래 키를 덮어씀 (수동 또는 yq).
+# 전제: pyproject의 aarch64 전용 핀 해제 + torch cu124 계열.
+
+flash_attention: true
+attn_implementation: flash_attention   # flash-attn 패키지 설치 필요
+bf16: true
+tf32: true
+
+sequence_len: 2048              # 80GB 여유 → 1024에서 상향 예시 (OOM 시 원복)
+micro_batch_size: 8             # 1x=4 → 상향 예시 (OOM 시 4로 복귀)
+gradient_accumulation_steps: 4  # effective 32 유지 (8x4)
+
+# liger 플러그인은 base 그대로 유지 가능 (Hopper+Triton 정상).

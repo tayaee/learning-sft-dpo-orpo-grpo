@@ -1,0 +1,20 @@
+# overlay for infra/dgx-spark-2x (2x DGX Spark, GB10 sm_120, aarch64, CUDA 13).
+# 적용: phase/.../tool/axolotl/config/*.yaml(base)에 아래 키를 덮어씀 (수동 또는 yq).
+# effective batch 유지: micro_batch 4 x grad_accum 4 x 2 GPU = 32 (1x와 동일).
+
+flash_attention: false        # sm_120 빌드 실패 → SDPA (1x와 동일)
+attn_implementation: sdpa
+
+micro_batch_size: 4
+gradient_accumulation_steps: 4   # 1x=8 → GPU가 2배니 절반
+
+# 분산 전략 (택1 — single-GPU base yaml에 추가):
+# deepspeed: infra/dgx-spark-2x/ds_zero2.json   # deepspeed config 경로 지정 방식
+# 또는:
+# fsdp:
+#   - full_shard
+#   - auto_wrap
+# fsdp_config:
+#   fsdp_limit_all_gathers: true
+# 런처·프로세스 수·랑데부는 axolotl multi-GPU 문서 절차를 따름
+# (env.sh의 MASTER_ADDR/MASTER_PORT 참조).
