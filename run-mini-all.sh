@@ -24,16 +24,27 @@ stage_header() {
   echo "================================================================================" >> "$OUT"
 }
 
+stage_config_dir() {
+  case "$1" in
+    sft)  echo "phase/sft/algorithm/lora/tool/axolotl/config" ;;
+    dpo)  echo "phase/pref/algorithm/dpo/tool/axolotl/config" ;;
+    orpo) echo "phase/pref/algorithm/orpo/tool/axolotl/config" ;;
+    grpo) echo "phase/rl/algorithm/grpo/tool/axolotl/config" ;;
+  esac
+}
+
 stage_in_config() {
   local stage="$1" mode="$2"
   echo "" >> "$OUT"
   echo "### Stage start: ${stage} ${mode} — in/ and config/ ###" >> "$OUT"
-  for kind in in config; do
-    echo "" >> "$OUT"
-    echo "## data/${stage}-${mode}-${kind}/" >> "$OUT"
-    find "data/${stage}-${mode}-${kind}" \( -type f -o -type l \) -ls 2>/dev/null >> "$OUT"
-    echo "(end)" >> "$OUT"
-  done
+  echo "" >> "$OUT"
+  echo "## data/${stage}-${mode}-in/" >> "$OUT"
+  find "data/${stage}-${mode}-in" \( -type f -o -type l \) -ls 2>/dev/null >> "$OUT"
+  echo "(end)" >> "$OUT"
+  echo "" >> "$OUT"
+  echo "## $(stage_config_dir "$stage")/" >> "$OUT"
+  find "$(stage_config_dir "$stage")" \( -type f -o -type l \) -ls 2>/dev/null >> "$OUT"
+  echo "(end)" >> "$OUT"
 }
 
 stage_out() {
