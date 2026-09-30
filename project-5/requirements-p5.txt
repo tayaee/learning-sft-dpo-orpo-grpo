@@ -1,0 +1,15 @@
+# project-5 추가 의존성 (root pyproject의 torch cu130/aarch64 환경에 설치).
+# 사용: uv pip install -r project-5/requirements-p5.txt
+# NOTE: root pyproject는 aarch64 전용 핀. x86 노트북에서는 설치 불가.
+
+transformers>=4.55
+accelerate>=1.0
+peft>=0.14
+datasets>=4.8.4
+sentence-transformers>=3.3
+scikit-learn>=1.5
+vllm>=0.10
+gptqmodel>=1.5        # 구 auto-gptq 대체
+llm-compressor>=0.5   # 구 autoawq 대체 (AWQ/FP8)
+hf-transfer>=0.1
+openai>=1.0           # 61-infer-examples.py 서빙 클라이언트

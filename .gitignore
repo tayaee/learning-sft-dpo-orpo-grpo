@@ -1,6 +1,10 @@
 .ipynb_checkpoints
 __pycache__
 data
+# project-5 벤더링 데이터 (강의 제공, 소용량 — 양 노드 clone에 포함)
+!project-5/data/
+!project-5/data/gsm8k-train.jsonl
+!project-5/data/gsm8k-test.jsonl
 logs
 outputs
 

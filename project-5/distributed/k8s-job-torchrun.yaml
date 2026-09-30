@@ -1,0 +1,36 @@
+# distributed/k8s-job-torchrun.yaml — L3 스켈레톤. k3s에서 torchrun 분산 실행 학습용.
+# 전제: /rosenas/data/AIML 공용 마운트(PVC 또는 hostPath, 양 노드 동일 경로),
+# HF_TOKEN secret, spark1=spark2 이미지 동일.
+# 적용: kubectl apply -f distributed/k8s-job-torchrun.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: p5-baseline-mini
+spec:
+  completions: 2        # 1x면 1, 2x면 2
+  parallelism: 2
+  completionMode: Indexed
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: torchrun
+          image: ghcr.io/<org>/p5-dgx-spark:latest  # TODO: 실제 이미지
+          command: ["bash", "-lc"]
+          args:
+            - |
+              export NODE_RANK=$JOB_COMPLETION_INDEX MASTER_ADDR=p5-master
+              INFRA=dgx-spark-2x ./10-baseline-train.sh mini
+          env:
+            - name: HF_TOKEN
+              valueFrom: { secretKeyRef: { name: hf-token, key: token } }
+            - name: P5_SHARED
+              value: /rosenas/data/AIML/project-5-shared
+          volumeMounts:
+            - { name: shared, mountPath: /rosenas/data/AIML }
+            - { name: repo, mountPath: /work }
+      volumes:
+        - name: shared
+          hostPath: { path: /rosenas/data/AIML }  # TODO: 운영은 PVC로 교체
+        - name: repo
+          hostPath: { path: /home/user1/git/learning-sft-and-rl }
