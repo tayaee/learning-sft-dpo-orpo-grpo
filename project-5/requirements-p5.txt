@@ -9,7 +9,10 @@ datasets>=4.8.4
 sentence-transformers>=3.3
 scikit-learn>=1.5
 vllm>=0.10
-gptqmodel>=1.5        # 구 auto-gptq 대체
-llm-compressor>=0.5   # 구 autoawq 대체 (AWQ/FP8)
+gptqmodel>=1.5        # 구 auto-gptq 대체 (import명 gptqmodel)
 hf-transfer>=0.1
 openai>=1.0           # 61-infer-examples.py 서빙 클라이언트
+# NOTE: llmcompressor(AWQ/FP8용, import명도 llmcompressor)는 여기서 설치하지 않는다.
+# PyPI llmcompressor==0.14.0이 accelerate==1.15.0을 핀해서 root의
+# axolotl(accelerate==1.13.0)과 resolver 충돌이 난다.
+# 00-setup.sh에서 --no-deps로 별도 설치한다.

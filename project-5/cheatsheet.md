@@ -27,6 +27,8 @@
 | `cd ~/git/learning-sft-and-rl/project-5` | `cd ~/git/learning-sft-and-rl/project-5` |
 | # 0-2. 환경 셋업 (양 노드 동일) | # 0-2. 환경 셋업 (양 노드 동일) |
 | `./00-setup.sh` | `./00-setup.sh` |
+| # 0-2b. 직접 `uv run`을 쓸 셸이면 필수 (sync 되돌림 방지) | # 0-2b. 직접 `uv run`을 쓸 셸이면 필수 (sync 되돌림 방지) |
+| `export UV_NO_SYNC=1` | `export UV_NO_SYNC=1` |
 | # 0-3. HF 로그인 (양 노드 동일, Llama gated) | # 0-3. HF 로그인 (양 노드 동일, Llama gated) |
 | `hf auth login` | `hf auth login` |
 | # 0-4. 공유디스크 대조 (양 노드 동일 출력이어야 함) | # 0-4. 공유디스크 대조 (양 노드 동일 출력이어야 함) |
@@ -204,3 +206,6 @@
 - 하류(Stage 4~6) 입력은 항상 `-single` 산출물을 쓴다.
 - `INFRA=`는 명령 앞에 붙이는 방식이다. 셸 전체에 export했다면 추론계
   (22/51/60) 실행 시 `TP=1`을 앞에 붙인다.
+- `meta-llama/Llama-3.2-1B`는 gated 403이 나면 tayaee 계정으로 라이선스 승인 후
+  사용한다. smoke는 `BASE_MODEL=unsloth/Llama-3.2-1B` 미러로 돌렸다
+  (teacher `meta-llama/Llama-3.1-8B-Instruct`는 토큰으로 바로 접근됨).

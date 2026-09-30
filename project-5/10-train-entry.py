@@ -95,7 +95,6 @@ def main():
     import torch
     torch.backends.cuda.matmul.allow_tf32 = True
     from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-    from transformers import DataCollatorForLanguageModeling
     from datasets import Dataset
     from trl import SFTConfig, SFTTrainer
 
@@ -111,6 +110,18 @@ def main():
 
     dtype = torch.bfloat16
     if a.peft:
+        # Compat shim: peft<=0.19는 임포트 시 BloomPreTrainedModel을 참조하지만
+        # transformers 5.x에서 삭제됨. Bloom prefix-tuning 전용이라 LoRA 경로에
+        # 영향 없음 (hasattr 체크에서 False → 매핑 스킵).
+        try:
+            from transformers import BloomPreTrainedModel  # noqa
+        except ImportError:
+            import transformers as _tf
+
+            class _BloomStub:
+                pass
+
+            _tf.BloomPreTrainedModel = _BloomStub
         if a.strategy == "fsdp":
             print("WARN: 원본 강의는 FSDP+QLoRA 불가 → DDP 동작. 학습용으로 계속.")
         bnb = BitsAndBytesConfig(load_in_4bit=True,
@@ -119,6 +130,19 @@ def main():
                                  bnb_4bit_quant_type="nf4")
         model = AutoModelForCausalLM.from_pretrained(a.model, quantization_config=bnb,
                                                      torch_dtype=dtype)
+    else:
+        model = AutoModelForCausalLM.from_pretrained(a.model, torch_dtype=dtype)
+
+    # main.py resize_at_begin: PEFT 래핑보다 먼저 수행 (래핑 후 resize 불가).
+    # 신규 토큰 임베딩을 기존 평균으로 초기화.
+    model.resize_token_embeddings(len(tok))
+    if n_new > 0:
+        with torch.no_grad():
+            for emb in {model.get_input_embeddings(), model.get_output_embeddings()}:
+                w = emb.weight.data
+                w[-n_new:] = w[:-n_new].mean(dim=0, keepdim=True)
+
+    if a.peft:
         from peft import LoraConfig, TaskType, get_peft_model, prepare_model_for_kbit_training
         model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True)
         peft_cfg = LoraConfig(task_type=TaskType.CAUSAL_LM, inference_mode=False,
@@ -129,37 +153,39 @@ def main():
         model.enable_input_require_grads()
         model = get_peft_model(model, peft_cfg)
         model.print_trainable_parameters()
-    else:
-        model = AutoModelForCausalLM.from_pretrained(a.model, torch_dtype=dtype)
-
-    # main.py resize(): 신규 토큰 임베딩을 기존 평균으로 초기화
-    model.resize_token_embeddings(len(tok))
-    if n_new > 0:
-        with torch.no_grad():
-            for emb in {model.get_input_embeddings(), model.get_output_embeddings()}:
-                w = emb.weight.data
-                w[-n_new:] = w[:-n_new].mean(dim=0, keepdim=True)
 
     ds = Dataset.from_list([{"text": t} for t in texts])
 
-    if a.mask_rate > 0:
-        mask_id = tok.convert_tokens_to_ids(MASK_TOKEN)
-        special = set(tok.all_special_ids)
+    # trl은 map 배치를 먼저 패딩한 텐서(input_ids/attention_mask/labels 포함)로
+    # collator를 호출하므로, 배치는 여기서 최종 max에 맞춰 다시 패딩한다.
+    # mask_rate>0일 때만 <mask> 치환을 적용한다 (기본 0=강의와 동일하게 off).
+    mask_id = tok.convert_tokens_to_ids(MASK_TOKEN)
+    special = set(tok.all_special_ids)
 
-        def collator(features):
-            batch = tok.pad({"input_ids": [f["input_ids"] for f in features]},
-                            padding=True, return_tensors="pt")
-            labels = batch["input_ids"].clone()
-            prob = torch.rand(batch["input_ids"].shape)
+    def collator(features):
+        ids = [torch.as_tensor(f["input_ids"]) for f in features]
+        pad = torch.nn.utils.rnn.pad_sequence
+        input_ids = pad(ids, batch_first=True, padding_value=tok.pad_token_id)
+        if "attention_mask" in features[0]:
+            ams = [torch.as_tensor(f["attention_mask"]) for f in features]
+            attention_mask = pad(ams, batch_first=True, padding_value=0)
+        else:
+            attention_mask = (input_ids != tok.pad_token_id).long()
+        if "labels" in features[0]:
+            lbs = [torch.as_tensor(f["labels"]) for f in features]
+            labels = pad(lbs, batch_first=True, padding_value=-100)
+        else:
+            labels = input_ids.clone()
+            labels[attention_mask == 0] = -100
+        if a.mask_rate > 0:
+            prob = torch.rand(input_ids.shape)
             is_special = torch.zeros_like(prob, dtype=torch.bool)
             for s in special:
-                is_special |= batch["input_ids"] == s
-            do_mask = (prob < a.mask_rate) & ~is_special
-            batch["input_ids"][do_mask] = mask_id
-            batch["labels"] = labels
-            return batch
-    else:
-        collator = DataCollatorForLanguageModeling(tok, mlm=False)
+                is_special |= input_ids == s
+            do_mask = (prob < a.mask_rate) & ~is_special & (labels != -100)
+            input_ids[do_mask] = mask_id
+        return {"input_ids": input_ids, "attention_mask": attention_mask,
+                "labels": labels}
 
     fsdp = "full_shard auto_wrap" if a.strategy == "fsdp" else ""
     fsdp_cfg = {"transformer_layer_cls_to_wrap": "LlamaDecoderLayer"} if a.strategy == "fsdp" else {}

@@ -2,32 +2,83 @@
 """20-select-candidates.py — Stage 2a. Alpaca에서 GSM8K 유사 후보 선별.
 원본: datagen.ipynb 전반 (all-mpnet-base-v2, 500개 배치, cosine, top1000→100).
 
-  uv run 20-select-candidates.py --mode mini|full
-출력: $P5_SHARED/datasets/candidates-<mode>.parquet (dg_idx, top100 리스트)
+  uv run 20-select-candidates.py --mode mini|full [--seed 1]
+출력:
+  $P5_SHARED/datasets/alpaca-embeddings.parquet (52k, 캐시 — 모드 공용)
+  $P5_SHARED/datasets/candidates-<mode>.parquet (gsm_idx, dg_instruction, dg_input, dg_output)
 """
-import argparse, os
+import argparse
+import os
+import random
 
 SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
+EMB_MODEL = "sentence-transformers/all-mpnet-base-v2"
+BATCH = 500
+TOPK, SAMPLEK = 1000, 100
 
 
-def main(mode: str):
+def main(mode: str, seed: int):
     from datasets import load_dataset
     from sentence_transformers import SentenceTransformer
     import pandas as pd
     import numpy as np
+    from sklearn.metrics.pairwise import cosine_similarity
 
-    n_gsm = 200 if mode == "mini" else None  # mini는 후보풀 축소용
-    model = SentenceTransformer("sentence-transformers/all-mpnet-base-v2")
-    dg = pd.DataFrame(load_dataset("tatsu-lab/alpaca")["train"])
-    dg["cri"] = dg["instruction"] + dg["output"]
-    # TODO: 500개 배치 인코딩 → dg['embedding'] 저장 (원본 셀 참조)
-    # TODO: GSM8K 임베딩과 cosine → 행당 top1000 중 100 샘플 → result 컬럼
-    out = f"{SHARED}/datasets/candidates-{mode}.parquet"
-    print(f"[p5][{mode}] rows={len(dg)} n_gsm={n_gsm} -> {out}")
-    print("STUB: 인코딩/유사도 본문 미구현 — datagen.ipynb 셀 순서대로 이식")
+    random.seed(seed)
+    np.random.seed(seed)
+
+    emb_path = f"{SHARED}/datasets/alpaca-embeddings.parquet"
+    if os.path.exists(emb_path):
+        dg = pd.read_parquet(emb_path)
+        print(f"[p5][{mode}] embeddings cache hit: {len(dg)}")
+    else:
+        dg = pd.DataFrame(load_dataset("tatsu-lab/alpaca")["train"])
+        dg["cri"] = dg["instruction"] + dg["output"]
+        st = SentenceTransformer(EMB_MODEL)
+        vecs = []
+        for s in range(0, len(dg), BATCH):
+            vecs.extend(st.encode(dg["cri"].tolist()[s:s + BATCH],
+                                  show_progress_bar=False).tolist())
+        dg["embedding"] = vecs
+        dg[["instruction", "input", "output", "embedding"]].to_parquet(emb_path)
+        print(f"[p5][{mode}] embeddings cached: {len(dg)}")
+
+    st = SentenceTransformer(EMB_MODEL)
+    gsm_texts, gsm_idx = [], []
+    with open(f"{SHARED}/datasets/gsm8k-train.jsonl", encoding="utf-8") as f:
+        import json
+        for i, line in enumerate(f):
+            line = line.strip()
+            if not line:
+                continue
+            r = json.loads(line)
+            src = r["source"][0] if isinstance(r["source"], list) else r["source"]
+            tgt = r["target"][0] if isinstance(r["target"], list) else r["target"]
+            gsm_texts.append(src + tgt)
+            gsm_idx.append(i)
+    if mode == "mini":
+        gsm_texts, gsm_idx = gsm_texts[:200], gsm_idx[:200]
+    gsm_vecs = np.array(st.encode(gsm_texts, batch_size=32,
+                                  show_progress_bar=False), dtype=np.float32)
+    dg_vecs = np.array(dg["embedding"].tolist(), dtype=np.float32)
+
+    sim = cosine_similarity(gsm_vecs, dg_vecs)  # [G, 52k]
+    rows = []
+    for gi, grow in zip(gsm_idx, sim):
+        top = np.argsort(grow)[-TOPK:]  # 상위 1000
+        for j in random.sample(top.tolist(), SAMPLEK):
+            rows.append((gi, dg.iloc[j]["instruction"], dg.iloc[j]["input"],
+                         dg.iloc[j]["output"]))
+    out = pd.DataFrame(rows, columns=["gsm_idx", "dg_instruction", "dg_input",
+                                      "dg_output"])
+    out_path = f"{SHARED}/datasets/candidates-{mode}.parquet"
+    out.to_parquet(out_path)
+    print(f"[p5][{mode}] gsm={len(gsm_idx)} candidates={len(out)} -> {out_path}")
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", default="mini", choices=["mini", "full"])
-    main(ap.parse_args().mode)
+    ap.add_argument("--seed", type=int, default=1)
+    a = ap.parse_args()
+    main(a.mode, a.seed)

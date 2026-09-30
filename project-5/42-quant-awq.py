@@ -1,21 +1,53 @@
 #!/usr/bin/env python3
-"""42-quant-awq.py — Stage 4c. AWQ 4bit-g128 GEMM (zero_point).
-원본: quantizaton_math.ipynb 후반 (autoawq) → llm-compressor로 교체.
-주의: quantize 후 model.to('cpu') → save. tokenizer 동봉 필수.
+"""42-quant-awq.py — Stage 4c. AWQ 4bit (llmcompressor oneshot + AWQModifier).
+원본: quantizaton_math.ipynb 후반 (autoawq) → llmcompressor로 교체.
+입력: synthetic-fft-<mode>-single. 출력에 tokenizer 동봉 필수.
 
-  uv run 42-quant-awq.py --mode mini|full
+  uv run 42-quant-awq.py --mode mini|full [--calib N]
 """
-import argparse, os
+import argparse
+import json
+import os
 
 SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
+PROMPT_TEMPLATE = (
+    "Below is an instruction that describes a task, paired with an input "
+    "that provides further context.\n"
+    "Write a response that appropriately completes the request.\n\n"
+    "### Instruction:\n{instruction}\n\n"
+    "### Input:\nGive a response as the assistant with the input conversation history\n\n"
+    "### Response:\n{response}"
+)
+
+
+def first(v):
+    return v[0] if isinstance(v, list) else v
 
 
 def main(mode: str, calib: int):
-    # 입력: synthetic-fft-<mode>-single (전략별 산출물 중 single만 하류 사용).
-    # TODO: llm-compressor AWQ 예제 흐름으로 교체 (quant_config 동일)
-    # TODO: calib=text_lst(문자열 리스트) → quantize → cpu → save + tokenizer
-    print(f"[p5][{mode}] calib={calib} -> {SHARED}/models/synthetic-fft-{mode}-single-awq")
-    print("STUB: AWQ 본문 미구현")
+    from datasets import Dataset
+    from transformers import AutoTokenizer
+    from llmcompressor import oneshot
+    from llmcompressor.modifiers.awq import AWQModifier
+
+    src = f"{SHARED}/models/synthetic-fft-{mode}-single"
+    out = f"{SHARED}/models/synthetic-fft-{mode}-single-awq"
+    texts = []
+    with open(f"{SHARED}/datasets/synthetic-{mode}.jsonl", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                r = json.loads(line)
+                texts.append(PROMPT_TEMPLATE.format(instruction=first(r["source"]),
+                                                    response=first(r["target"])))
+            if len(texts) >= max(calib, 10):
+                break
+    ds = Dataset.from_list([{"text": t} for t in texts])
+    recipe = AWQModifier(ignore=["lm_head"], scheme="W4A16", targets=["Linear"])
+    oneshot(model=src, dataset=ds, recipe=recipe, output_dir=out,
+            max_seq_length=1024, num_calibration_samples=calib)
+    AutoTokenizer.from_pretrained(src).save_pretrained(out)
+    print(f"[p5][{mode}] calib={calib} -> {out}")
 
 
 if __name__ == "__main__":

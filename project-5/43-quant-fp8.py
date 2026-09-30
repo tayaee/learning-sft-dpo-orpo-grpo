@@ -1,21 +1,53 @@
 #!/usr/bin/env python3
-"""43-quant-fp8.py — Stage 4d (신규). FP8 w8a8 PTQ. Blackwell 네이티브.
-권장: llm-compressor FP8 예제 (calib=synthetic 텍스트 리스트) → 저장.
-평가는 vLLM quantization='fp8' 경로로 51-eval.sh에서, 채점은 52-score.py 공용.
+"""43-quant-fp8.py — Stage 4d (신규). FP8 static quant (llmcompressor oneshot).
+Blackwell 네이티브. 평가는 vLLM quantization='fp8' 경로 (51-eval.sh).
 
-  uv run 43-quant-fp8.py --mode mini|full
+  uv run 43-quant-fp8.py --mode mini|full [--calib N]
 """
-import argparse, os
+import argparse
+import json
+import os
 
 SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
+PROMPT_TEMPLATE = (
+    "Below is an instruction that describes a task, paired with an input "
+    "that provides further context.\n"
+    "Write a response that appropriately completes the request.\n\n"
+    "### Instruction:\n{instruction}\n\n"
+    "### Input:\nGive a response as the assistant with the input conversation history\n\n"
+    "### Response:\n{response}"
+)
+
+
+def first(v):
+    return v[0] if isinstance(v, list) else v
 
 
 def main(mode: str, calib: int):
-    # 입력: synthetic-fft-<mode>-single.
-    # TODO: llm-compressor FP8 (w8a8, e4m3) 양자화 → save + tokenizer 동봉
-    # TODO: push_to_hub(f"tayaee/1B-math-fp8-{mode}") (선택)
-    print(f"[p5][{mode}] calib={calib} -> {SHARED}/models/synthetic-fft-{mode}-single-fp8")
-    print("STUB: FP8 본문 미구현 (llm-compressor 문서의 AWQ 예제와 동형)")
+    from datasets import Dataset
+    from transformers import AutoTokenizer
+    from llmcompressor import oneshot
+    from llmcompressor.modifiers.quantization import QuantizationModifier
+
+    src = f"{SHARED}/models/synthetic-fft-{mode}-single"
+    out = f"{SHARED}/models/synthetic-fft-{mode}-single-fp8"
+    texts = []
+    with open(f"{SHARED}/datasets/synthetic-{mode}.jsonl", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                r = json.loads(line)
+                texts.append(PROMPT_TEMPLATE.format(instruction=first(r["source"]),
+                                                    response=first(r["target"])))
+            if len(texts) >= max(calib, 64):
+                break
+    ds = Dataset.from_list([{"text": t} for t in texts])
+    recipe = QuantizationModifier(ignore=["lm_head"], scheme="FP8",
+                                  targets=["Linear"])
+    oneshot(model=src, dataset=ds, recipe=recipe, output_dir=out,
+            max_seq_length=1024, num_calibration_samples=calib)
+    AutoTokenizer.from_pretrained(src).save_pretrained(out)
+    print(f"[p5][{mode}] calib={calib} -> {out}")
 
 
 if __name__ == "__main__":

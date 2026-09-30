@@ -14,8 +14,9 @@ case "$TARGET" in
   fft)   SUF="synthetic-fft-$MODE-single"; QUANT="" ;;
   qlora) SUF="synthetic-qlora-$MODE-single-merged"; QUANT="" ;;
   gptq)  SUF="synthetic-fft-$MODE-single-gptq"; QUANT="gptq" ;;
-  awq)   SUF="synthetic-fft-$MODE-single-awq"; QUANT="awq" ;;
-  fp8)   SUF="synthetic-fft-$MODE-single-fp8"; QUANT="fp8" ;;
+  # llmcompressor 산출물(AWQ/FP8)은 compressed-tensors 포맷 (51-eval.py와 동일)
+  awq)   SUF="synthetic-fft-$MODE-single-awq"; QUANT="compressed-tensors" ;;
+  fp8)   SUF="synthetic-fft-$MODE-single-fp8"; QUANT="compressed-tensors" ;;
   gguf)  SUF="synthetic-fft-$MODE-single-gguf"; QUANT="gguf" ;;
   *) echo "target: fft|qlora|gptq|awq|fp8|gguf" >&2; exit 1 ;;
 esac
@@ -26,7 +27,11 @@ if [ "$SOURCE" = "hf" ]; then MODEL="$REPO"; else MODEL="$P5_MODELS/$SUF"; fi
 [ "$TARGET" = "gguf" ] && [ "$SOURCE" = "local" ] && MODEL="$MODEL/model-q8_0.gguf"
 
 p5_log "serving model=$MODEL quant=${QUANT:-none} tp=$TP port=$PORT"
-exec vllm serve "$MODEL" \
+# FLASH_ATTN 고정 + flashinfer sampler off: flashinfer JIT(sampling 커널) 빌드가
+# GB10에서 깨짐 (ninja 실패 → Engine core init 실패)
+export VLLM_ATTENTION_BACKEND="${VLLM_ATTENTION_BACKEND:-FLASH_ATTN}"
+export VLLM_USE_FLASHINFER_SAMPLER=0
+exec "$VLLM_BIN" serve "$MODEL" \
   --host 0.0.0.0 --port "$PORT" \
   --served-model-name "$REPO" \
   --tensor-parallel-size "$TP" \

@@ -2,7 +2,8 @@
 """61-infer-examples.py — Stage 6c. 서빙 중인 모델에 추론 예제 요청.
 60-serve-vllm.sh가 띄운 OpenAI-호환 엔드포인트로 질의한다.
 예제는 벤더링된 gsm8k-test.jsonl 앞 N개 + 한국어 수학 1문제로,
-학습/평가와 동일한 prompt_no_input 포맷으로 보낸다.
+학습/평가와 동일한 prompt_no_input 포맷을 **completions** API로 보낸다
+(서빙 토크나이저에 chat template이 없어 chat API는 400).
 
   # 터미널1: ./60-serve-vllm.sh mini fft
   # 터미널2:
@@ -49,11 +50,10 @@ def main(model: str, base_url: str, n: int, dry_run: bool):
     from openai import OpenAI
     client = OpenAI(base_url=base_url, api_key="EMPTY")
     for q, p in zip(questions, prompts):
-        r = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": p}],
+        r = client.completions.create(
+            model=model, prompt=p,
             temperature=0, max_tokens=512)
-        print(f"Q: {q}\nA: {r.choices[0].message.content}\n{'=' * 60}")
+        print(f"Q: {q}\nA: {r.choices[0].text}\n{'=' * 60}")
 
 
 if __name__ == "__main__":

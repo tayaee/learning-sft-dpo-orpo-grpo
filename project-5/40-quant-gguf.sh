@@ -9,10 +9,11 @@ source "$(dirname "$0")/config/common.env" "${1:-mini}"
 SRC="$P5_MODELS/synthetic-fft-$MODE-single"
 DST="$P5_MODELS/synthetic-fft-$MODE-single-gguf"
 LLAMACPP="${LLAMACPP:-$HOME/git/llama.cpp}"
-p5_log "src=$SRC dst=$DST"
+p5_log "src=$SRC dst=$DST llamacpp=$LLAMACPP"
 mkdir -p "$DST"
 
-# STUB: llama.cpp 클론/빌드 후 주석 해제
-# python3 "$LLAMACPP/convert_hf_to_gguf.py" "$SRC" --outfile "$DST/model-f16.gguf"
-# "$LLAMACPP/build/bin/llama-quantize" "$DST/model-f16.gguf" "$DST/model-q8_0.gguf" Q8_0
-echo "STUB: GGUF 변환부 미구현 (LLAMACPP=$LLAMACPP)"
+[ -x "$LLAMACPP/build/bin/llama-quantize" ] || { p5_log "llama-quantize 빌드 필요 (cheatsheet/PROCEDURE 참조)"; exit 1; }
+[ -f "$LLAMACPP/convert_hf_to_gguf.py" ] || { p5_log "convert_hf_to_gguf.py 없음"; exit 1; }
+"$VENV_BIN/python" "$LLAMACPP/convert_hf_to_gguf.py" "$SRC" --outfile "$DST/model-f16.gguf"
+"$LLAMACPP/build/bin/llama-quantize" "$DST/model-f16.gguf" "$DST/model-q8_0.gguf" Q8_0
+p5_log "OK: $DST/model-q8_0.gguf"
