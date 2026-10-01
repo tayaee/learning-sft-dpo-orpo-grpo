@@ -77,6 +77,7 @@ def parse_args():
     p.add_argument("--warmup", type=float, default=0.03)
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--mask_rate", type=float, default=0.0, help="원본 max_mask_rate (기본 0=off)")
+    p.add_argument("--max_rows", type=int, default=0, help="학습 행 상한 (0=전체, mini 경량화용)")
     p.add_argument("--dry_run", action="store_true", help="데이터 포맷만 확인 후 종료")
     return p.parse_args()
 
@@ -85,6 +86,8 @@ def main():
     a = parse_args()
     set_seed(a.seed)
     texts = load_texts(a.train)
+    if a.max_rows > 0:
+        texts = texts[:a.max_rows]
     print(f"[p5][{a.mode}][{a.strategy}] n={len(texts)} sample_chars={len(texts[0])}")
     print("---- sample ----")
     print(texts[0][:600])

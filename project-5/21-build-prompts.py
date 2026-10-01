@@ -13,7 +13,10 @@ import random
 
 SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
 HF_ID = os.environ.get("HF_ID", "tayaee")
-N = {"mini": 200, "full": 10000}
+
+
+def target_n(mode: str) -> int:
+    return int(os.environ.get("SYNTH_N", "64" if mode == "mini" else "10000"))
 
 
 def main(mode: str, seed: int, push: bool):
@@ -26,7 +29,7 @@ def main(mode: str, seed: int, push: bool):
     cand = pd.read_parquet(f"{SHARED}/datasets/candidates-{mode}.parquet")
     cand = cand.sample(frac=1.0, random_state=seed).reset_index(drop=True)
     prompts = []
-    for _, r in cand.head(N[mode]).iterrows():
+    for _, r in cand.head(target_n(mode)).iterrows():
         # 강의 후반 수정 반영: instruction에 input을 합친다
         inst = str(r["dg_instruction"]) + "\n" + str(r["dg_input"])
         prompts.append(template.format(dg_instruct=inst,

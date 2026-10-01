@@ -56,8 +56,9 @@ def main(mode: str, seed: int):
             tgt = r["target"][0] if isinstance(r["target"], list) else r["target"]
             gsm_texts.append(src + tgt)
             gsm_idx.append(i)
-    if mode == "mini":
-        gsm_texts, gsm_idx = gsm_texts[:200], gsm_idx[:200]
+    gsm_rows = int(os.environ.get("GSM_ROWS", "256" if mode == "mini" else "0"))
+    if gsm_rows > 0:
+        gsm_texts, gsm_idx = gsm_texts[:gsm_rows], gsm_idx[:gsm_rows]
     gsm_vecs = np.array(st.encode(gsm_texts, batch_size=32,
                                   show_progress_bar=False), dtype=np.float32)
     dg_vecs = np.array(dg["embedding"].tolist(), dtype=np.float32)

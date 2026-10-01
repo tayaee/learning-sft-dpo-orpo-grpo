@@ -39,7 +39,7 @@
 | # 0-6. 랑데부 export (C·D 전용, RANK만 다름, 호스트명 권장) | # 0-6. 랑데부 export (C·D 전용, RANK만 다름, 호스트명 권장) |
 | `export MASTER_ADDR=spark1-p1-r0 MASTER_PORT=29500 NODE_RANK=0` | `export MASTER_ADDR=spark1-p1-r0 MASTER_PORT=29500 NODE_RANK=1` |
 
-## A. mini-single — 파이프라인 점검, spark1만 (~15~30분)
+## A. mini-single — 파이프라인 점검, spark1만 (~30분, PROCEDURE.md §3 실측표)
 
 | spark1 | spark2 |
 |---|---|
@@ -79,7 +79,7 @@
 | # 6. 추론 예제 (선택, 서빙 기동 후 다른 터미널) | |
 | `uv run 61-infer-examples.py --model tayaee/p5-1B-math-fft-mini` | |
 
-## B. full-single — 실전 1노드, spark1만 (~3~5시간)
+## B. full-single — 실전 1노드, spark1만 (~10시간 내외, 추정)
 
 | spark1 | spark2 |
 |---|---|
@@ -92,6 +92,7 @@
 | `uv run 21-build-prompts.py --mode full` | |
 | # 2b. 합성 생성 (가장 오래 걸림, 밤에 권장) | |
 | `./22-generate.sh full` | |
+| # (10k ≈ 5~6시간: mini 실측 200개/8.3분 기준 외삽) | |
 | # 2c. 후처리 | |
 | `uv run 23-postprocess.py --mode full` | |
 | # 3. 합성 FFT | |

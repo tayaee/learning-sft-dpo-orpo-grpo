@@ -55,4 +55,5 @@ if __name__ == "__main__":
     ap.add_argument("--mode", default="mini", choices=["mini", "full"])
     ap.add_argument("--calib", type=int, default=None)
     a = ap.parse_args()
-    main(a.mode, a.calib or (4 if a.mode == "mini" else 64))
+    default_calib = int(os.environ.get("CALIB_N", "2" if a.mode == "mini" else "64"))
+    main(a.mode, a.calib or default_calib)

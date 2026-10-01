@@ -15,4 +15,5 @@ p5_log "model=$BASE_MODEL out=$OUT epochs=$EPOCHS strat=$STRAT world=$WORLD accu
 "${LAUNCH[@]}" "$P5_ROOT/10-train-entry.py" \
   --model "$BASE_MODEL" --train "$P5_DATASETS/gsm8k-train.jsonl" \
   --out "$OUT" --epochs "$EPOCHS" --mode "$MODE" \
-  --strategy "$STRAT" --accum "$ACCUM"
+  --strategy "$STRAT" --accum "$ACCUM" \
+  --max_rows "$GSM_ROWS"

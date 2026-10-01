@@ -101,7 +101,8 @@ Q/A 마커 기준 split + 케이스별 예외 + 잔여 패턴 제거 + `rstrip` 
    + 타깃별 `--quantization` (gptq/awq/fp8/gguf), `--max-model-len 2048`,
    `--gpu-memory-utilization 0.9` (env `GPU_UTIL`로 조정). `SOURCE=hf`면 Hub repo 직접 서빙.
 3. 추론 예제 (`61`): gsm8k-test 앞 N개 + 한국어 1문제를 학습과 동일 `prompt_no_input`
-   포맷으로 chat completions 요청 (`temperature 0`). 서버는 별도 터미널에서 실행.
+   포맷으로 completions API 요청 (`temperature 0`, chat template이 없어 chat API는 400).
+   서버는 별도 터미널에서 실행.
 
 ## 2. 버전표 (2024 강의 → 본 repo)
 
@@ -109,12 +110,38 @@ Q/A 마커 기준 split + 케이스별 예외 + 잔여 패턴 제거 + `rstrip` 
 |---|---|---|---|
 | Python | 3.11 conda `mass` | **3.12** (`uv`, root `mise.toml`) | 개별설치 루틴 불필요 |
 | torch | 2.1.0/2.5.1 cu118/cu124 x86 | **cu130 aarch64** (root `pyproject`, `UV_TORCH_BACKEND=cu130`) | GB10 sm_120, `flash_attention: false`(SDPA, `infra/` 관례) |
-| transformers / trl / peft | 4.46.3 / 구버전 | **5.14.1 / 1.8 / 0.19** (최신 유지) | `load_in_4bit`+`bnb_4bit_*` 키 동일 |
+| transformers / trl / peft | 4.46.3 / 구버전 | **5.17.0 / 1.8 / 0.19** (smoke 실측) | `load_in_4bit`+`bnb_4bit_*` 키 동일, peft Bloom shim 필요 |
 | datasets | 2.0.0 핀 ↔ 3.2.0 혼용 | **4.x 통일** | 궁합 패치 불필요 |
 | bitsandbytes | 4bit QLoRA용 | **0.49** (ARM 이슈시 **torchao** 대체) | root에 `torchao` 이미 있음 |
 | sentence-transformers / sklearn | 개별설치 | **pip 통합설치** | conda/pip 분리 불필요 |
-| vLLM | 0.2.2 / 0.5.5 | **최신 aarch64 휠** | AWQ/GPTQ는 `llm-compressor`/`gptqmodel` 경로 |
+| vLLM | 0.2.2 / 0.5.5 | **0.30.0** (smoke 실측, aarch64) | AWQ/GPTQ는 `gptqmodel`/`llmcompressor` 경로, flashinfer sampler off 필요 |
 | auto-gptq / autoawq | 원본 라이브러리 | **`gptqmodel` / `llm-compressor`** (둘 다 deprecated 후속) | 흐름 동일 |
 | llama.cpp | assert 수동패치 | **최신 빌드 (패치 불필요)** | `Q8_0` 절차 동일 |
 | 모델·데이터 | Llama-3.2-1B / 3.1-8B-Instruct, Alpaca, `DopeorNope/*` | **동일** + HF id **`tayaee/*`**, 데이터는 `data/` 벤더링 | gated 로그
 ...[truncated 911 chars]
+## 3. mini 실측 시간표 (spark2, GB10 idle 기준)
+
+> 실측 = 타이머·로그로 확인한 값, 추정 = 이전 실행 경과로부터의 유추.
+> mini 경량화 이후(GSM 256행·합성 64개·평가 10개·캘리브 2) 합계 **약 30분**.
+> 구 mini(전량·200개·50개) 기준으로는 약 80~100분이었다.
+
+| Stage | 스크립트 | mini 시간 | 구분 | 비고 |
+|---|---|---|---|---|
+| 0 | `00-setup.sh` | ~10분 | 추정 | 초회 패키지 다운로드 포함. 2회目以降 수십초 |
+| 1 | `10-baseline` | ~3.5분 | 실측 | 256행·4스텝. 전량 7473행 시 20.4분 실측(train_runtime 1224s) |
+| 2a | `20-select` | 15초 | 실측 | 임베딩 캐시 적중 시. 첫 실행은 52k 인코딩 수 분 추가 |
+| 2b | `21-build` | 1초 | 실측 | 200프롬프트 포맷 |
+| 2b | `22-generate` | ~3분 | 추정 | 64프롬프트. 200개 시 8.3분 실측(500s, 재생성 3회). 8B teacher 상주 후 기준, 첫 다운로드는 15GB 별도(~25분) |
+| 2c | `23-postprocess` | ~10초 | 추정 | 188 kept / 12 dropped |
+| 3 | `30-fft` | 2.2분 | 실측 | train_runtime 133.5s, 3스텝, loss 1.50 |
+| 3 | `31-qlora` | 2.3분 | 실측 | train_runtime 139.1s, 3스텝, loss 1.62 |
+| 4 | `40-gguf` | ~2분 | 추정 | quantize 34초 실측 + convert. llama.cpp CPU 빌드 별도 ~10분(1회) |
+| 4 | `41-gptq` | ~4분 | 추정 | 1B 로드 + 4캘리브 + 저장 |
+| 4 | `42-awq` | ~6분 | 추정 | oneshot smoothing + 112모듈 compress + 저장 |
+| 4 | `43-fp8` | ~5분 | 추정 | 42와 동형 |
+| 5 | `50-merge` | ~3분 | 추정 | 1B 로드 + 병합 + 저장 |
+| 5 | `51-eval` | ~9분 | 추정 | 6타깃×10개 (1타깃 85초 실측). 50개 시 ~20분 |
+| 5 | `52-score` | ~5초 | 추정 | 6타깃 전부 acc 0.000 (3스텝 undertraining, §1 Stage 5 참조) |
+| 6 | `53-upload` | ~10분 | 추정 | ~14GB 업로드, 회선依存 |
+| 6 | `60-serve` | ~3분 | 실측 | 기동~`/v1/models` UP (1B 모델 상주 후) |
+| 6 | `61-infer` | ~30초 | 추정 | 3문항 completions 왕복 |

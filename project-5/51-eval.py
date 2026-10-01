@@ -74,5 +74,5 @@ if __name__ == "__main__":
     ap.add_argument("--n", type=int, default=None)
     ap.add_argument("--tp", type=int, default=int(os.environ.get("TP", "1")))
     a = ap.parse_args()
-    n = a.n if a.n is not None else (50 if a.mode == "mini" else 0)
+    n = a.n if a.n is not None else int(os.environ.get("EVAL_N", "10" if a.mode == "mini" else "0"))
     main(a.mode, a.target, n, a.tp)

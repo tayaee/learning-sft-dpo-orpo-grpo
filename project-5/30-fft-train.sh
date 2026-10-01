@@ -11,4 +11,5 @@ p5_log "train=$P5_DATASETS/synthetic-$MODE.jsonl out=$OUT strat=$STRAT world=$WO
 "${LAUNCH[@]}" "$P5_ROOT/10-train-entry.py" \
   --model "$BASE_MODEL" --train "$P5_DATASETS/synthetic-$MODE.jsonl" \
   --out "$OUT" --epochs "$EPOCHS" --mode "$MODE" \
-  --strategy "$STRAT" --accum "$ACCUM"
+  --strategy "$STRAT" --accum "$ACCUM" \
+  --max_rows "$GSM_ROWS"
