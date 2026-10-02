@@ -1,0 +1,8 @@
+cd ~/git/learning-sft-and-rl/project-5
+./00-setup.sh
+uv run 20-select-candidates.py --mode mini
+uv run 21-build-prompts.py --mode mini
+./22-generate.sh mini
+uv run 23-postprocess.py --mode mini
+./30-fft-train.sh mini single
+uv run 42-quant-awq.py --mode mini

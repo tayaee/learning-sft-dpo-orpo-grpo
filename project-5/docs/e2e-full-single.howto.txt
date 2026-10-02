@@ -1,0 +1,16 @@
+cd ~/git/learning-sft-and-rl/project-5
+./00-setup.sh
+./10-baseline-train.sh full single
+uv run 20-select-candidates.py --mode full
+uv run 21-build-prompts.py --mode full
+./22-generate.sh full
+uv run 23-postprocess.py --mode full
+./30-fft-train.sh full single
+./31-qlora-train.sh full single
+./40-quant-gguf.sh full
+uv run 41-quant-gptq.py --mode full
+uv run 42-quant-awq.py --mode full
+uv run 43-quant-fp8.py --mode full
+uv run 50-merge-lora.py --mode full
+./51-eval.sh full
+uv run 52-score.py --mode full

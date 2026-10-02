@@ -1,0 +1,16 @@
+# spark1
+cd ~/git/learning-sft-and-rl/project-5
+# spark2
+cd ~/git/learning-sft-and-rl/project-5
+# spark1
+./00-setup.sh
+# spark2
+./00-setup.sh
+# spark1
+export MASTER_ADDR=spark1-p1-r0 MASTER_PORT=29500 NODE_RANK=0
+# spark2
+export MASTER_ADDR=spark1-p1-r0 MASTER_PORT=29500 NODE_RANK=1
+# spark1
+INFRA=dgx-spark-2x ./10-baseline-train.sh mini ddp
+# spark2
+INFRA=dgx-spark-2x ./10-baseline-train.sh mini ddp
