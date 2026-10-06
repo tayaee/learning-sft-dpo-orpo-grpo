@@ -1,0 +1,142 @@
+{
+  // project-5/.vscode/tasks.json
+  // *.sh 원 명령 그대로 실행하는 Task 등록 (터미널 > 작업 실행 / Ctrl+Shift+B).
+  // 디버거 한 줄 추적은 launch.json(F5), 전체 파이프라인 실행은 이 tasks.json 사용.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "p5: 00-setup.sh",
+      "type": "shell",
+      "command": "./00-setup.sh",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "new" }
+    },
+    {
+      "label": "p5: 10-baseline-train.sh mini single",
+      "type": "shell",
+      "command": "./10-baseline-train.sh mini single",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "new" }
+    },
+    {
+      "label": "p5: 12-compare-strategies.sh (python 없음)",
+      "type": "shell",
+      "command": "./12-compare-strategies.sh mini",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "new" }
+    },
+    {
+      "label": "p5: 20-select-candidates.py",
+      "type": "shell",
+      "command": "export UV_NO_SYNC=1 && uv run 20-select-candidates.py --mode mini",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "new" }
+    },
+    {
+      "label": "p5: 21-build-prompts.py",
+      "type": "shell",
+      "command": "export UV_NO_SYNC=1 && uv run 21-build-prompts.py --mode mini",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "new" }
+    },
+    {
+      "label": "p5: 22-generate.sh mini",
+      "type": "shell",
+      "command": "./22-generate.sh mini",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "new" }
+    },
+    {
+      "label": "p5: 23-postprocess.py",
+      "type": "shell",
+      "command": "export UV_NO_SYNC=1 && uv run 23-postprocess.py --mode mini",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "new" }
+    },
+    {
+      "label": "p5: 30-fft-train.sh mini single",
+      "type": "shell",
+      "command": "./30-fft-train.sh mini single",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "new" }
+    },
+    {
+      "label": "p5: 31-qlora-train.sh mini single",
+      "type": "shell",
+      "command": "./31-qlora-train.sh mini single",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "new" }
+    },
+    {
+      "label": "p5: 40-quant-gguf.sh mini",
+      "type": "shell",
+      "command": "./40-quant-gguf.sh mini",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "new" }
+    },
+    {
+      "label": "p5: 41-quant-gptq.py",
+      "type": "shell",
+      "command": "export UV_NO_SYNC=1 && uv run 41-quant-gptq.py --mode mini",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "new" }
+    },
+    {
+      "label": "p5: 42-quant-awq.py",
+      "type": "shell",
+      "command": "export UV_NO_SYNC=1 && uv run 42-quant-awq.py --mode mini",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "new" }
+    },
+    {
+      "label": "p5: 43-quant-fp8.py",
+      "type": "shell",
+      "command": "export UV_NO_SYNC=1 && uv run 43-quant-fp8.py --mode mini",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "new" }
+    },
+    {
+      "label": "p5: 50-merge-lora.py",
+      "type": "shell",
+      "command": "export UV_NO_SYNC=1 && uv run 50-merge-lora.py --mode mini",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "new" }
+    },
+    {
+      "label": "p5: 51-eval.sh mini",
+      "type": "shell",
+      "command": "./51-eval.sh mini",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "new" }
+    },
+    {
+      "label": "p5: 52-score.py",
+      "type": "shell",
+      "command": "export UV_NO_SYNC=1 && uv run 52-score.py --mode mini",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "new" }
+    },
+    {
+      "label": "p5: 53-upload-hf.sh mini (dry-run은 py 직접)",
+      "type": "shell",
+      "command": "./53-upload-hf.sh mini",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "new" }
+    },
+    {
+      "label": "p5: 60-serve-vllm.sh mini fft",
+      "type": "shell",
+      "command": "./60-serve-vllm.sh mini fft",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "new" },
+      "isBackground": true
+    },
+    {
+      "label": "p5: 61-infer-examples.py (dry-run)",
+      "type": "shell",
+      "command": "export UV_NO_SYNC=1 && uv run 61-infer-examples.py --model tayaee/p5-1B-math-fft-mini --n 1 --dry-run",
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "panel": "new" }
+    }
+  ]
+}

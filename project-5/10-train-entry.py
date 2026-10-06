@@ -63,7 +63,7 @@ def set_seed(seed):
 
 def parse_args():
     p = argparse.ArgumentParser()
-    p.add_argument("--model", default="meta-llama/Llama-3.2-1B")
+    p.add_argument("--model", default="unsloth/Llama-3.2-1B")
     p.add_argument("--train", required=True)
     p.add_argument("--out", required=True)
     p.add_argument("--epochs", type=int, default=1)

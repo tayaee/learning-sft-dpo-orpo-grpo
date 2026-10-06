@@ -10,7 +10,7 @@ import argparse
 import os
 
 SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
-BASE = os.environ.get("BASE_MODEL", "meta-llama/Llama-3.2-1B")
+BASE = os.environ.get("BASE_MODEL", "unsloth/Llama-3.2-1B")
 MASK_TOKEN = "<mask>"
 PAD_TOKEN = "[PAD]"
 
