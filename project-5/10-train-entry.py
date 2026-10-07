@@ -187,8 +187,7 @@ def main():
                 is_special |= input_ids == s
             do_mask = (prob < a.mask_rate) & ~is_special & (labels != -100)
             input_ids[do_mask] = mask_id
-        return {"input_ids": input_ids, "attention_mask": attention_mask,
-                "labels": labels}
+        return {"input_ids": input_ids, "attention_mask": attention_mask, "labels": labels}
 
     fsdp = "full_shard auto_wrap" if a.strategy == "fsdp" else ""
     fsdp_cfg = {"transformer_layer_cls_to_wrap": "LlamaDecoderLayer"} if a.strategy == "fsdp" else {}
