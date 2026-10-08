@@ -16,11 +16,14 @@ uv pip install -r "$P5_ROOT/requirements-p5.txt" || p5_log "WARN: p5 의존성 �
 echo + uv pip install --no-deps "llmcompressor==0.14.0"
 uv pip install --no-deps "llmcompressor==0.14.0" 2>/dev/null || p5_log "WARN: llmcompressor 설치 실패 — 42/43 건너뜀"
 
-# torchvision/torchaudio: LLM 파이프라인 불필요 + cu130 aarch64 휠 깨짐
-# (torchvision::nms 부재 → transformers 임포트 오염). 있으면 제거.
+# torchvision: vLLM warmup이 `torchvision.transforms` import를 필수로 요구
+# (없으면 22-teacher EngineCore 기동 실패). 0.29.1+cu130 휠 정상 동작 확인됨.
+# torchaudio는 여전히 불필요 → 제거 유지.
 
-echo + uv pip uninstall -y torchvision torchaudio 
-uv pip uninstall -y torchvision torchaudio 2>/dev/null | tail -1 || true
+echo + uv pip install torchvision
+uv pip install torchvision 2>/dev/null | tail -1 || p5_log "WARN: torchvision 설치 실패 — 22-teacher 불가"
+echo + uv pip uninstall -y torchaudio
+uv pip uninstall -y torchaudio 2>/dev/null | tail -1 || true
 
 mkdir -p "$P5_SHARED"/{datasets,models,outputs,hf-cache,vllm-cache}
 

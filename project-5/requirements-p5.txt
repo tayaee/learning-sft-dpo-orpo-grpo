@@ -10,9 +10,14 @@ sentence-transformers>=3.3
 scikit-learn>=1.5
 vllm>=0.10
 gptqmodel>=1.5        # 구 auto-gptq 대체 (import명 gptqmodel)
+optimum>=1.24.0       # gptqmodel이 요구 (없으면 peft merge 시 ImportError)
 hf-transfer>=0.1
 openai>=1.0           # 61-infer-examples.py 서빙 클라이언트
 # NOTE: llmcompressor(AWQ/FP8용, import명도 llmcompressor)는 여기서 설치하지 않는다.
 # PyPI llmcompressor==0.14.0이 accelerate==1.15.0을 핀해서 root의
 # axolotl(accelerate==1.13.0)과 resolver 충돌이 난다.
 # 00-setup.sh에서 --no-deps로 별도 설치한다.
+# 단 compressed-tensors는 버전 고정 필수: llmcompressor==0.14.0이
+# ==0.19.0을 요구하는데 root lock은 0.17.0을 깔아서 ImportError가 난다.
+# (--no-deps라 의존성을 안 맞춰주므로 여기서 맞춤)
+compressed-tensors==0.19.0
