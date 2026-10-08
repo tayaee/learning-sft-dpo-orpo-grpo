@@ -9,6 +9,8 @@
 # rank1은 rank0의 synthetic-full.jsonl 생성을 기다렸다가 학습에 합류한다
 # (22-teacher 10k 생성에 약 5~6시간, 대기 상한 9시간).
 # NOTE: FSDP+QLoRA는 강의에서 비권장 → 31-qlora는 DDP 동작으로 학습용 수행.
+# 2x 저장: DCP sharded save + rank0 consolidation (10-train-entry.py).
+#   giant NCCL gather를 fabric에 던지지 않음 (mini-2x 검증됨: 양 노드 rc=0).
 # 하류(merge→평가)는 -single 산출물이 있어야 진행한다:
 #   없으면 FSDP 학습 + 12-compare까지만 수행하고 종료 (먼저 ./run-full-single.sh 실행).
 # 사용: SKIP_SETUP=1 ./run-full-fsdp.sh                # 00-setup 생략

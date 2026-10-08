@@ -7,6 +7,8 @@
 # 분산 대상: 학습만 (10-baseline, 30-fft, 31-qlora).
 # 2x에서는 합성데이터·전략비교·merge·PTQ·PPL·평가는 rank0만 수행 (TP=1).
 # NOTE: FSDP+QLoRA는 강의에서 비권장 → 31-qlora는 DDP 동작으로 학습용 수행.
+# 2x 저장: DCP sharded save + rank0 consolidation (10-train-entry.py).
+#   giant NCCL gather를 fabric에 던지지 않음 (검증됨: 양 노드 rc=0).
 # 하류(merge→평가)는 -single 산출물이 있어야 진행한다:
 #   없으면 FSDP 학습 + 12-compare까지만 수행하고 종료 (먼저 ./run-mini-single.sh 실행).
 # 사용: SKIP_SETUP=1 ./run-mini-fsdp.sh                # 00-setup 생략
