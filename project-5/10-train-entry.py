@@ -192,19 +192,32 @@ def main():
     fsdp = "full_shard auto_wrap" if a.strategy == "fsdp" else ""
     fsdp_cfg = {"transformer_layer_cls_to_wrap": "LlamaDecoderLayer"} if a.strategy == "fsdp" else {}
     cfg = SFTConfig(
-        output_dir=a.out, num_train_epochs=a.epochs,
+        output_dir=a.out, 
+        num_train_epochs=a.epochs,
         per_device_train_batch_size=a.micro,
         gradient_accumulation_steps=a.accum,
-        learning_rate=a.lr, lr_scheduler_type="cosine", warmup_ratio=a.warmup,
-        logging_steps=200, save_strategy="epoch", save_total_limit=2,
-        bf16=True, seed=a.seed, dataset_text_field="text",
-        max_length=a.max_len, packing=False,
+        learning_rate=a.lr, 
+        lr_scheduler_type="cosine", 
+        warmup_ratio=a.warmup,
+        logging_steps=200, 
+        save_strategy="epoch", 
+        save_total_limit=2,
+        bf16=True, 
+        seed=a.seed, 
+        dataset_text_field="text",
+        max_length=a.max_len, 
+        packing=False,
         gradient_checkpointing=True,
         gradient_checkpointing_kwargs={"use_reentrant": False} if a.peft else {},
-        fsdp=fsdp, fsdp_config=fsdp_cfg, report_to="none",
+        fsdp=fsdp, 
+        fsdp_config=fsdp_cfg, 
+        report_to="none",
     )
-    trainer = SFTTrainer(model=model, args=cfg, train_dataset=ds,
-                         processing_class=tok, data_collator=collator)
+    trainer = SFTTrainer(model=model, 
+                         args=cfg, 
+                         train_dataset=ds,
+                         processing_class=tok, 
+                         data_collator=collator)
     trainer.train()
     trainer.save_model(a.out)
     tok.save_pretrained(a.out)
