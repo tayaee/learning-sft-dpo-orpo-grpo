@@ -6,6 +6,7 @@ source "$(dirname "$0")/config/common.env" "${1:-mini}"
 p5_resolve_strat "${2:-single}"
 
 OUT="$P5_MODELS/base-gsm8k-$MODE-$STRAT"
+mkdir -p "$OUT"  # 출력 부모 사전 생성 (공유FS 동시 makedirs race 회피)
 p5_log "model=$BASE_MODEL out=$OUT epochs=$EPOCHS strat=$STRAT world=$WORLD accum=$ACCUM eff_batch=$((MICRO_BATCH * ACCUM * WORLD))"
 
 # STUB: 원본 main.py+trainer436 자리에 modern SFT (TRL SFTTrainer) 진입 예정.

@@ -8,6 +8,7 @@ source "$(dirname "$0")/config/common.env" "${1:-mini}"
 p5_resolve_strat "${2:-single}"
 
 OUT="$P5_MODELS/synthetic-qlora-$MODE-$STRAT"
+mkdir -p "$OUT"  # 출력 부모 사전 생성 (공유FS 동시 makedirs race 회피)
 p5_log "train=$P5_DATASETS/synthetic-$MODE.jsonl out=$OUT (adapter only) strat=$STRAT world=$WORLD accum=$ACCUM"
 
 "${LAUNCH[@]}" "$P5_ROOT/10-train-entry.py" --peft \

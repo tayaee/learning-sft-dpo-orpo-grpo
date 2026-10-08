@@ -82,6 +82,54 @@ def parse_args():
     return p.parse_args()
 
 
+def _save_fsdp_dcp(fsdp_model, model_cfg, tok, out_dir, dtype):
+    """2노드 FSDP 전용 저장: sharded DCP + rank0 디스크 consolidation.
+
+    full-model gather를 fabric에 던지지 않는다 (CX7 RoCE 버스트 손실로
+    rank0 최종 저장이 deterministic하게 실패). fabric을 타는 것은 barrier
+    (수 바이트)뿐이며, 노드 속도 차는 barrier가 흡수한다.
+    shard 파일은 out_dir/shards/ 에 남긴다 (재조립·디버그용).
+    """
+    import torch
+    import torch.distributed as dist
+    from torch.distributed.checkpoint.state_dict import (
+        get_model_state_dict, set_model_state_dict, StateDictOptions,
+    )
+    from torch.distributed.checkpoint import save as dcp_save
+    from torch.distributed.checkpoint import load as dcp_load
+    from torch.distributed.checkpoint import FileSystemWriter, FileSystemReader
+
+    rank = dist.get_rank()
+    shard_dir = os.path.join(out_dir, "shards")
+    if rank == 0:
+        os.makedirs(shard_dir, exist_ok=True)  # 생성은 rank0만 (공유FS makedirs race 회피)
+    dist.barrier()
+
+    # 1) 각 rank 자기 shard만 디스크에 기록 (대형 fabric 전송 없음).
+    # get_model_state_dict은 FSDP 래핑을 자동 감지해 sharded로 반환한다
+    # (FSDP.state_dict_type 컨텍스트는 deprecated).
+    local_sd = get_model_state_dict(fsdp_model)
+    dcp_save(local_sd, storage_writer=FileSystemWriter(shard_dir))
+    dist.barrier()  # 전 rank 쓰기 완료 후 rank0 읽기 시작
+
+    # 2) rank0만: 디스크 shard → CPU full 모델 조립 (fabric 무관).
+    # no_dist=True: load 플래너의 collective를 끄고 단일 프로세스로 읽음.
+    if rank == 0:
+        from transformers import AutoModelForCausalLM
+        full = AutoModelForCausalLM.from_config(model_cfg, dtype=dtype)
+        full.resize_token_embeddings(len(tok))
+        full_sd = get_model_state_dict(
+            full, options=StateDictOptions(full_state_dict=True, cpu_offload=True))
+        dcp_load(full_sd, storage_reader=FileSystemReader(shard_dir),
+                 no_dist=True)
+        missing, unexpected = set_model_state_dict(
+            full, full_sd, options=StateDictOptions(full_state_dict=True))
+        assert not missing, f"DCP consolidate missing keys: {sorted(missing)[:5]}"
+        full.save_pretrained(out_dir, safe_serialization=True)
+        tok.save_pretrained(out_dir)
+    dist.barrier()
+
+
 def main():
     a = parse_args()
     set_seed(a.seed)
@@ -191,6 +239,11 @@ def main():
 
     fsdp = "full_shard auto_wrap" if a.strategy == "fsdp" else ""
     fsdp_cfg = {"transformer_layer_cls_to_wrap": "LlamaDecoderLayer"} if a.strategy == "fsdp" else {}
+    # 2노드 FSDP는 중간 체크포인트(full gather)를 건너뛰고 최종 DCP 저장만 수행.
+    # _dcp_2node에서도 P5_DCP_SAVE=0이면 기존 경로(trainer.save_model) 사용.
+    _world = int(os.environ.get("WORLD_SIZE", "1"))
+    _dcp_2node = (a.strategy == "fsdp" and _world > 1
+                  and os.environ.get("P5_DCP_SAVE", "1") == "1")
     cfg = SFTConfig(
         output_dir=a.out, 
         num_train_epochs=a.epochs,
@@ -200,7 +253,7 @@ def main():
         lr_scheduler_type="cosine", 
         warmup_ratio=a.warmup,
         logging_steps=200, 
-        save_strategy="epoch", 
+        save_strategy="no" if _dcp_2node else "epoch", 
         save_total_limit=2,
         bf16=True, 
         seed=a.seed, 
@@ -219,8 +272,11 @@ def main():
                          processing_class=tok, 
                          data_collator=collator)
     trainer.train()
-    trainer.save_model(a.out)
-    tok.save_pretrained(a.out)
+    if _dcp_2node:
+        _save_fsdp_dcp(trainer.model, model.config, tok, a.out, dtype)
+    else:
+        trainer.save_model(a.out)
+        tok.save_pretrained(a.out)
     print(f"[p5] saved → {a.out}")
 
 
