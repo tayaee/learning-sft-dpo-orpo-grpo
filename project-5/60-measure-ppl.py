@@ -158,7 +158,7 @@ def main(mode: str, n: int, targets: str):
         r = results[t]
         p = f"{r['ppl']:.3f}" if r.get("ppl") is not None else "-"
         dkey = next((k for k in r if k.startswith("delta")), None)
-        d = f"{r[dkey]:+.3f}" if dkey else "-"
+        d = f"{r[dkey]:+.3f}" if (dkey and r[dkey] is not None) else "-"
         print(f"{t:12} {p:>8} {d:>8} {r.get('verdict', '-'):>11}")
 
     os.makedirs(f"{SHARED}/outputs", exist_ok=True)
