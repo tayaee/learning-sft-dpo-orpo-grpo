@@ -8,3 +8,7 @@ MAXLEN=4096; [ "$MODE" = full ] && MAXLEN=8192
 p5_log "teacher=$TEACHER_MODEL tp=$TP maxlen=$MAXLEN n=$SYNTH_N"
 uv run "$P5_ROOT/22-teacher-to-generate-syn-data.py" --mode "$MODE" --tp "$TP" --maxlen "$MAXLEN" \
   --teacher "$TEACHER_MODEL" --n "$SYNTH_N"
+
+echo ---- result ----
+ls -lh "$P5_DATASETS/generated-$MODE.csv"
+wc -l "$P5_DATASETS/generated-$MODE.csv"

@@ -90,10 +90,10 @@ want_step baseline && p5_step "10-baseline-$STRAT" ./10-baseline-train.sh "$MODE
 if is_rank0; then
   export TP=1  # 추론계(vLLM 생성·평가)는 노드 단독 1GPU로 실행
   if want_step syndata; then
-    p5_step "20-select-candidates" uv run 20-select-candidates.py --mode "$MODE"
-    p5_step "21-build-prompts" uv run 21-build-prompts.py --mode "$MODE"
+    p5_step "20-select-candidates" ./20-select-candidates.sh "$MODE"
+    p5_step "21-build-prompts" ./21-build-prompts.sh "$MODE"
     p5_step "22-teacher-generate" ./22-teacher-to-generate-syn-data.sh "$MODE"
-    p5_step "23-postprocess" uv run 23-postprocess.py --mode "$MODE"
+    p5_step "23-postprocess" ./23-postprocess.sh "$MODE"
   fi
 else
   wait_file "$P5_DATASETS/synthetic-$MODE.jsonl" 32400
@@ -112,7 +112,7 @@ if [ ! -d "$P5_MODELS/synthetic-fft-$MODE-single" ] || [ ! -d "$P5_MODELS/synthe
   exit 0
 fi
 
-want_step merge && p5_step "32-merge-lora" uv run 32-merge-lora.py --mode "$MODE"
+want_step merge && p5_step "32-merge-lora" ./32-merge-lora.sh "$MODE"
 
 if want_step quant; then
   if [ -x "${LLAMACPP:-$HOME/git/llama.cpp}/build/bin/llama-quantize" ]; then
@@ -121,22 +121,22 @@ if want_step quant; then
   else
     p5_log "WARN: no llama-quantize, GGUF SKIP (run 40/50 after build)"
   fi
-  p5_step "41-quant-fft-gptq" uv run 41-quant-fft-gptq.py --mode "$MODE"
-  p5_step "42-quant-fft-awq" uv run 42-quant-fft-awq.py --mode "$MODE"
-  p5_step "43-quant-fft-fp8" uv run 43-quant-fft-fp8.py --mode "$MODE"
-  p5_step "51-quant-qlora-gptq" uv run 51-quant-qlora-gptq.py --mode "$MODE"
-  p5_step "52-quant-qlora-awq" uv run 52-quant-qlora-awq.py --mode "$MODE"
-  p5_step "53-quant-qlora-fp8" uv run 53-quant-qlora-fp8.py --mode "$MODE"
+  p5_step "41-quant-fft-gptq" ./41-quant-fft-gptq.sh "$MODE"
+  p5_step "42-quant-fft-awq" ./42-quant-fft-awq.sh "$MODE"
+  p5_step "43-quant-fft-fp8" ./43-quant-fft-fp8.sh "$MODE"
+  p5_step "51-quant-qlora-gptq" ./51-quant-qlora-gptq.sh "$MODE"
+  p5_step "52-quant-qlora-awq" ./52-quant-qlora-awq.sh "$MODE"
+  p5_step "53-quant-qlora-fp8" ./53-quant-qlora-fp8.sh "$MODE"
 fi
 
 want_step ppl && p5_step "60-measure-ppl" ./60-measure-ppl.sh "$MODE"
 if want_step eval; then
   p5_step "71-eval" ./71-eval.sh "$MODE"
-  p5_step "72-score" uv run 72-score.py --mode "$MODE"
+  p5_step "72-score" ./72-score.sh "$MODE"
 fi
 
 p5_log "run-$MODE-$STRAT done"
 # --- 선택 (수동, rank0) ---
 # ./73-upload-hf.sh full
 # ./80-serve-vllm.sh full fft            # 터미널1 (상주)
-# uv run 81-infer-examples.py --model tayaee/Llama-3.2-1B-math-fft-full  # 터미널2
+# ./81-infer-examples.sh tayaee/Llama-3.2-1B-math-fft-full  # 터미널2

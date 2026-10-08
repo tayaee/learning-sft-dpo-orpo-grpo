@@ -10,3 +10,7 @@ p5_log "tp=$TP targets=$TARGETS n=$N"
 for t in $TARGETS; do
   uv run "$P5_ROOT/71-eval.py" --mode "$MODE" --target "$t" --n "$N" --tp "$TP"
 done
+
+echo ---- result ----
+ls -l "$P5_OUTPUTS/eval-$MODE/"
+wc -l "$P5_OUTPUTS/eval-$MODE/"*.jsonl

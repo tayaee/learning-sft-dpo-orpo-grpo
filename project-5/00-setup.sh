@@ -54,3 +54,6 @@ nvidia-smi -L 2>/dev/null || echo "-> no nvidia-smi, check on DGX OS"
 (set -x; "$VENV_BIN/python" -c "import torch; print('torch', torch.__version__, 'cuda', torch.cuda.is_available(), torch.cuda.device_count())" 2>/dev/null || true)
 
 p5_log "OK. shared=$P5_SHARED (compare ls on spark1/spark2)"
+
+echo ---- result ----
+ls -lh "$P5_DATASETS/"

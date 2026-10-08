@@ -17,3 +17,6 @@ mkdir -p "$DST"
 "$VENV_BIN/python" "$LLAMACPP/convert_hf_to_gguf.py" "$SRC" --outfile "$DST/model-f16.gguf"
 "$LLAMACPP/build/bin/llama-quantize" "$DST/model-f16.gguf" "$DST/model-q8_0.gguf" Q8_0
 p5_log "OK: $DST/model-q8_0.gguf"
+
+echo ---- result ----
+ls -lh "$DST"

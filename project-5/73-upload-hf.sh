@@ -4,3 +4,6 @@
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-mini}"
 uv run "$P5_ROOT/73-upload-hf.py" --mode "$MODE" --targets "${2:-all}"
+
+echo ---- result ----
+p5_log "uploaded targets=${2:-all} (see URLs above)"

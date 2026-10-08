@@ -9,3 +9,7 @@ N="${PPL_N:-32}"
 TARGETS="${2:-all}"
 p5_log "ppl_n=$N targets=$TARGETS"
 uv run "$P5_ROOT/60-measure-ppl.py" --mode "$MODE" --n "$N" --targets "$TARGETS"
+
+echo ---- result ----
+ls -l "$P5_OUTPUTS/ppl-$MODE/"
+cat "$P5_OUTPUTS/ppl-$MODE/summary.json"

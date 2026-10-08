@@ -18,3 +18,6 @@ p5_log "model=$BASE_MODEL out=$OUT epochs=$EPOCHS strat=$STRAT world=$WORLD accu
   --out "$OUT" --epochs "$EPOCHS" --mode "$MODE" \
   --strategy "$STRAT" --accum "$ACCUM" \
   --max_rows "$GSM_ROWS")
+
+echo ---- result ----
+ls -l "$OUT"

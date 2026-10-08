@@ -16,3 +16,6 @@ p5_log "train=$P5_DATASETS/synthetic-$MODE.jsonl out=$OUT (adapter only) strat=$
   --out "$OUT" --epochs "$EPOCHS" --mode "$MODE" \
   --strategy "$STRAT" --accum "$ACCUM" \
   --max_rows "$GSM_ROWS"
+
+echo ---- result ----
+ls -l "$OUT"
