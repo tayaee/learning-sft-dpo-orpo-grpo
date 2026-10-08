@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""50-merge-lora.py — Stage 5a. QLoRA 어댑터 병합 (vLLM 평가 전 필수).
+"""32-merge-lora.py — Stage 3c. QLoRA 어댑터 병합 (31 직후, 5* PTQ·7* 평가 전 필수).
 원본 tried: base 로드 → 특수토큰(<mask> 등) 동일 추가 → resize_token_embeddings
 → merge_and_unload → 저장. resize 생략 시 size-mismatch 에러.
 base는 학습 때와 동일한 모델(unsloth 미러/smoke, meta-llama/full)을 쓴다.
 
-  uv run 50-merge-lora.py --mode mini|full [--base <model-id>]
+  uv run 32-merge-lora.py --mode mini|full [--base <model-id>]
 """
 import argparse
 import os

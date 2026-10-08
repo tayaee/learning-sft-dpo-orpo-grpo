@@ -11,11 +11,12 @@
 > 분산학습: torchrun 기본 + `ray`로 multi-node + `k3s` Job까지 단계별 학습.
 > 공유디스크: `/rosenas/data/AIML/project-5-shared/{datasets,models,outputs,hf-cache,vllm-cache}` (spark1·spark2 공통 경로).
 
-## 0. 전체 파이프라인 (5 Stage)
+## 0. 전체 파이프라인 (8 Stage)
 
 ```
-[0. 환경] → [1. 베이스라인 FFT/GSM8K] → [2. 합성데이터 생성] → [3. 합성데이터 SFT: FFT + QLoRA]
-  → [4. PTQ: llama.cpp Q8_0 / GPTQ-4bit / AWQ-4bit / FP8] → [5. 평가·Inference: vLLM greedy GSM8K]
+[0. 환경] → [1. 베이스라인 FFT/GSM8K] → [2. 합성데이터 생성] → [3. 합성데이터 SFT: FFT + QLoRA + merge]
+  → [4. PTQ(FFT): llama.cpp Q8_0 / GPTQ-4bit / AWQ-4bit / FP8] → [5. PTQ(QLoRA-merged): 동일 4종]
+  → [6. PPL 게이트] → [7. 평가·Inference: vLLM greedy GSM8K] → [8. 배포]
 ```
 
 | Stage | 스크립트 | 입력 → 출력 |
@@ -23,12 +24,14 @@
 | 0. 환경 | `00-setup.sh` | 업스트림 클론 + 의존성 + 공용 datasets 복사 |
 | 1. 베이스라인 | `10-baseline-train.sh` (+`10-train-entry.py`) | `gsm8k-train.jsonl` → `base-gsm8k-<mode>-<strat>/` (Llama-3.2-1B) |
 | 2a. 후보 선별 | `20-select-candidates.py` | Alpaca 52k + GSM8K → cosine 유사도 → 약 12k 후보 |
-| 2b. 프롬프트+생성 | `21-build-prompts.py`, `22-generate.sh/py` | 후보 → `template.txt` 프롬프트 10k → Llama-3.1-8B-Instruct(vLLM) → `generated-<mode>.csv` (+invalid 재생성 루프) |
+| 2b. 프롬프트+생성 | `21-build-prompts.py`, `22-teacher-to-generate-syn-data.sh/py` | 후보 → `template.txt` 프롬프트 10k → Llama-3.1-8B-Instruct(vLLM) → `generated-<mode>.csv` (+invalid 재생성 루프) |
 | 2c. 후처리 | `23-postprocess.py` | 생성 CSV → Q/A split, 패턴 제거 → `synthetic-<mode>.jsonl` (`source`/`target` 리스트형) |
-| 3. 합성 SFT | `30-fft-train.sh` / `31-qlora-train.sh` | `synthetic-<mode>.jsonl` → `synthetic-fft-…/` (FFT) + `synthetic-qlora-…/` (어댑터만) |
-| 4. PTQ | `40-quant-gguf.sh`, `41/42/43-quant-*.py` | FFT **single** 결과 → GGUF Q8_0 / GPTQ-4bit-g128 / AWQ-4bit-g128 / **FP8(w8a8)** |
-| 5. 평가 | `50-merge-lora.py`, `51-eval.sh`, `52-score.py` | base / FFT / QLoRA-merged / GPTQ / AWQ / FP8 → `eval-<mode>/` → 정답 추출 (`####` / `The answer is` / OpenAI-mini 보조) |
-| 6. 배포 | `53-upload-hf.sh/py`, `60-serve-vllm.sh`, `61-infer-examples.py` | 산출물 → `tayaee/*` 업로드 → vLLM OpenAI-호환 서빙 → 추론 예제 |
+| 3. 합성 SFT+merge | `30-fft-train.sh` / `31-qlora-train.sh` / `32-merge-lora.py` | `synthetic-<mode>.jsonl` → `synthetic-fft-…/` (FFT) + `synthetic-qlora-…/` (어댑터) → `synthetic-qlora-…-merged/` (bf16 풀모델) |
+| 4. PTQ(FFT) | `40-quant-fft-gguf.sh`, `41/42/43-quant-fft-*.py` | FFT **single** 결과 → GGUF Q8_0 / GPTQ-4bit-g128 / AWQ-4bit / **FP8(w8a8)** |
+| 5. PTQ(QLoRA) | `50-quant-qlora-gguf.sh`, `51/52/53-quant-qlora-*.py` | QLoRA-merged 결과 → 동일 4종 (`...-merged-gguf/gptq/awq/fp8`). 양자화 총 8종 |
+| 6. PPL 게이트 | `60-measure-ppl.sh/py` | base + FP 2종 + 양자화 8종 → in-domain PPL + Δ판정 (Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard, GGUF는 SKIP) |
+| 7. 평가 | `71-eval.sh/py`, `72-score.py` | base / fft / qlora / fft-gptq/awq/fp8 / qlora-gptq/awq/fp8 → `eval-<mode>/` → 정답 추출 (`####` / `The answer is` / OpenAI-mini 보조). GGUF 2종은 llama.cpp 별도 |
+| 8. 배포 | `73-upload-hf.sh/py`, `80-serve-vllm.sh`, `81-infer-examples.py` | 산출물 → `tayaee/*` 업로드 → vLLM OpenAI-호환 서빙 → 추론 예제 |
 
 핵심 포인트 (강의에서 강조, 구현에 반영):
 - 로그의 `gram loss/acc`는 커스텀 트레이너 용어 — **CE loss 하락만 볼 것**.
@@ -69,38 +72,53 @@
 Q/A 마커 기준 split + 케이스별 예외 + 잔여 패턴 제거 + `rstrip` →
 `{'source':[q], 'target':[a]}` json-lines. Stage 3 SFT와 Stage 4 캘리브레이션 입력.
 
-### Stage 3. 합성 SFT — FFT vs QLoRA
+### Stage 3. 합성 SFT — FFT vs QLoRA + merge
 - FFT (`30-fft-train.sh`): Stage 1과 동일 설정, train만 `synthetic-<mode>.jsonl`.
 - QLoRA (`31-qlora-train.sh`): 4bit nf4 double_quant, LoRA r16/a32/d0.05,
   target `q/k/v/o/gate/down/up` (+`embed/lm_head`는 modules_to_save).
   FSDP+QLoRA 조합은 강의대로 비권장 (fsdp 전략은 학습용으로만 수행).
-- 결과물은 어댑터만 → Stage 5 전 merge 필수.
+- merge (`32-merge-lora.py`, 31 직후): base bf16 로드 → 특수토큰 동일 추가 →
+  `resize_token_embeddings` → `merge_and_unload()` → `*-single-merged/` (bf16 풀모델).
+  resize 생략시 size-mismatch. merged가 Stage 5 PTQ와 Stage 7 평가의 입력.
 
-### Stage 4. PTQ (입력: FFT **single** 결과)
-1. **llama.cpp** (`40`): `convert_hf_to_gguf.py` → FP16 GGUF → `llama-quantize Q8_0`.
+### Stage 4. PTQ-FFT (입력: FFT **single** 결과)
+1. **llama.cpp** (`40-quant-fft-gguf.sh`): `convert_hf_to_gguf.py` → FP16 GGUF → `llama-quantize Q8_0`.
    강의의 vocab assert 수동패치는 2026 빌드에서 불필요.
-2. **GPTQ** (`41`, `gptqmodel`): 4bit-g128, damp 0.1 + synthetic 캘리브 토크나이즈 →
+2. **GPTQ** (`41-quant-fft-gptq.py`, `gptqmodel`): 4bit-g128, damp 0.1 + synthetic 캘리브 토크나이즈 →
    `save_quantized` + tokenizer 동봉.
-3. **AWQ** (`42`, `llm-compressor`): 4bit-g128 GEMM + `calib_data=text_lst` →
+3. **AWQ** (`42-quant-fft-awq.py`, `llm-compressor`): 4bit-g128 GEMM + `calib_data=text_lst` →
    **`model.to('cpu')` 후 저장** + tokenizer 동봉.
-4. **FP8** (`43`, 신규, `llm-compressor` w8a8 e4m3, Blackwell 네이티브):
+4. **FP8** (`43-quant-fft-fp8.py`, `llm-compressor` w8a8 e4m3, Blackwell 네이티브):
    mini 캘리브 4 / full 64. 평가는 vLLM `quantization='fp8'`.
 
-### Stage 5. Inference·평가
-1. QLoRA merge (`50`): base 로드 → 특수토큰 동일 추가 →
-   **`resize_token_embeddings`** → `merge_and_unload()` → `*-single-merged/` (resize 생략시 size-mismatch).
-2. vLLM greedy (`51`): `SamplingParams(temp 0, max 512)`, `prompt_no_input` 포맷.
-   타깃: base / fft / qlora(-merged) / gptq / awq / fp8. 양자화 타깃은 quant flag 부여.
-3. 채점 (`52`): `#### <숫자>` 추출, invalid율/acc/BLEU. base처럼 `The answer is`를 안 뱉는
+### Stage 5. PTQ-QLoRA (입력: `32` merged 결과)
+- `50-quant-qlora-gguf.sh` / `51-quant-qlora-gptq.py` / `52-quant-qlora-awq.py` / `53-quant-qlora-fp8.py`:
+  Stage 4와 동일 플로우, 입력만 `synthetic-qlora-<mode>-single-merged` →
+  출력 `...-merged-gguf/gptq/awq/fp8`. FFT 4종과 합쳐 양자화 총 8종.
+- QLoRA-merged를 거치는 이유: 어댑터 상태로는 PTQ 불가, bf16 풀모델로 먼저 복원해야 함.
+  FFT→PTQ 대비 이중양자화 오차가 쌓이므로 품질은 한 수 아래가 정상 (비교용).
+
+### Stage 6. PPL 게이트 (`60-measure-ppl.sh/py`)
+- 대상 11종: base + fft + qlora(merged) + 양자화 8종. 텍스트는 `gsm8k-test` 앞 N개(기본 32)를
+  학습 프롬프트 템플릿으로 감싼 in-domain PPL.
+- 판정 (부모 FP 대비 Δ): Δ<0.3 Accept / 0.3~1.0 Conditional(Stage 7 GSM8K 2차 심사) / ≥1.0 Discard.
+  부모: fft-* vs fft, qlora-* vs qlora. GGUF 2종은 transformers PPL 불가 → SKIP
+  (llama.cpp perplexity로 별도). 결과 `outputs/ppl-<mode>.json`.
+
+### Stage 7. Inference·평가
+1. vLLM greedy (`71`): `SamplingParams(temp 0, max 512)`, `prompt_no_input` 포맷.
+   타깃: base / fft / qlora(-merged) / fft-gptq/awq/fp8 / qlora-gptq/awq/fp8 (HF 9종).
+   양자화 타깃은 quant flag 부여. GGUF 2종은 vLLM 미지원이라 llama.cpp로 별도 평가.
+2. 채점 (`72`): `#### <숫자>` 추출, invalid율/acc/BLEU. base처럼 `The answer is`를 안 뱉는
    모델은 CSV 덤프 후 OpenAI `gpt-4o-mini`로 답만 재추출 (강의 방식, 선택).
 
-## Stage 6. 업로드·서빙·추론 예제 (신규)
-1. 업로드 (`53`): `TARGETS` 매핑(fft/qlora/gptq/awq/fp8 폴더, gguf 단일파일)대로
+## Stage 8. 업로드·서빙·추론 예제
+1. 업로드 (`73`): `TARGETS` 매핑(fft/qlora/fft-gptq/awq/fp8/gguf + qlora-gptq/awq/fp8/gguf)대로
    `tayaee/p5-1B-math-<target>-<mode>` 생성+업로드. 로컬 산출물 없으면 SKIP.
-2. 서빙 (`60`): `vllm serve <model> --served-model-name <repo> --tensor-parallel-size $TP`
+2. 서빙 (`80`): `vllm serve <model> --served-model-name <repo> --tensor-parallel-size $TP`
    + 타깃별 `--quantization` (gptq/awq/fp8/gguf), `--max-model-len 2048`,
    `--gpu-memory-utilization 0.9` (env `GPU_UTIL`로 조정). `SOURCE=hf`면 Hub repo 직접 서빙.
-3. 추론 예제 (`61`): gsm8k-test 앞 N개 + 한국어 1문제를 학습과 동일 `prompt_no_input`
+3. 추론 예제 (`81`): gsm8k-test 앞 N개 + 한국어 1문제를 학습과 동일 `prompt_no_input`
    포맷으로 completions API 요청 (`temperature 0`, chat template이 없어 chat API는 400).
    서버는 별도 터미널에서 실행.
 
@@ -131,17 +149,19 @@ Q/A 마커 기준 split + 케이스별 예외 + 잔여 패턴 제거 + `rstrip` 
 | 1 | `10-baseline` | ~3.5분 | 실측 | 256행·4스텝. 전량 7473행 시 20.4분 실측(train_runtime 1224s) |
 | 2a | `20-select` | 15초 | 실측 | 임베딩 캐시 적중 시. 첫 실행은 52k 인코딩 수 분 추가 |
 | 2b | `21-build` | 1초 | 실측 | 200프롬프트 포맷 |
-| 2b | `22-generate` | ~3분 | 추정 | 64프롬프트. 200개 시 8.3분 실측(500s, 재생성 3회). 8B teacher 상주 후 기준, 첫 다운로드는 15GB 별도(~25분) |
+| 2b | `22-teacher-generate` | ~3분 | 추정 | 64프롬프트. 200개 시 8.3분 실측(500s, 재생성 3회). 8B teacher 상주 후 기준, 첫 다운로드는 15GB 별도(~25분) |
 | 2c | `23-postprocess` | ~10초 | 추정 | 188 kept / 12 dropped |
 | 3 | `30-fft` | 2.2분 | 실측 | train_runtime 133.5s, 3스텝, loss 1.50 |
 | 3 | `31-qlora` | 2.3분 | 실측 | train_runtime 139.1s, 3스텝, loss 1.62 |
-| 4 | `40-gguf` | ~2분 | 추정 | quantize 34초 실측 + convert. llama.cpp CPU 빌드 별도 ~10분(1회) |
-| 4 | `41-gptq` | ~4분 | 추정 | 1B 로드 + 4캘리브 + 저장 |
-| 4 | `42-awq` | ~6분 | 추정 | oneshot smoothing + 112모듈 compress + 저장 |
-| 4 | `43-fp8` | ~5분 | 추정 | 42와 동형 |
-| 5 | `50-merge` | ~3분 | 추정 | 1B 로드 + 병합 + 저장 |
-| 5 | `51-eval` | ~9분 | 추정 | 6타깃×10개 (1타깃 85초 실측). 50개 시 ~20분 |
-| 5 | `52-score` | ~5초 | 추정 | 6타깃 전부 acc 0.000 (3스텝 undertraining, §1 Stage 5 참조) |
-| 6 | `53-upload` | ~10분 | 추정 | ~14GB 업로드, 회선依存 |
-| 6 | `60-serve` | ~3분 | 실측 | 기동~`/v1/models` UP (1B 모델 상주 후) |
-| 6 | `61-infer` | ~30초 | 추정 | 3문항 completions 왕복 |
+| 3 | `32-merge` | ~3분 | 추정 | 1B 로드 + 병합 + 저장 (구 `50-merge`) |
+| 4 | `40-fft-gguf` | ~2분 | 추정 | quantize 34초 실측 + convert. llama.cpp CPU 빌드 별도 ~10분(1회) |
+| 4 | `41-fft-gptq` | ~4분 | 추정 | 1B 로드 + 4캘리브 + 저장 |
+| 4 | `42-fft-awq` | ~6분 | 추정 | oneshot smoothing + 112모듈 compress + 저장 |
+| 4 | `43-fft-fp8` | ~5분 | 추정 | 42와 동형 |
+| 5 | `50~53-qlora-*` | ~17분 | 추정 | Stage 4와 동형 ×4 (merged 입력, GGUF 2분+GPTQ 4분+AWQ 6분+FP8 5분) |
+| 6 | `60-ppl` | ~5분 | 추정 | 11타깃 × 32텍스트 (GGUF 2종 SKIP) |
+| 7 | `71-eval` | ~9분 | 추정 | 9타깃×10개 (1타깃 85초 실측, GGUF 제외). 50개 시 ~20분 |
+| 7 | `72-score` | ~5초 | 추정 | 9타깃 전부 acc 0.000 (3스텝 undertraining, §1 Stage 7 참조) |
+| 8 | `73-upload` | ~10분 | 추정 | ~14GB→약 25GB(8종) 업로드, 회선依存 |
+| 8 | `80-serve` | ~3분 | 실측 | 기동~`/v1/models` UP (1B 모델 상주 후) |
+| 8 | `81-infer` | ~30초 | 추정 | 3문항 completions 왕복 |

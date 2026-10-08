@@ -32,29 +32,38 @@ INFRA=dgx-spark-2x ./10-baseline-train.sh mini fsdp    # 2노드 FSDP (실분산
 # 2) 합성데이터: 선별 → 프롬프트 → 생성 → 후처리
 uv run 20-select-candidates.py --mode mini
 uv run 21-build-prompts.py --mode mini
-./22-generate.sh mini
+./22-teacher-to-generate-syn-data.sh mini
 uv run 23-postprocess.py --mode mini
 
-# 3) 합성 SFT: FFT vs QLoRA
+# 3) 합성 SFT: FFT vs QLoRA + merge
 ./30-fft-train.sh mini
 ./31-qlora-train.sh mini
+uv run 32-merge-lora.py --mode mini        # → synthetic-qlora-mini-single-merged/ (bf16)
 
-# 4) PTQ (택1~전체): GGUF Q8_0 / GPTQ-4bit / AWQ-4bit / FP8
-./40-quant-gguf.sh mini
-uv run 41-quant-gptq.py --mode mini
-uv run 42-quant-awq.py --mode mini
-uv run 43-quant-fp8.py --mode mini
+# 4) PTQ-FFT (택1~전체): GGUF Q8_0 / GPTQ-4bit / AWQ-4bit / FP8
+./40-quant-fft-gguf.sh mini
+uv run 41-quant-fft-gptq.py --mode mini
+uv run 42-quant-fft-awq.py --mode mini
+uv run 43-quant-fft-fp8.py --mode mini
 
-# 5) 병합 + 평가
-uv run 50-merge-lora.py --mode mini
-./51-eval.sh mini
-uv run 52-score.py --mode mini
+# 5) PTQ-QLoRA (택1~전체, 입력=merged): 동일 4종 → 양자화 총 8종
+./50-quant-qlora-gguf.sh mini
+uv run 51-quant-qlora-gptq.py --mode mini
+uv run 52-quant-qlora-awq.py --mode mini
+uv run 53-quant-qlora-fp8.py --mode mini
 
-# 6) HF 업로드 → vLLM 서빙 → 추론 예제
-./53-upload-hf.sh mini            # → tayaee/p5-1B-math-*-mini (targets 지정 가능)
-./60-serve-vllm.sh mini fft      # 터미널1: OpenAI-호환 서버 (:8000)
-uv run 61-infer-examples.py --model tayaee/p5-1B-math-fft-mini  # 터미널2
-# SOURCE=hf ./60-serve-vllm.sh mini gptq  # Hub repo 직접 서빙 예시
+# 6) PPL 게이트 (base + FP 2종 + 양자화 8종, Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard)
+./60-measure-ppl.sh mini                 # → outputs/ppl-mini.json (GGUF 2종은 SKIP)
+
+# 7) 평가 (HF 9종, GGUF는 llama.cpp 별도)
+./71-eval.sh mini
+uv run 72-score.py --mode mini
+
+# 8) HF 업로드 → vLLM 서빙 → 추론 예제
+./73-upload-hf.sh mini            # → tayaee/p5-1B-math-*-mini (targets 지정 가능)
+./80-serve-vllm.sh mini fft      # 터미널1: OpenAI-호환 서버 (:8000)
+uv run 81-infer-examples.py --model tayaee/p5-1B-math-fft-mini  # 터미널2
+# SOURCE=hf ./80-serve-vllm.sh mini fft-gptq  # Hub repo 직접 서빙 예시
 ```
 
 ## 분산 학습 (ray/k3s)
@@ -67,7 +76,7 @@ uv run 61-infer-examples.py --model tayaee/p5-1B-math-fft-mini  # 터미널2
 
 ## 학습 전략 3종 (single / ddp / fsdp)
 
-- `single`: 단일 GPU 단일 프로세스. 산출물 `...-<mode>-single` — **Stage 4·5 하류 입력**.
+- `single`: 단일 GPU 단일 프로세스. 산출물 `...-<mode>-single` — **Stage 4·5·7 하류 입력**.
 - `ddp`: 2노드 DDP. `INFRA=dgx-spark-2x` + `MASTER_ADDR`(spark1 IP) 필수.
 - `fsdp`: FSDP full_shard. 1x에서는 1proc으로 동작만 학습(메모리 이득 없음),
   2x에서는 2proc 실분산.
@@ -88,13 +97,15 @@ uv run 61-infer-examples.py --model tayaee/p5-1B-math-fft-mini  # 터미널2
 | `10-baseline-train.sh` | `train_basic.sh` + `main.py` |
 | `20-select-candidates.py` | `datagen.ipynb` 전반 |
 | `21-build-prompts.py` + `assets/template.txt` | `template.txt` + notebook 후반 |
-| `22-generate.sh/py` | `data_gen_vllm.py` |
+| `22-teacher-to-generate-syn-data.sh/py` | `data_gen_vllm.py` |
 | `23-postprocess.py` | `data_check.ipynb` |
 | `30-fft-train.sh` | `train_FFT.sh` |
 | `31-qlora-train.sh` | `train_QLoRA.sh` |
-| `40~43` | `quantizaton_math.ipynb` (+FP8 신규) |
-| `50-merge-lora.py` | `save_new_vocab_model.ipynb` 계열 |
-| `51-eval.sh` / `52-score.py` | `evaluation/` 3종 |
-| `53-upload-hf.sh/py` | 신규: Hub 업로드 (`tayaee/*`) |
-| `60-serve-vllm.sh` | 신규: vLLM OpenAI-호환 서빙 |
-| `61-infer-examples.py` | 신규: 서빙 추론 예제 (GSM8K N개 + 한국어 1개) |
+| `32-merge-lora.py` | `save_new_vocab_model.ipynb` 계열 |
+| `40~43-quant-fft-*` | `quantizaton_math.ipynb` (+FP8) — FFT 입력 4종 |
+| `50~53-quant-qlora-*` | 신규: 동일 4종, QLoRA-merged 입력 (양자화 총 8종) |
+| `60-measure-ppl.sh/py` | 신규: PPL 게이트 (Accept/Conditional/Discard) |
+| `71-eval.sh` / `72-score.py` | `evaluation/` 3종 |
+| `73-upload-hf.sh/py` | 신규: Hub 업로드 (`tayaee/*`) |
+| `80-serve-vllm.sh` | 신규: vLLM OpenAI-호환 서빙 |
+| `81-infer-examples.py` | 신규: 서빙 추론 예제 (GSM8K N개 + 한국어 1개) |

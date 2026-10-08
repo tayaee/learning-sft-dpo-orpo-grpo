@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""51-eval.py — Stage 5b. vLLM greedy GSM8K 추론 (원본 gen_math_greedy.py).
+"""71-eval.py — Stage 7b. vLLM greedy GSM8K 추론 (원본 gen_math_greedy.py).
 prompt_no_input 포맷, temp 0, max 512. 타깃별 quant flag 적용.
 출력: $P5_SHARED/outputs/eval-<mode>/<target>.jsonl (kd_data 포함).
+GGUF 2종(fft-gguf/qlora-gguf)은 vLLM 미지원 → llama.cpp로 별도 평가, 여기선 SKIP.
 
-  uv run 51-eval.py --mode mini|full --target base|fft|qlora|gptq|awq|fp8 [--n N] [--tp 1]
+  uv run 71-eval.py --mode mini|full --target base|fft|qlora|fft-gptq|fft-awq|fft-fp8|qlora-gptq|qlora-awq|qlora-fp8 [--n N] [--tp 1]
 """
 import argparse
 import json
@@ -17,7 +18,11 @@ PROMPT_NO_INPUT = (
     "### Instruction:\n{instruction}\n\n### Response:"
 )
 # llmcompressor 산출물(AWQ/FP8)은 compressed-tensors 포맷으로 저장된다.
-QUANT = {"gptq": "gptq", "awq": "compressed-tensors", "fp8": "compressed-tensors"}
+QUANT = {"fft-gptq": "gptq", "qlora-gptq": "gptq",
+         "fft-awq": "compressed-tensors", "qlora-awq": "compressed-tensors",
+         "fft-fp8": "compressed-tensors", "qlora-fp8": "compressed-tensors",
+         # 구이름 호환: gptq/awq/fp8 = fft-gptq/awq/fp8
+         "gptq": "gptq", "awq": "compressed-tensors", "fp8": "compressed-tensors"}
 
 
 def resolve(target: str, mode: str) -> str:
@@ -27,7 +32,13 @@ def resolve(target: str, mode: str) -> str:
         return f"{SHARED}/models/synthetic-fft-{mode}-single"
     if target == "qlora":
         return f"{SHARED}/models/synthetic-qlora-{mode}-single-merged"
-    return f"{SHARED}/models/synthetic-fft-{mode}-single-{target}"
+    if target in ("gptq", "awq", "fp8"):  # 구이름 → fft-* 별칭
+        return f"{SHARED}/models/synthetic-fft-{mode}-single-{target}"
+    if target.startswith("fft-"):
+        return f"{SHARED}/models/synthetic-fft-{mode}-single-{target[4:]}"
+    if target.startswith("qlora-"):
+        return f"{SHARED}/models/synthetic-qlora-{mode}-single-merged-{target[6:]}"
+    raise SystemExit(f"unknown target: {target} (gguf는 vLLM 미지원, llama.cpp로 평가)")
 
 
 def main(mode: str, target: str, n: int, tp: int):
@@ -70,7 +81,10 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", default="mini", choices=["mini", "full"])
     ap.add_argument("--target", required=True,
-                    choices=["base", "fft", "qlora", "gptq", "awq", "fp8"])
+                    choices=["base", "fft", "qlora",
+                             "fft-gptq", "fft-awq", "fft-fp8",
+                             "qlora-gptq", "qlora-awq", "qlora-fp8",
+                             "gptq", "awq", "fp8"])
     ap.add_argument("--n", type=int, default=None)
     ap.add_argument("--tp", type=int, default=int(os.environ.get("TP", "1")))
     a = ap.parse_args()

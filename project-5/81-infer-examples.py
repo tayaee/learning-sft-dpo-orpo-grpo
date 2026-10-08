@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""61-infer-examples.py — Stage 6c. 서빙 중인 모델에 추론 예제 요청.
-60-serve-vllm.sh가 띄운 OpenAI-호환 엔드포인트로 질의한다.
+"""81-infer-examples.py — Stage 8c. 서빙 중인 모델에 추론 예제 요청.
+80-serve-vllm.sh가 띄운 OpenAI-호환 엔드포인트로 질의한다.
 예제는 벤더링된 gsm8k-test.jsonl 앞 N개 + 한국어 수학 1문제로,
 학습/평가와 동일한 prompt_no_input 포맷을 **completions** API로 보낸다
 (서빙 토크나이저에 chat template이 없어 chat API는 400).
 
-  # 터미널1: ./60-serve-vllm.sh mini fft
+  # 터미널1: ./80-serve-vllm.sh mini fft
   # 터미널2:
-  uv run 61-infer-examples.py --model tayaee/p5-1B-math-fft-mini [--n 3] [--dry-run]
+  uv run 81-infer-examples.py --model tayaee/p5-1B-math-fft-mini [--n 3] [--dry-run]
 """
 import argparse
 import json
