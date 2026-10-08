@@ -271,6 +271,10 @@ def main():
                          train_dataset=ds,
                          processing_class=tok, 
                          data_collator=collator)
+    # TRL _save_checkpoint은 매번 create_model_card → trackio import를 타는데,
+    # huggingface_hub>=1(CommitOperationAdd 삭제)과 충돌해 ImportError로 죽는다.
+    # 모델 카드는 파이프라인 산출물이 아니므로 no-op (버전 조합과 무관하게 동작).
+    trainer.create_model_card = lambda *a, **k: {}
     trainer.train()
     if _dcp_2node:
         _save_fsdp_dcp(trainer.model, model.config, tok, a.out, dtype)

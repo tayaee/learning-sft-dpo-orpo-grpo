@@ -14,6 +14,7 @@
 set -euo pipefail
 MODE=full; STRAT=single
 export INFRA=dgx-spark-1x  # single은 항상 1x (외부 INFRA export가 있어도 무시)
+export TP=1  # single은 노드 단독 1GPU (외부 TP export가 있어도 무시, 1노드=1GPU 하드웨어)
 ROOT="$(cd "$(dirname "$0")" && pwd)"; cd "$ROOT"
 source "$ROOT/config/common.env" "$MODE"
 
