@@ -25,6 +25,23 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"; cd "$ROOT"
 export BASE_MODEL="${BASE_MODEL:-unsloth/Llama-3.2-1B}"  # 비gated 미러 (양 노드 통일)
 export NCCL_SOCKET_IFNAME="${NCCL_SOCKET_IFNAME:-enp1s0f1np1}"  # CX7 p1-r0
 export NCCL_IB_HCA="${NCCL_IB_HCA:-rocep1s0f1}"  # enp1s0f1np1 대응 HCA
+export INFRA=dgx-spark-2x  # run-all-all은 2노드 오케스트레이터로 고정
+# (single 스크립트는 내부에서 1x 강제, ddp도 2x 고정. fsdp만 이 값을 보고 분산 판단.
+#  1x-FSDP 동작학습은 run-mini/fsdp.sh 직접 실행으로만 가능)
+# MASTER_ADDR 자동 검출 (미지정 시): CX7 fabric 우선, /etc/hosts·getent 기준, ping 확인
+if [ -z "${MASTER_ADDR:-}" ]; then
+  for _h in spark1-p1-r0 spark1-p1-r1 spark1.local; do
+    _ip="$(getent hosts "$_h" 2>/dev/null | awk '{print $1; exit}')"
+    [ -z "$_ip" ] && continue
+    if ! command -v ping >/dev/null 2>&1 || ping -c1 -W1 "$_ip" >/dev/null 2>&1; then
+      MASTER_ADDR="$_h"
+      echo "[p5][all] MASTER_ADDR 자동 검출: $_h ($_ip)"
+      break
+    fi
+  done
+  unset _h _ip
+fi
+: "${MASTER_ADDR:?MASTER_ADDR 검출 실패 — 수동 지정 필요 (예: MASTER_ADDR=spark1-p1-r0)}"
 if [ -z "${NODE_RANK:-}" ]; then
   case "$(hostname)" in
     spark1*) NODE_RANK=0 ;;
