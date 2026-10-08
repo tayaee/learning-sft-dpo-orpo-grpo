@@ -3,7 +3,7 @@
 # target: fft|qlora|fft-gptq|fft-awq|fft-fp8|qlora-gptq|qlora-awq|qlora-fp8|fft-gguf|qlora-gguf (기본 fft).
 # SOURCE=local|hf (기본 local; hf면 tayaee/* repo로 서빙). PORT 기본 8000.
 # 예: SOURCE=hf ./80-serve-vllm.sh mini fft-gptq
-#     81-infer-examples.py --model tayaee/p5-1B-math-fft-gptq-mini (별도 터미널)
+#     81-infer-examples.py --model tayaee/Llama-3.2-1B-math-fft-gptq-mini (별도 터미널)
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-mini}"
 TARGET="${2:-fft}"
@@ -25,8 +25,9 @@ case "$TARGET" in
   *) echo "target: fft|qlora|fft-gptq|fft-awq|fft-fp8|qlora-gptq|qlora-awq|qlora-fp8|fft-gguf|qlora-gguf" >&2; exit 1 ;;
 esac
 
-# HF repo명 규칙은 73-upload-hf.py TARGETS와 동일
-REPO="tayaee/p5-1B-math-${TARGET}-${MODE}"
+# HF repo명 규칙은 73-upload-hf.py TARGETS와 동일 (베이스 slug 포함)
+MODEL_SLUG="${BASE_MODEL##*/}"
+REPO="tayaee/${MODEL_SLUG}-math-${TARGET}-${MODE}"
 if [ "$SOURCE" = "hf" ]; then MODEL="$REPO"; else MODEL="$P5_MODELS/$SUF"; fi
 case "$TARGET" in *-gguf) [ "$SOURCE" = "local" ] && MODEL="$MODEL/model-q8_0.gguf" ;; esac
 

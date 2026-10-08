@@ -17,8 +17,8 @@ def train_fn(config: dict):
 def main(mode: str, infra: str):
     workers = 2 if infra == "dgx-spark-2x" else 1
     # TODO: from ray.train.torch import TorchTrainer; TorchTrainer(train_fn, ...).fit()
-    print(f"[p5][{mode}][{infra}] workers={workers}")
-    print("STUB: Ray Trainer 본문 미구현")
+    print(f"[{mode}][{infra}] workers={workers}")
+    print("STUB: Ray Trainer body not implemented")
 
 
 if __name__ == "__main__":

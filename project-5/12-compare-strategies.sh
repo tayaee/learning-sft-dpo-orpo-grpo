@@ -10,8 +10,8 @@ source "$(dirname "$0")/config/common.env" "${1:-mini}"
 for s in single ddp fsdp; do
   d="$P5_MODELS/base-gsm8k-$MODE-$s"
   echo "== $s ($d)"
-  [ -d "$d" ] || { echo "  (없음 — 먼저 해당 전략으로 학습)"; continue; }
+  [ -d "$d" ] || { echo "  (missing, train that strategy first)"; continue; }
   cmp -s "$d/config.json" "$P5_MODELS/base-gsm8k-$MODE-single/config.json" 2>/dev/null \
-    && echo "  config: single과 동일" || echo "  config: 다름/비교불가"
-  (cd "$d" && sha256sum ./*.safetensors 2>/dev/null | head -5) || echo "  (safetensors 없음)"
+    && echo "  config: same as single" || echo "  config: differ/uncomparable"
+  (cd "$d" && sha256sum ./*.safetensors 2>/dev/null | head -5) || echo "  (no safetensors)"
 done

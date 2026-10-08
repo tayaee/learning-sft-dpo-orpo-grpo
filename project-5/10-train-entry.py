@@ -136,7 +136,7 @@ def main():
     texts = load_texts(a.train)
     if a.max_rows > 0:
         texts = texts[:a.max_rows]
-    print(f"[p5][{a.mode}][{a.strategy}] n={len(texts)} sample_chars={len(texts[0])}")
+    print(f"[{a.mode}][{a.strategy}] n={len(texts)} sample_chars={len(texts[0])}")
     print("---- sample ----")
     print(texts[0][:600])
     print("----------------")
@@ -174,7 +174,7 @@ def main():
 
             _tf.BloomPreTrainedModel = _BloomStub
         if a.strategy == "fsdp":
-            print("WARN: 원본 강의는 FSDP+QLoRA 불가 → DDP 동작. 학습용으로 계속.")
+            print("WARN: FSDP+QLoRA unsupported, DDP fallback (training only).")
         bnb = BitsAndBytesConfig(load_in_4bit=True,
                                  bnb_4bit_compute_dtype=dtype,
                                  bnb_4bit_use_double_quant=True,
@@ -281,7 +281,7 @@ def main():
     else:
         trainer.save_model(a.out)
         tok.save_pretrained(a.out)
-    print(f"[p5] saved → {a.out}")
+    print(f"saved -> {a.out}")
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@ GGUF 2종은 transformers로 PPL 불가 → SKIP (llama.cpp perplexity로 별도
 감싸서 in-domain PPL 측정 (WikiText가 아니라 수학 특화 유지 여부용).
 
   uv run 60-measure-ppl.py --mode mini|full [--n 32] [--targets all|base,fft,...]
-  출력: stdout 표 + $P5_SHARED/outputs/ppl-<mode>.json
+  출력: stdout 표 + $P5_SHARED/outputs/ppl-<mode>/ (summary.json + 타깃별 json)
 """
 import argparse
 import json
@@ -125,7 +125,7 @@ def main(mode: str, n: int, targets: str):
         if not os.path.exists(path) and t != "base":
             results[t] = {"ppl": None, "delta": None, "verdict": "SKIP",
                           "note": f"산출물 없음: {path}"}
-            print(f"{t:12} SKIP (산출물 없음)")
+            print(f"{t:12} SKIP (no output)")
             continue
         try:
             p = ppl_of(path, texts)
@@ -161,11 +161,15 @@ def main(mode: str, n: int, targets: str):
         d = f"{r[dkey]:+.3f}" if (dkey and r[dkey] is not None) else "-"
         print(f"{t:12} {p:>8} {d:>8} {r.get('verdict', '-'):>11}")
 
-    os.makedirs(f"{SHARED}/outputs", exist_ok=True)
-    outp = f"{SHARED}/outputs/ppl-{mode}.json"
+    outdir = f"{SHARED}/outputs/ppl-{mode}"
+    os.makedirs(outdir, exist_ok=True)
+    for t in sel:
+        with open(f"{outdir}/{t}.json", "w", encoding="utf-8") as f:
+            json.dump(results[t], f, ensure_ascii=False, indent=2)
+    outp = f"{outdir}/summary.json"
     with open(outp, "w", encoding="utf-8") as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
-    print(f"-> {outp}")
+    print(f"-> {outdir}/ (summary.json + {len(sel)} targets)")
 
 
 if __name__ == "__main__":

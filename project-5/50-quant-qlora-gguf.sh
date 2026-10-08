@@ -12,8 +12,8 @@ LLAMACPP="${LLAMACPP:-$HOME/git/llama.cpp}"
 p5_log "src=$SRC dst=$DST llamacpp=$LLAMACPP"
 mkdir -p "$DST"
 
-[ -x "$LLAMACPP/build/bin/llama-quantize" ] || { p5_log "llama-quantize 빌드 필요 (cheatsheet/PROCEDURE 참조)"; exit 1; }
-[ -f "$LLAMACPP/convert_hf_to_gguf.py" ] || { p5_log "convert_hf_to_gguf.py 없음"; exit 1; }
+[ -x "$LLAMACPP/build/bin/llama-quantize" ] || { p5_log "llama-quantize build required (see cheatsheet/PROCEDURE)"; exit 1; }
+[ -f "$LLAMACPP/convert_hf_to_gguf.py" ] || { p5_log "convert_hf_to_gguf.py missing"; exit 1; }
 "$VENV_BIN/python" "$LLAMACPP/convert_hf_to_gguf.py" "$SRC" --outfile "$DST/model-f16.gguf"
 "$LLAMACPP/build/bin/llama-quantize" "$DST/model-f16.gguf" "$DST/model-q8_0.gguf" Q8_0
 p5_log "OK: $DST/model-q8_0.gguf"

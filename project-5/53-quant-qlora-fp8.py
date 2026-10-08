@@ -48,7 +48,7 @@ def main(mode: str, calib: int):
     oneshot(model=src, dataset=ds, recipe=recipe, output_dir=out,
             max_seq_length=1024, num_calibration_samples=calib)
     AutoTokenizer.from_pretrained(src).save_pretrained(out)
-    print(f"[p5][{mode}] calib={calib} -> {out}")
+    print(f"[{mode}] calib={calib} -> {out}")
 
 
 if __name__ == "__main__":

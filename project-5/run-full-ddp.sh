@@ -25,7 +25,7 @@ if [ -z "${MASTER_ADDR:-}" ]; then
     [ -z "$_ip" ] && continue
     if ! command -v ping >/dev/null 2>&1 || ping -c1 -W1 "$_ip" >/dev/null 2>&1; then
       MASTER_ADDR="$_h"
-      echo "[p5][$MODE][$STRAT] MASTER_ADDR 자동 검출: $_h ($_ip)"
+      echo "[$MODE][$STRAT] MASTER_ADDR auto-detected: $_h ($_ip)"
       break
     fi
   done
@@ -42,7 +42,7 @@ if [ -z "${NODE_RANK:-}" ]; then
     *) : "${NODE_RANK:?NODE_RANK 검출 실패 — 수동 지정 필요 (예: NODE_RANK=0|1)}" ;;
   esac
   export NODE_RANK
-  echo "[p5][$MODE][$STRAT] NODE_RANK 자동 검출: $NODE_RANK ($(hostname))"
+  echo "[$MODE][$STRAT] NODE_RANK auto-detected: $NODE_RANK ($(hostname))"
 fi
 ROOT="$(cd "$(dirname "$0")" && pwd)"; cd "$ROOT"
 source "$ROOT/config/common.env" "$MODE"
@@ -75,7 +75,7 @@ wait_file() { # <path> <timeout_s> — 공유디스크에 파일이 생길 때�
   local p="$1" t="${2:-32400}" waited=0
   while [ ! -s "$p" ]; do
     sleep 30; waited=$((waited + 30))
-    if [ "$waited" -ge "$t" ]; then p5_log "ERROR: 대기 초과 (${t}s): $p"; exit 1; fi
+    if [ "$waited" -ge "$t" ]; then p5_log "ERROR: wait timeout (${t}s): $p"; exit 1; fi
   done
 }
 
@@ -102,13 +102,13 @@ fi
 want_step fft && p5_step "30-fft-$STRAT" ./30-fft-train.sh "$MODE" "$STRAT"
 want_step qlora && p5_step "31-qlora-$STRAT" ./31-qlora-train.sh "$MODE" "$STRAT"
 
-is_rank0 || { p5_log "run-$MODE-$STRAT done (rank=$NODE_RANK, 학습만 참여)"; exit 0; }
+is_rank0 || { p5_log "run-$MODE-$STRAT done (rank=$NODE_RANK, train-only)"; exit 0; }
 export TP=1
 
 want_step compare && p5_step "12-compare" ./12-compare-strategies.sh "$MODE"
 
 if [ ! -d "$P5_MODELS/synthetic-fft-$MODE-single" ] || [ ! -d "$P5_MODELS/synthetic-qlora-$MODE-single" ]; then
-  p5_log "하류 SKIP: -single 산출물 없음 → 먼저 ./run-$MODE-single.sh 실행 (DDP 학습+비교 완료)"
+  p5_log "downstream SKIP: no -single output, run ./run-$MODE-single.sh first"
   exit 0
 fi
 
@@ -119,7 +119,7 @@ if want_step quant; then
     p5_step "40-quant-fft-gguf" ./40-quant-fft-gguf.sh "$MODE"
     p5_step "50-quant-qlora-gguf" ./50-quant-qlora-gguf.sh "$MODE"
   else
-    p5_log "WARN: llama-quantize 없음 → GGUF 2종 SKIP (빌드 후 40/50 개별 실행)"
+    p5_log "WARN: no llama-quantize, GGUF SKIP (run 40/50 after build)"
   fi
   p5_step "41-quant-fft-gptq" uv run 41-quant-fft-gptq.py --mode "$MODE"
   p5_step "42-quant-fft-awq" uv run 42-quant-fft-awq.py --mode "$MODE"
@@ -139,4 +139,4 @@ p5_log "run-$MODE-$STRAT done"
 # --- 선택 (수동, rank0) ---
 # ./73-upload-hf.sh full
 # ./80-serve-vllm.sh full fft            # 터미널1 (상주)
-# uv run 81-infer-examples.py --model tayaee/p5-1B-math-fft-full  # 터미널2
+# uv run 81-infer-examples.py --model tayaee/Llama-3.2-1B-math-fft-full  # 터미널2

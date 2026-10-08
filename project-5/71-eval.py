@@ -74,7 +74,7 @@ def main(mode: str, target: str, n: int, tp: int):
             r = dict(r)
             r["kd_data"] = [o.outputs[0].text]
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
-    print(f"[p5][{mode}][{target}] n={len(rows)} model={model} -> {outp}")
+    print(f"[{mode}][{target}] n={len(rows)} model={model} -> {outp}")
 
 
 if __name__ == "__main__":

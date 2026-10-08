@@ -7,7 +7,7 @@
 
   # 터미널1: ./80-serve-vllm.sh mini fft
   # 터미널2:
-  uv run 81-infer-examples.py --model tayaee/p5-1B-math-fft-mini [--n 3] [--dry-run]
+  uv run 81-infer-examples.py --model tayaee/Llama-3.2-1B-math-fft-mini [--n 3] [--dry-run]
 """
 import argparse
 import json
@@ -58,7 +58,7 @@ def main(model: str, base_url: str, n: int, dry_run: bool):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", required=True, help="서빙 모델명 (예: tayaee/p5-1B-math-fft-mini)")
+    ap.add_argument("--model", required=True, help="서빙 모델명 (예: tayaee/Llama-3.2-1B-math-fft-mini)")
     ap.add_argument("--base-url", default="http://localhost:8000/v1")
     ap.add_argument("--n", type=int, default=3)
     ap.add_argument("--dry-run", action="store_true")

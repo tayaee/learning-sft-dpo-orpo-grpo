@@ -53,16 +53,16 @@ uv run 52-quant-qlora-awq.py --mode mini
 uv run 53-quant-qlora-fp8.py --mode mini
 
 # 6) PPL 게이트 (base + FP 2종 + 양자화 8종, Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard)
-./60-measure-ppl.sh mini                 # → outputs/ppl-mini.json (GGUF 2종은 SKIP)
+./60-measure-ppl.sh mini                 # → outputs/ppl-mini/ (GGUF 2종은 SKIP)
 
 # 7) 평가 (HF 9종, GGUF는 llama.cpp 별도)
 ./71-eval.sh mini
 uv run 72-score.py --mode mini
 
 # 8) HF 업로드 → vLLM 서빙 → 추론 예제
-./73-upload-hf.sh mini            # → tayaee/p5-1B-math-*-mini (targets 지정 가능)
+./73-upload-hf.sh mini            # → tayaee/Llama-3.2-1B-math-*-mini (targets 지정 가능)
 ./80-serve-vllm.sh mini fft      # 터미널1: OpenAI-호환 서버 (:8000)
-uv run 81-infer-examples.py --model tayaee/p5-1B-math-fft-mini  # 터미널2
+uv run 81-infer-examples.py --model tayaee/Llama-3.2-1B-math-fft-mini  # 터미널2
 # SOURCE=hf ./80-serve-vllm.sh mini fft-gptq  # Hub repo 직접 서빙 예시
 ```
 

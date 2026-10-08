@@ -42,7 +42,7 @@ def main(mode: str, tp: int, maxlen: int, teacher: str, n: int):
                         top_k=5,
                         repetition_penalty=1.05,
                         max_tokens=2048)
-    print("[p5] model ready", flush=True)
+    print("model ready", flush=True)
 
     df["generated"] = None
     pending = df.index.tolist()
@@ -55,14 +55,14 @@ def main(mode: str, tp: int, maxlen: int, teacher: str, n: int):
             df.at[i, "generated"] = t
             if not is_valid(t):
                 nxt.append(i)
-        print(f"[p5][{mode}] iter{it}: valid={len(pending) - len(nxt)}/{len(pending)}",
+        print(f"[{mode}] iter{it}: valid={len(pending) - len(nxt)}/{len(pending)}",
               flush=True)
         pending = nxt
         if not pending:
             break
     out = f"{SHARED}/datasets/generated-{mode}.csv"
     df.to_csv(out, index=False)
-    print(f"[p5][{mode}] invalid_remain={len(pending)} -> {out}")
+    print(f"[{mode}] invalid_remain={len(pending)} -> {out}")
 
 
 if __name__ == "__main__":

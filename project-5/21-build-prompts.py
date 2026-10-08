@@ -37,12 +37,12 @@ def main(mode: str, seed: int, push: bool):
     df = pd.DataFrame({"prompt": prompts})
     out = f"{SHARED}/datasets/prompts-{mode}.parquet"
     df.to_parquet(out)
-    print(f"[p5][{mode}] n={len(df)} -> {out}")
+    print(f"[{mode}] n={len(df)} -> {out}")
     if push:
         from datasets import Dataset
         Dataset.from_pandas(df[["prompt"]]).push_to_hub(
             f"{HF_ID}/alpaca_syntheticdatagen_prompt-{mode}")
-        print(f"[p5][{mode}] pushed: {HF_ID}/alpaca_syntheticdatagen_prompt-{mode}")
+        print(f"[{mode}] pushed: {HF_ID}/alpaca_syntheticdatagen_prompt-{mode}")
 
 
 if __name__ == "__main__":

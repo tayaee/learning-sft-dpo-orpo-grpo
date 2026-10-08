@@ -47,7 +47,7 @@ def main(mode: str, calib: int):
     model.quantize(calibration=texts[:calib], tokenizer=tok)
     model.save(out)
     tok.save_pretrained(out)
-    print(f"[p5][{mode}] calib={calib} -> {out}")
+    print(f"[{mode}] calib={calib} -> {out}")
 
 
 if __name__ == "__main__":

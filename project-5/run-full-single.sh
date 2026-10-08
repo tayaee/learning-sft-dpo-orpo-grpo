@@ -65,7 +65,7 @@ if want_step quant; then
     p5_step "40-quant-fft-gguf" ./40-quant-fft-gguf.sh "$MODE"
     p5_step "50-quant-qlora-gguf" ./50-quant-qlora-gguf.sh "$MODE"
   else
-    p5_log "WARN: llama-quantize 없음 → GGUF 2종 SKIP (빌드 후 40/50 개별 실행)"
+    p5_log "WARN: no llama-quantize, GGUF SKIP (run 40/50 after build)"
   fi
   p5_step "41-quant-fft-gptq" uv run 41-quant-fft-gptq.py --mode "$MODE"
   p5_step "42-quant-fft-awq" uv run 42-quant-fft-awq.py --mode "$MODE"
@@ -85,4 +85,4 @@ p5_log "run-$MODE-$STRAT done"
 # --- 선택 (수동) ---
 # ./73-upload-hf.sh full
 # ./80-serve-vllm.sh full fft            # 터미널1 (상주)
-# uv run 81-infer-examples.py --model tayaee/p5-1B-math-fft-full  # 터미널2
+# uv run 81-infer-examples.py --model tayaee/Llama-3.2-1B-math-fft-full  # 터미널2

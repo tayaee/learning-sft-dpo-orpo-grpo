@@ -10,27 +10,31 @@ import os
 
 SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
 HF_ID = os.environ.get("HF_ID", "tayaee")
+# repo명에 베이스 모델명을 포함한다. BASE_MODEL 뒷부분만 사용하므로
+# 미러(unsloth/…)와 원본(meta-llama/…)이 같은 repo명으로 수렴한다.
+# 예: unsloth/Llama-3.2-1B → tayaee/p5-Llama-3.2-1B-math-fft-mini
+SLUG = os.environ.get("BASE_MODEL", "unsloth/Llama-3.2-1B").split("/")[-1]
 
 # target → (로컬 디렉토리 템플릿, HF repo 템플릿, 업로드 방식)
 # 양자화 총 8종: fft×4 + qlora-merged×4. 구이름(gptq/awq/fp8/gguf)은 fft-* 별칭.
 TARGETS = {
-    "fft": ("synthetic-fft-{m}-single", "p5-1B-math-fft-{m}", "folder"),
-    "qlora": ("synthetic-qlora-{m}-single-merged", "p5-1B-math-qlora-{m}", "folder"),
-    "fft-gptq": ("synthetic-fft-{m}-single-gptq", "p5-1B-math-fft-gptq-{m}", "folder"),
-    "fft-awq": ("synthetic-fft-{m}-single-awq", "p5-1B-math-fft-awq-{m}", "folder"),
-    "fft-fp8": ("synthetic-fft-{m}-single-fp8", "p5-1B-math-fft-fp8-{m}", "folder"),
+    "fft": ("synthetic-fft-{m}-single", "{slug}-math-fft-{m}", "folder"),
+    "qlora": ("synthetic-qlora-{m}-single-merged", "{slug}-math-qlora-{m}", "folder"),
+    "fft-gptq": ("synthetic-fft-{m}-single-gptq", "{slug}-math-fft-gptq-{m}", "folder"),
+    "fft-awq": ("synthetic-fft-{m}-single-awq", "{slug}-math-fft-awq-{m}", "folder"),
+    "fft-fp8": ("synthetic-fft-{m}-single-fp8", "{slug}-math-fft-fp8-{m}", "folder"),
     "fft-gguf": ("synthetic-fft-{m}-single-gguf/model-q8_0.gguf",
-             "p5-1B-math-fft-gguf-{m}", "gguf"),
-    "qlora-gptq": ("synthetic-qlora-{m}-single-merged-gptq", "p5-1B-math-qlora-gptq-{m}", "folder"),
-    "qlora-awq": ("synthetic-qlora-{m}-single-merged-awq", "p5-1B-math-qlora-awq-{m}", "folder"),
-    "qlora-fp8": ("synthetic-qlora-{m}-single-merged-fp8", "p5-1B-math-qlora-fp8-{m}", "folder"),
+             "{slug}-math-fft-gguf-{m}", "gguf"),
+    "qlora-gptq": ("synthetic-qlora-{m}-single-merged-gptq", "{slug}-math-qlora-gptq-{m}", "folder"),
+    "qlora-awq": ("synthetic-qlora-{m}-single-merged-awq", "{slug}-math-qlora-awq-{m}", "folder"),
+    "qlora-fp8": ("synthetic-qlora-{m}-single-merged-fp8", "{slug}-math-qlora-fp8-{m}", "folder"),
     "qlora-gguf": ("synthetic-qlora-{m}-single-merged-gguf/model-q8_0.gguf",
-             "p5-1B-math-qlora-gguf-{m}", "gguf"),
-    "gptq": ("synthetic-fft-{m}-single-gptq", "p5-1B-math-fft-gptq-{m}", "folder"),
-    "awq": ("synthetic-fft-{m}-single-awq", "p5-1B-math-fft-awq-{m}", "folder"),
-    "fp8": ("synthetic-fft-{m}-single-fp8", "p5-1B-math-fft-fp8-{m}", "folder"),
+             "{slug}-math-qlora-gguf-{m}", "gguf"),
+    "gptq": ("synthetic-fft-{m}-single-gptq", "{slug}-math-fft-gptq-{m}", "folder"),
+    "awq": ("synthetic-fft-{m}-single-awq", "{slug}-math-fft-awq-{m}", "folder"),
+    "fp8": ("synthetic-fft-{m}-single-fp8", "{slug}-math-fft-fp8-{m}", "folder"),
     "gguf": ("synthetic-fft-{m}-single-gguf/model-q8_0.gguf",
-             "p5-1B-math-fft-gguf-{m}", "gguf"),
+             "{slug}-math-fft-gguf-{m}", "gguf"),
 }
 
 
@@ -40,13 +44,13 @@ def main(mode: str, targets: str, dry_run: bool):
     for t in sel:
         local_t, repo_t, kind = TARGETS[t]
         plan.append((t, f"{SHARED}/models/" + local_t.format(m=mode),
-                     f"{HF_ID}/" + repo_t.format(m=mode), kind))
+                     f"{HF_ID}/" + repo_t.format(m=mode, slug=SLUG), kind))
     for t, local, repo, kind in plan:
         print(f"[{t}] {local} -> {repo} ({kind})")
         if dry_run:
             continue
         if not os.path.exists(local):
-            print(f"  SKIP: 로컬 산출물 없음 (먼저 해당 stage 실행)")
+            print(f"  SKIP: no local output (run that stage first)")
             continue
         from huggingface_hub import HfApi
         api = HfApi()

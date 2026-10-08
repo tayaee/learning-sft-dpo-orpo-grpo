@@ -60,7 +60,7 @@ def main(mode: str):
     with open(out, "w", encoding="utf-8") as f:
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
-    print(f"[p5][{mode}] kept={len(rows)} dropped={dropped} -> {out}")
+    print(f"[{mode}] kept={len(rows)} dropped={dropped} -> {out}")
 
 
 if __name__ == "__main__":

@@ -43,12 +43,12 @@ def main(mode: str, seed: int):
             
         raw_df["embedding"] = vecs
         raw_df[["instruction", "input", "output", "embedding"]].to_parquet(emb_path)
-        print(f"[p5][{mode}] embeddings built and cached: {len(raw_df)}")
+        print(f"[{mode}] embeddings built and cached: {len(raw_df)}")
 
     # 2. 파일이 존재하고 dg가 아직 None이면 로드
     if os.path.exists(emb_path) and dg is None:
         dg = pd.read_parquet(emb_path)
-        print(f"[p5][{mode}] embeddings cache hit/loaded: {len(dg)}")
+        print(f"[{mode}] embeddings cache hit/loaded: {len(dg)}")
 
     st = SentenceTransformer(EMB_MODEL)
     gsm_texts, gsm_idx = [], []
@@ -83,7 +83,7 @@ def main(mode: str, seed: int):
     out = pd.DataFrame(rows, columns=["gsm_idx", "dg_instruction", "dg_input", "dg_output"])
     out_path = f"{SHARED}/datasets/candidates-{mode}.parquet"
     out.to_parquet(out_path)
-    print(f"[p5][{mode}] gsm={len(gsm_idx)} candidates={len(out)} -> {out_path}")
+    print(f"[{mode}] gsm={len(gsm_idx)} candidates={len(out)} -> {out_path}")
 
 
 if __name__ == "__main__":

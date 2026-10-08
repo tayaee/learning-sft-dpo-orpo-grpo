@@ -103,7 +103,7 @@ Q/A 마커 기준 split + 케이스별 예외 + 잔여 패턴 제거 + `rstrip` 
   학습 프롬프트 템플릿으로 감싼 in-domain PPL.
 - 판정 (부모 FP 대비 Δ): Δ<0.3 Accept / 0.3~1.0 Conditional(Stage 7 GSM8K 2차 심사) / ≥1.0 Discard.
   부모: fft-* vs fft, qlora-* vs qlora. GGUF 2종은 transformers PPL 불가 → SKIP
-  (llama.cpp perplexity로 별도). 결과 `outputs/ppl-<mode>.json`.
+   (llama.cpp perplexity로 별도). 결과 `outputs/ppl-<mode>/` (summary.json + 타깃별).
 
 ### Stage 7. Inference·평가
 1. vLLM greedy (`71`): `SamplingParams(temp 0, max 512)`, `prompt_no_input` 포맷.
@@ -114,7 +114,7 @@ Q/A 마커 기준 split + 케이스별 예외 + 잔여 패턴 제거 + `rstrip` 
 
 ## Stage 8. 업로드·서빙·추론 예제
 1. 업로드 (`73`): `TARGETS` 매핑(fft/qlora/fft-gptq/awq/fp8/gguf + qlora-gptq/awq/fp8/gguf)대로
-   `tayaee/p5-1B-math-<target>-<mode>` 생성+업로드. 로컬 산출물 없으면 SKIP.
+   `tayaee/<base>-math-<target>-<mode>` 생성+업로드. 로컬 산출물 없으면 SKIP.
 2. 서빙 (`80`): `vllm serve <model> --served-model-name <repo> --tensor-parallel-size $TP`
    + 타깃별 `--quantization` (gptq/awq/fp8/gguf), `--max-model-len 2048`,
    `--gpu-memory-utilization 0.9` (env `GPU_UTIL`로 조정). `SOURCE=hf`면 Hub repo 직접 서빙.

@@ -36,7 +36,7 @@ if [ -z "${MASTER_ADDR:-}" ]; then
     [ -z "$_ip" ] && continue
     if ! command -v ping >/dev/null 2>&1 || ping -c1 -W1 "$_ip" >/dev/null 2>&1; then
       MASTER_ADDR="$_h"
-      echo "[p5][all] MASTER_ADDR 자동 검출: $_h ($_ip)"
+      echo "[all] MASTER_ADDR auto-detected: $_h ($_ip)"
       break
     fi
   done
@@ -52,11 +52,11 @@ if [ -z "${NODE_RANK:-}" ]; then
     *) NODE_RANK=0 ;;
   esac
   export NODE_RANK
-  echo "[p5][all] NODE_RANK 자동 검출: $NODE_RANK ($(hostname))"
+  echo "[all] NODE_RANK auto-detected: $NODE_RANK ($(hostname))"
 fi
 source "$ROOT/config/common.env" mini  # p5_log + 공용 env (UV_NO_SYNC 등)
 
-nvidia-smi -L >/dev/null 2>&1 || { p5_log "ERROR: GPU 없음 (nvidia-smi 실패)"; exit 1; }
+nvidia-smi -L >/dev/null 2>&1 || { p5_log "ERROR: no GPU (nvidia-smi failed)"; exit 1; }
 
 # ---- 스텝 타이밍 (stdout + TIMING_LOG) ----
 TIMING_LOG="$ROOT/logs/timing-all-all.log"
@@ -88,7 +88,7 @@ p5_log "run-all-all start (rank=$NODE_RANK runs=${RUNS:-all} steps=${STEPS:-all}
 if is_rank0; then
   want_run mini-single && p5_step "run-mini-single" ./run-mini-single.sh
 elif want_run mini-single; then
-  p5_log "SKIP run-mini-single (rank0만 실행)"
+  p5_log "SKIP run-mini-single (rank0 only)"
 fi
 
 want_run mini-ddp && p5_step "run-mini-ddp" ./run-mini-ddp.sh
@@ -96,7 +96,7 @@ want_run mini-ddp && p5_step "run-mini-ddp" ./run-mini-ddp.sh
 if is_rank0; then
   want_run full-single && p5_step "run-full-single" ./run-full-single.sh
 elif want_run full-single; then
-  p5_log "SKIP run-full-single (rank0만 실행)"
+  p5_log "SKIP run-full-single (rank0 only)"
 fi
 
 want_run full-ddp && p5_step "run-full-ddp" ./run-full-ddp.sh

@@ -51,7 +51,7 @@ def main(mode: str, base: str):
         tok.add_special_tokens({"additional_special_tokens": added})
     if tok.pad_token is None:
         tok.pad_token = PAD_TOKEN
-    print(f"[p5][{mode}] vocab {n0} -> {len(tok)}")
+    print(f"[{mode}] vocab {n0} -> {len(tok)}")
 
     model = AutoModelForCausalLM.from_pretrained(base, torch_dtype=torch.bfloat16)
     model.resize_token_embeddings(len(tok))
@@ -59,7 +59,7 @@ def main(mode: str, base: str):
     model = model.merge_and_unload()
     model.save_pretrained(out)
     tok.save_pretrained(out)
-    print(f"[p5][{mode}] merged -> {out}")
+    print(f"[{mode}] merged -> {out}")
 
 
 if __name__ == "__main__":
