@@ -29,9 +29,10 @@
       "name": "10-baseline (sh->py, dry-run)",
       "type": "debugpy",
       "request": "launch",
-      "python": "${workspaceFolder}/../.venv/bin/python",
-      "program": "${workspaceFolder}/10-train-entry.py",
-      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "uv-sync",
+      "python": ".venv/bin/python",
+      "program": "10-train-entry.py",
+      "cwd": "${workspaceFolder}/project-5",
       "justMyCode": true,
       "env": {
         "UV_NO_SYNC": "1"
@@ -60,9 +61,10 @@
       "name": "10-baseline (torchrun single/mini)",
       "type": "debugpy",
       "request": "launch",
+      "preLaunchTask": "uv-sync",
       "module": "torch.distributed.run",
-      "python": "${workspaceFolder}/../.venv/bin/python",
-      "cwd": "${workspaceFolder}",
+      "python": ".venv/bin/python",
+      "cwd": "${workspaceFolder}/project-5",
       "justMyCode": true,
       "env": {
         "UV_NO_SYNC": "1"
@@ -92,9 +94,10 @@
       "name": "30-fft (torchrun single/mini)",
       "type": "debugpy",
       "request": "launch",
+      "preLaunchTask": "uv-sync",
       "module": "torch.distributed.run",
-      "python": "${workspaceFolder}/../.venv/bin/python",
-      "cwd": "${workspaceFolder}",
+      "python": ".venv/bin/python",
+      "cwd": "${workspaceFolder}/project-5",
       "justMyCode": true,
       "env": {
         "UV_NO_SYNC": "1"
@@ -124,9 +127,10 @@
       "name": "31-qlora --peft (torchrun single/mini)",
       "type": "debugpy",
       "request": "launch",
+      "preLaunchTask": "uv-sync",
       "module": "torch.distributed.run",
-      "python": "${workspaceFolder}/../.venv/bin/python",
-      "cwd": "${workspaceFolder}",
+      "python": ".venv/bin/python",
+      "cwd": "${workspaceFolder}/project-5",
       "justMyCode": true,
       "env": {
         "UV_NO_SYNC": "1"
@@ -154,11 +158,12 @@
       ]
     },
     {
-      "name": "22-generate (22-generate.sh -> 22-generate.py)",
+      "name": "22-teacher-to-generate-syn-data (22-teacher-to-generate-syn-data.sh -> 22-teacher-to-generate-syn-data.py)",
       "type": "debugpy",
       "request": "launch",
-      "python": "${workspaceFolder}/../.venv/bin/python",
-      "program": "${workspaceFolder}/22-generate.py",
+      "preLaunchTask": "uv-sync",
+      "python": ".venv/bin/python",
+      "program": "22-teacher-to-generate-syn-data.py",
       "cwd": "${workspaceFolder}",
       "justMyCode": true,
       "env": {
@@ -181,9 +186,10 @@
       "name": "51-eval (51-eval.sh -> 51-eval.py)",
       "type": "debugpy",
       "request": "launch",
-      "python": "${workspaceFolder}/../.venv/bin/python",
-      "program": "${workspaceFolder}/51-eval.py",
-      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "uv-sync",
+      "python": ".venv/bin/python",
+      "program": "51-eval.py",
+      "cwd": "${workspaceFolder}/project-5",
       "justMyCode": true,
       "env": {
         "UV_NO_SYNC": "1"
@@ -203,9 +209,10 @@
       "name": "53-upload (53-upload-hf.sh -> 53-upload-hf.py, dry-run)",
       "type": "debugpy",
       "request": "launch",
-      "python": "${workspaceFolder}/../.venv/bin/python",
-      "program": "${workspaceFolder}/53-upload-hf.py",
-      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "uv-sync",
+      "python": ".venv/bin/python",
+      "program": "53-upload-hf.py",
+      "cwd": "${workspaceFolder}/project-5",
       "justMyCode": true,
       "env": {
         "UV_NO_SYNC": "1"
@@ -222,9 +229,10 @@
       "name": "40-gguf convert (40-quant-gguf.sh -> convert_hf_to_gguf.py)",
       "type": "debugpy",
       "request": "launch",
-      "python": "${workspaceFolder}/../.venv/bin/python",
+      "preLaunchTask": "uv-sync",
+      "python": ".venv/bin/python",
       "program": "${env:HOME}/git/llama.cpp/convert_hf_to_gguf.py",
-      "cwd": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}/project-5",
       "justMyCode": false,
       "env": {
         "UV_NO_SYNC": "1"
@@ -239,9 +247,10 @@
       "name": "60-serve vllm (60-serve-vllm.sh -> vllm serve)",
       "type": "debugpy",
       "request": "launch",
+      "preLaunchTask": "uv-sync",
       "module": "vllm.entrypoints.openai.api_server",
-      "python": "${workspaceFolder}/../.venv/bin/python",
-      "cwd": "${workspaceFolder}",
+      "python": ".venv/bin/python",
+      "cwd": "${workspaceFolder}/project-5",
       "justMyCode": false,
       "env": {
         "UV_NO_SYNC": "1",
@@ -270,7 +279,7 @@
       "name": "20-select-candidates (uv run 직접실행)",
       "type": "debugpy",
       "request": "launch",
-      "python": "${workspaceFolder}/../.venv/bin/python",
+      "python": "${workspaceFolder}/.venv/bin/python",
       "program": "${workspaceFolder}/20-select-candidates.py",
       "cwd": "${workspaceFolder}",
       "env": {
@@ -287,8 +296,9 @@
       "name": "21-build-prompts (uv run 직접실행)",
       "type": "debugpy",
       "request": "launch",
-      "python": "${workspaceFolder}/../.venv/bin/python",
-      "program": "${workspaceFolder}/21-build-prompts.py",
+      "preLaunchTask": "uv-sync",
+      "python": ".venv/bin/python",
+      "program": "21-build-prompts.py",
       "cwd": "${workspaceFolder}",
       "env": {
         "UV_NO_SYNC": "1"
@@ -302,9 +312,10 @@
       "name": "23-postprocess (uv run 직접실행)",
       "type": "debugpy",
       "request": "launch",
-      "python": "${workspaceFolder}/../.venv/bin/python",
-      "program": "${workspaceFolder}/23-postprocess.py",
-      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "uv-sync",
+      "python": ".venv/bin/python",
+      "program": "23-postprocess.py",
+      "cwd": "${workspaceFolder}/project-5",
       "env": {
         "UV_NO_SYNC": "1"
       },
@@ -317,9 +328,10 @@
       "name": "41-quant-gptq (uv run 직접실행)",
       "type": "debugpy",
       "request": "launch",
-      "python": "${workspaceFolder}/../.venv/bin/python",
-      "program": "${workspaceFolder}/41-quant-gptq.py",
-      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "uv-sync",
+      "python": ".venv/bin/python",
+      "program": "41-quant-gptq.py",
+      "cwd": "${workspaceFolder}/project-5",
       "env": {
         "UV_NO_SYNC": "1"
       },
@@ -332,9 +344,10 @@
       "name": "42-quant-awq (uv run 직접실행)",
       "type": "debugpy",
       "request": "launch",
-      "python": "${workspaceFolder}/../.venv/bin/python",
-      "program": "${workspaceFolder}/42-quant-awq.py",
-      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "uv-sync",
+      "python": ".venv/bin/python",
+      "program": "42-quant-awq.py",
+      "cwd": "${workspaceFolder}/project-5",
       "env": {
         "UV_NO_SYNC": "1"
       },
@@ -347,9 +360,10 @@
       "name": "43-quant-fp8 (uv run 직접실행)",
       "type": "debugpy",
       "request": "launch",
-      "python": "${workspaceFolder}/../.venv/bin/python",
-      "program": "${workspaceFolder}/43-quant-fp8.py",
-      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "uv-sync",
+      "python": ".venv/bin/python",
+      "program": "43-quant-fp8.py",
+      "cwd": "${workspaceFolder}/project-5",
       "env": {
         "UV_NO_SYNC": "1"
       },
@@ -362,9 +376,10 @@
       "name": "50-merge-lora (uv run 직접실행)",
       "type": "debugpy",
       "request": "launch",
-      "python": "${workspaceFolder}/../.venv/bin/python",
-      "program": "${workspaceFolder}/50-merge-lora.py",
-      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "uv-sync",
+      "python": ".venv/bin/python",
+      "program": "50-merge-lora.py",
+      "cwd": "${workspaceFolder}/project-5",
       "env": {
         "UV_NO_SYNC": "1"
       },
@@ -377,9 +392,10 @@
       "name": "52-score (uv run 직접실행)",
       "type": "debugpy",
       "request": "launch",
-      "python": "${workspaceFolder}/../.venv/bin/python",
-      "program": "${workspaceFolder}/52-score.py",
-      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "uv-sync",
+      "python": ".venv/bin/python",
+      "program": "52-score.py",
+      "cwd": "${workspaceFolder}/project-5",
       "env": {
         "UV_NO_SYNC": "1"
       },
@@ -392,9 +408,10 @@
       "name": "61-infer-examples (dry-run, 서버없이 프롬프트만)",
       "type": "debugpy",
       "request": "launch",
-      "python": "${workspaceFolder}/../.venv/bin/python",
-      "program": "${workspaceFolder}/61-infer-examples.py",
-      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "uv-sync",
+      "python": ".venv/bin/python",
+      "program": "61-infer-examples.py",
+      "cwd": "${workspaceFolder}/project-5",
       "env": {
         "UV_NO_SYNC": "1"
       },

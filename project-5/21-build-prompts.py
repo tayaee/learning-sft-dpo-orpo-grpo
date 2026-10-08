@@ -26,7 +26,7 @@ def main(mode: str, seed: int, push: bool):
     with open(os.path.join(os.path.dirname(__file__), "assets", "template.txt"),
               encoding="utf-8") as f:
         template = f.read()
-    cand = pd.read_parquet(f"{SHARED}/datasets/candidates-{mode}.parquet")
+    cand: pd.DataFrame = pd.read_parquet(f"{SHARED}/datasets/candidates-{mode}.parquet")
     cand = cand.sample(frac=1.0, random_state=seed).reset_index(drop=True)
     prompts = []
     for _, r in cand.head(target_n(mode)).iterrows():

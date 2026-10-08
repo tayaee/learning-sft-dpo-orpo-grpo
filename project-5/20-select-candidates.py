@@ -28,20 +28,27 @@ def main(mode: str, seed: int):
     np.random.seed(seed)
 
     emb_path = f"{SHARED}/datasets/alpaca-embeddings.parquet"
-    if os.path.exists(emb_path):
-        dg = pd.read_parquet(emb_path)
-        print(f"[p5][{mode}] embeddings cache hit: {len(dg)}")
-    else:
-        dg = pd.DataFrame(load_dataset("tatsu-lab/alpaca")["train"])
-        dg["cri"] = dg["instruction"] + dg["output"]
+    dg = None
+
+    # 1. 파일이 없으면 빌드 후 저장
+    if not os.path.exists(emb_path):
+        raw_df = pd.DataFrame(load_dataset("tatsu-lab/alpaca")["train"])
+        raw_df["cri"] = raw_df["instruction"] + raw_df["output"]
         st = SentenceTransformer(EMB_MODEL)
+        
         vecs = []
-        for s in range(0, len(dg), BATCH):
-            vecs.extend(st.encode(dg["cri"].tolist()[s:s + BATCH],
-                                  show_progress_bar=False).tolist())
-        dg["embedding"] = vecs
-        dg[["instruction", "input", "output", "embedding"]].to_parquet(emb_path)
-        print(f"[p5][{mode}] embeddings cached: {len(dg)}")
+        for s in range(0, len(raw_df), BATCH):
+            batch_texts = raw_df["cri"].tolist()[s:s + BATCH]
+            vecs.extend(st.encode(batch_texts, show_progress_bar=False).tolist())
+            
+        raw_df["embedding"] = vecs
+        raw_df[["instruction", "input", "output", "embedding"]].to_parquet(emb_path)
+        print(f"[p5][{mode}] embeddings built and cached: {len(raw_df)}")
+
+    # 2. 파일이 존재하고 dg가 아직 None이면 로드
+    if os.path.exists(emb_path) and dg is None:
+        dg = pd.read_parquet(emb_path)
+        print(f"[p5][{mode}] embeddings cache hit/loaded: {len(dg)}")
 
     st = SentenceTransformer(EMB_MODEL)
     gsm_texts, gsm_idx = [], []
@@ -59,7 +66,8 @@ def main(mode: str, seed: int):
     gsm_rows = int(os.environ.get("GSM_ROWS", "256" if mode == "mini" else "0"))
     if gsm_rows > 0:
         gsm_texts, gsm_idx = gsm_texts[:gsm_rows], gsm_idx[:gsm_rows]
-    gsm_vecs = np.array(st.encode(gsm_texts, batch_size=32,
+    gsm_vecs = np.array(st.encode(gsm_texts, 
+                                  batch_size=32,
                                   show_progress_bar=False), dtype=np.float32)
     dg_vecs = np.array(dg["embedding"].tolist(), dtype=np.float32)
 
@@ -68,10 +76,11 @@ def main(mode: str, seed: int):
     for gi, grow in zip(gsm_idx, sim):
         top = np.argsort(grow)[-TOPK:]  # 상위 1000
         for j in random.sample(top.tolist(), SAMPLEK):
-            rows.append((gi, dg.iloc[j]["instruction"], dg.iloc[j]["input"],
+            rows.append((gi, 
+                         dg.iloc[j]["instruction"], 
+                         dg.iloc[j]["input"],
                          dg.iloc[j]["output"]))
-    out = pd.DataFrame(rows, columns=["gsm_idx", "dg_instruction", "dg_input",
-                                      "dg_output"])
+    out = pd.DataFrame(rows, columns=["gsm_idx", "dg_instruction", "dg_input", "dg_output"])
     out_path = f"{SHARED}/datasets/candidates-{mode}.parquet"
     out.to_parquet(out_path)
     print(f"[p5][{mode}] gsm={len(gsm_idx)} candidates={len(out)} -> {out_path}")

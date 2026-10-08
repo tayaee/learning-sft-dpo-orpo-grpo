@@ -27,13 +27,21 @@ def main(mode: str, tp: int, maxlen: int, teacher: str, n: int):
 
     def to_chat(p):
         return tok.apply_chat_template([{"role": "user", "content": p}],
-                                       tokenize=False, add_generation_prompt=True)
+                                       tokenize=False, 
+                                       add_generation_prompt=True)
 
-    llm = LLM(model=teacher, tensor_parallel_size=tp, max_model_len=maxlen,
-              trust_remote_code=True, gpu_memory_utilization=0.9,
-              dtype="auto", enforce_eager=True)
-    sp = SamplingParams(temperature=0.5, top_p=0.8, top_k=5,
-                        repetition_penalty=1.05, max_tokens=2048)
+    llm = LLM(model=teacher,                # teacher 8B, student 1B
+              tensor_parallel_size=tp,      # tp1
+              max_model_len=maxlen,         # 4096
+              trust_remote_code=True, 
+              gpu_memory_utilization=0.9,
+              dtype="auto", 
+              enforce_eager=True)
+    sp = SamplingParams(temperature=0.5, 
+                        top_p=0.8, 
+                        top_k=5,
+                        repetition_penalty=1.05,
+                        max_tokens=2048)
     print("[p5] model ready", flush=True)
 
     df["generated"] = None
