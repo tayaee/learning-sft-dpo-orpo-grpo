@@ -14,6 +14,7 @@
 사용: torchrun ... 10-train-entry.py --model ... --train ... --out ... [--peft]
 검증: python3 10-train-entry.py --train <jsonl> --out /tmp/x --dry_run
 """
+
 import argparse
 import json
 import os
@@ -45,8 +46,11 @@ def load_texts(path):
             if not line:
                 continue
             row = json.loads(line)
-            texts.append(PROMPT_TEMPLATE.format(
-                instruction=first(row["source"]), response=first(row["target"])))
+            texts.append(
+                PROMPT_TEMPLATE.format(
+                    instruction=first(row["source"]), response=first(row["target"])
+                )
+            )
     return texts
 
 
@@ -54,8 +58,9 @@ def set_seed(seed):
     random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
     try:
-        import torch
         import numpy as np
+        import torch
+
         np.random.seed(seed)
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
@@ -72,14 +77,20 @@ def parse_args():
     p.add_argument("--mode", default="mini")
     p.add_argument("--peft", action="store_true", help="QLoRA 경로 (31에서 사용)")
     p.add_argument("--strategy", default="single", choices=["single", "ddp", "fsdp"])
-    p.add_argument("--accum", type=int, default=32, help="grad accum (effective batch 64 유지용)")
+    p.add_argument(
+        "--accum", type=int, default=32, help="grad accum (effective batch 64 유지용)"
+    )
     p.add_argument("--micro", type=int, default=2)
     p.add_argument("--max_len", type=int, default=1024, help="tok 512 + tgt 512")
     p.add_argument("--lr", type=float, default=1e-5)
     p.add_argument("--warmup", type=float, default=0.03)
     p.add_argument("--seed", type=int, default=1)
-    p.add_argument("--mask_rate", type=float, default=0.0, help="원본 max_mask_rate (기본 0=off)")
-    p.add_argument("--max_rows", type=int, default=0, help="학습 행 상한 (0=전체, mini 경량화용)")
+    p.add_argument(
+        "--mask_rate", type=float, default=0.0, help="원본 max_mask_rate (기본 0=off)"
+    )
+    p.add_argument(
+        "--max_rows", type=int, default=0, help="학습 행 상한 (0=전체, mini 경량화용)"
+    )
     p.add_argument("--dry_run", action="store_true", help="데이터 포맷만 확인 후 종료")
     return p.parse_args()
 
@@ -94,17 +105,21 @@ def _save_fsdp_dcp(fsdp_model, model_cfg, tok, out_dir, dtype):
     """
     import torch
     import torch.distributed as dist
-    from torch.distributed.checkpoint.state_dict import (
-        get_model_state_dict, set_model_state_dict, StateDictOptions,
-    )
-    from torch.distributed.checkpoint import save as dcp_save
+    from torch.distributed.checkpoint import FileSystemReader, FileSystemWriter
     from torch.distributed.checkpoint import load as dcp_load
-    from torch.distributed.checkpoint import FileSystemWriter, FileSystemReader
+    from torch.distributed.checkpoint import save as dcp_save
+    from torch.distributed.checkpoint.state_dict import (
+        StateDictOptions,
+        get_model_state_dict,
+        set_model_state_dict,
+    )
 
     rank = dist.get_rank()
     shard_dir = os.path.join(out_dir, "shards")
     if rank == 0:
-        os.makedirs(shard_dir, exist_ok=True)  # 생성은 rank0만 (공유FS makedirs race 회피)
+        os.makedirs(
+            shard_dir, exist_ok=True
+        )  # 생성은 rank0만 (공유FS makedirs race 회피)
     dist.barrier()
 
     # 1) 각 rank 자기 shard만 디스크에 기록 (대형 fabric 전송 없음).
@@ -118,14 +133,16 @@ def _save_fsdp_dcp(fsdp_model, model_cfg, tok, out_dir, dtype):
     # no_dist=True: load 플래너의 collective를 끄고 단일 프로세스로 읽음.
     if rank == 0:
         from transformers import AutoModelForCausalLM
+
         full = AutoModelForCausalLM.from_config(model_cfg, dtype=dtype)
         full.resize_token_embeddings(len(tok))
         full_sd = get_model_state_dict(
-            full, options=StateDictOptions(full_state_dict=True, cpu_offload=True))
-        dcp_load(full_sd, storage_reader=FileSystemReader(shard_dir),
-                 no_dist=True)
+            full, options=StateDictOptions(full_state_dict=True, cpu_offload=True)
+        )
+        dcp_load(full_sd, storage_reader=FileSystemReader(shard_dir), no_dist=True)
         missing, unexpected = set_model_state_dict(
-            full, full_sd, options=StateDictOptions(full_state_dict=True))
+            full, full_sd, options=StateDictOptions(full_state_dict=True)
+        )
         assert not missing, f"DCP consolidate missing keys: {sorted(missing)[:5]}"
         tmp = clean_tmp(tmp_path(out_dir))
         full.save_pretrained(tmp, safe_serialization=True)
@@ -139,7 +156,7 @@ def main():
     set_seed(a.seed)
     texts = load_texts(a.train)
     if a.max_rows > 0:
-        texts = texts[:a.max_rows]
+        texts = texts[: a.max_rows]
     print(f"[{a.mode}][{a.strategy}] n={len(texts)} sample_chars={len(texts[0])}")
     print("---- sample ----")
     print(texts[0][:600])
@@ -148,9 +165,10 @@ def main():
         return
 
     import torch
+
     torch.backends.cuda.matmul.allow_tf32 = True
-    from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
     from datasets import Dataset
+    from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
     from trl import SFTConfig, SFTTrainer
 
     tok = AutoTokenizer.from_pretrained(a.model)
@@ -179,12 +197,15 @@ def main():
             _tf.BloomPreTrainedModel = _BloomStub
         if a.strategy == "fsdp":
             print("WARN: FSDP+QLoRA unsupported, DDP fallback (training only).")
-        bnb = BitsAndBytesConfig(load_in_4bit=True,
-                                 bnb_4bit_compute_dtype=dtype,
-                                 bnb_4bit_use_double_quant=True,
-                                 bnb_4bit_quant_type="nf4")
-        model = AutoModelForCausalLM.from_pretrained(a.model, quantization_config=bnb,
-                                                     torch_dtype=dtype)
+        bnb = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=dtype,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_quant_type="nf4",
+        )
+        model = AutoModelForCausalLM.from_pretrained(
+            a.model, quantization_config=bnb, torch_dtype=dtype
+        )
     else:
         model = AutoModelForCausalLM.from_pretrained(a.model, torch_dtype=dtype)
 
@@ -198,13 +219,32 @@ def main():
                 w[-n_new:] = w[:-n_new].mean(dim=0, keepdim=True)
 
     if a.peft:
-        from peft import LoraConfig, TaskType, get_peft_model, prepare_model_for_kbit_training
+        from peft import (
+            LoraConfig,
+            TaskType,
+            get_peft_model,
+            prepare_model_for_kbit_training,
+        )
+
         model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True)
-        peft_cfg = LoraConfig(task_type=TaskType.CAUSAL_LM, inference_mode=False,
-                              r=16, lora_alpha=32, lora_dropout=0.05, bias="none",
-                              target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
-                                              "gate_proj", "down_proj", "up_proj"],
-                              modules_to_save=["embed_tokens", "lm_head"])
+        peft_cfg = LoraConfig(
+            task_type=TaskType.CAUSAL_LM,
+            inference_mode=False,
+            r=16,
+            lora_alpha=32,
+            lora_dropout=0.05,
+            bias="none",
+            target_modules=[
+                "q_proj",
+                "k_proj",
+                "v_proj",
+                "o_proj",
+                "gate_proj",
+                "down_proj",
+                "up_proj",
+            ],
+            modules_to_save=["embed_tokens", "lm_head"],
+        )
         model.enable_input_require_grads()
         model = get_peft_model(model, peft_cfg)
         model.print_trainable_parameters()
@@ -239,42 +279,55 @@ def main():
                 is_special |= input_ids == s
             do_mask = (prob < a.mask_rate) & ~is_special & (labels != -100)
             input_ids[do_mask] = mask_id
-        return {"input_ids": input_ids, "attention_mask": attention_mask, "labels": labels}
+        return {
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+            "labels": labels,
+        }
 
     fsdp = "full_shard auto_wrap" if a.strategy == "fsdp" else ""
-    fsdp_cfg = {"transformer_layer_cls_to_wrap": "LlamaDecoderLayer"} if a.strategy == "fsdp" else {}
+    fsdp_cfg = (
+        {"transformer_layer_cls_to_wrap": "LlamaDecoderLayer"}
+        if a.strategy == "fsdp"
+        else {}
+    )
     # 2노드 FSDP는 중간 체크포인트(full gather)를 건너뛰고 최종 DCP 저장만 수행.
     # _dcp_2node에서도 P5_DCP_SAVE=0이면 기존 경로(trainer.save_model) 사용.
     _world = int(os.environ.get("WORLD_SIZE", "1"))
-    _dcp_2node = (a.strategy == "fsdp" and _world > 1
-                  and os.environ.get("P5_DCP_SAVE", "1") == "1")
+    _dcp_2node = (
+        a.strategy == "fsdp"
+        and _world > 1
+        and os.environ.get("P5_DCP_SAVE", "1") == "1"
+    )
     cfg = SFTConfig(
-        output_dir=a.out, 
+        output_dir=a.out,
         num_train_epochs=a.epochs,
         per_device_train_batch_size=a.micro,
         gradient_accumulation_steps=a.accum,
-        learning_rate=a.lr, 
-        lr_scheduler_type="cosine", 
+        learning_rate=a.lr,
+        lr_scheduler_type="cosine",
         warmup_ratio=a.warmup,
-        logging_steps=200, 
-        save_strategy="no" if _dcp_2node else "epoch", 
+        logging_steps=200,
+        save_strategy="no" if _dcp_2node else "epoch",
         save_total_limit=2,
-        bf16=True, 
-        seed=a.seed, 
+        bf16=True,
+        seed=a.seed,
         dataset_text_field="text",
-        max_length=a.max_len, 
+        max_length=a.max_len,
         packing=False,
         gradient_checkpointing=True,
         gradient_checkpointing_kwargs={"use_reentrant": False} if a.peft else {},
-        fsdp=fsdp, 
-        fsdp_config=fsdp_cfg, 
+        fsdp=fsdp,
+        fsdp_config=fsdp_cfg,
         report_to="none",
     )
-    trainer = SFTTrainer(model=model, 
-                         args=cfg, 
-                         train_dataset=ds,
-                         processing_class=tok, 
-                         data_collator=collator)
+    trainer = SFTTrainer(
+        model=model,
+        args=cfg,
+        train_dataset=ds,
+        processing_class=tok,
+        data_collator=collator,
+    )
     # TRL _save_checkpoint은 매번 create_model_card → trackio import를 타는데,
     # huggingface_hub>=1(CommitOperationAdd 삭제)과 충돌해 ImportError로 죽는다.
     # 모델 카드는 파이프라인 산출물이 아니므로 no-op (버전 조합과 무관하게 동작).

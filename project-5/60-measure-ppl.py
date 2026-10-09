@@ -15,6 +15,7 @@ GGUF는 transformers 대신 llama-perplexity로 측정 (미빌드 시 해당 타
   uv run 60-measure-ppl.py --mode mini|full [--n 32] [--targets all|base,fft,...]
   출력: stdout 표 + $P5_SHARED/outputs/ppl-<mode>/ (summary.json + 타깃별 json)
 """
+
 import argparse
 import json
 import math
@@ -42,25 +43,57 @@ TARGETS = {
     "base": ("hf", BASE, None),
     "fft": ("hf", f"{SHARED}/models/synthetic-fft-{{m}}-single", "base"),
     "qlora": ("hf", f"{SHARED}/models/synthetic-qlora-{{m}}-single-merged", "base"),
-    "fft-gguf": ("gguf", f"{SHARED}/models/synthetic-fft-{{m}}-single-gguf/model-q8_0.gguf", "fft"),
+    "fft-gguf": (
+        "gguf",
+        f"{SHARED}/models/synthetic-fft-{{m}}-single-gguf/model-q8_0.gguf",
+        "fft",
+    ),
     "fft-gptq": ("hf", f"{SHARED}/models/synthetic-fft-{{m}}-single-gptq", "fft"),
     "fft-awq": ("hf", f"{SHARED}/models/synthetic-fft-{{m}}-single-awq", "fft"),
     "fft-fp8": ("hf", f"{SHARED}/models/synthetic-fft-{{m}}-single-fp8", "fft"),
-    "qlora-gguf": ("gguf", f"{SHARED}/models/synthetic-qlora-{{m}}-single-merged-gguf/model-q8_0.gguf", "qlora"),
-    "qlora-gptq": ("hf", f"{SHARED}/models/synthetic-qlora-{{m}}-single-merged-gptq", "qlora"),
-    "qlora-awq": ("hf", f"{SHARED}/models/synthetic-qlora-{{m}}-single-merged-awq", "qlora"),
-    "qlora-fp8": ("hf", f"{SHARED}/models/synthetic-qlora-{{m}}-single-merged-fp8", "qlora"),
+    "qlora-gguf": (
+        "gguf",
+        f"{SHARED}/models/synthetic-qlora-{{m}}-single-merged-gguf/model-q8_0.gguf",
+        "qlora",
+    ),
+    "qlora-gptq": (
+        "hf",
+        f"{SHARED}/models/synthetic-qlora-{{m}}-single-merged-gptq",
+        "qlora",
+    ),
+    "qlora-awq": (
+        "hf",
+        f"{SHARED}/models/synthetic-qlora-{{m}}-single-merged-awq",
+        "qlora",
+    ),
+    "qlora-fp8": (
+        "hf",
+        f"{SHARED}/models/synthetic-qlora-{{m}}-single-merged-fp8",
+        "qlora",
+    ),
 }
 for _base, _local, _parent in (
-        ("fft-gguf", "synthetic-fft-{m}-single-gguf", "fft"),
-        ("qlora-gguf", "synthetic-qlora-{m}-single-merged-gguf", "qlora")):
+    ("fft-gguf", "synthetic-fft-{m}-single-gguf", "fft"),
+    ("qlora-gguf", "synthetic-qlora-{m}-single-merged-gguf", "qlora"),
+):
     for _q in GQUANTS:
-        TARGETS.setdefault(f"{_base}-{_q}", (
-            "gguf", f"{SHARED}/models/{_local}/model-{_q}.gguf", _parent))
-ORDER = ["base", "fft", "qlora",
-         "fft-gguf", "fft-gptq", "fft-awq", "fft-fp8",
-         "qlora-gguf", "qlora-gptq", "qlora-awq", "qlora-fp8"] + \
-    [f"{b}-{q}" for b in ("fft-gguf", "qlora-gguf") for q in GQUANTS]
+        TARGETS.setdefault(
+            f"{_base}-{_q}",
+            ("gguf", f"{SHARED}/models/{_local}/model-{_q}.gguf", _parent),
+        )
+ORDER = [
+    "base",
+    "fft",
+    "qlora",
+    "fft-gguf",
+    "fft-gptq",
+    "fft-awq",
+    "fft-fp8",
+    "qlora-gguf",
+    "qlora-gptq",
+    "qlora-awq",
+    "qlora-fp8",
+] + [f"{b}-{q}" for b in ("fft-gguf", "qlora-gguf") for q in GQUANTS]
 
 
 def verdict(delta):
@@ -84,8 +117,11 @@ def load_texts(mode: str, n: int):
             line = line.strip()
             if line:
                 r = json.loads(line)
-                texts.append(PROMPT_TEMPLATE.format(
-                    instruction=first(r["source"]), response=first(r["target"])))
+                texts.append(
+                    PROMPT_TEMPLATE.format(
+                        instruction=first(r["source"]), response=first(r["target"])
+                    )
+                )
                 if len(texts) >= n:
                     break
     return texts
@@ -99,20 +135,31 @@ def ppl_of(model_path: str, texts):
     if tok.pad_token is None:
         tok.pad_token = tok.eos_token
     model = AutoModelForCausalLM.from_pretrained(
-        model_path, torch_dtype=torch.bfloat16,
-        device_map="auto", trust_remote_code=True)
+        model_path,
+        torch_dtype=torch.bfloat16,
+        device_map="auto",
+        trust_remote_code=True,
+    )
     model.eval()
     nll_sum, tok_count = 0.0, 0
     with torch.no_grad():
         for t in texts:
-            ids = tok(t, return_tensors="pt", truncation=True,
-                      max_length=1024).input_ids.cuda() \
-                if torch.cuda.is_available() else \
-                tok(t, return_tensors="pt", truncation=True,
-                    max_length=1024).input_ids
+            ids = (
+                tok(
+                    t, return_tensors="pt", truncation=True, max_length=1024
+                ).input_ids.cuda()
+                if torch.cuda.is_available()
+                else tok(
+                    t, return_tensors="pt", truncation=True, max_length=1024
+                ).input_ids
+            )
             if torch.cuda.is_available():
                 ids = ids.cuda()
-                model = model.cuda() if next(model.parameters()).device.type == "cpu" else model
+                model = (
+                    model.cuda()
+                    if next(model.parameters()).device.type == "cpu"
+                    else model
+                )
             labels = ids.clone()
             out = model(input_ids=ids, labels=labels)
             # loss는 평균 NLL → 토큰 수 가중 합산
@@ -132,13 +179,14 @@ def ppl_of_gguf(model_path: str, texts) -> float:
     import subprocess
     import tempfile
 
-    clip = os.environ.get("LLAMACPP_BIN",
-                          f"{LLAMACPP}/build/bin/llama-perplexity")
+    clip = os.environ.get("LLAMACPP_BIN", f"{LLAMACPP}/build/bin/llama-perplexity")
     if not (os.path.isfile(clip) and os.access(clip, os.X_OK)):
         raise FileNotFoundError(
-            f"llama-perplexity 없음: {clip} (llama.cpp에서 cmake --build로 빌드)")
-    with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False,
-                                     encoding="utf-8") as f:
+            f"llama-perplexity 없음: {clip} (llama.cpp에서 cmake --build로 빌드)"
+        )
+    with tempfile.NamedTemporaryFile(
+        "w", suffix=".txt", delete=False, encoding="utf-8"
+    ) as f:
         f.write("\n\n".join(texts) + "\n")
         prompt_file = f.name
     try:
@@ -148,15 +196,15 @@ def ppl_of_gguf(model_path: str, texts) -> float:
         if ngl:
             cmd += ["-ngl", ngl]
         print(f"+ {subprocess.list2cmdline(cmd)}")
-        proc = subprocess.run(cmd, capture_output=True, text=True,
-                              timeout=3600)
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
     finally:
         os.unlink(prompt_file)
     out = (proc.stdout or "") + (proc.stderr or "")
     m = re.search(r"Final estimate:\s*PPL\s*=\s*([0-9.]+)", out)
     if not m:
         raise RuntimeError(
-            f"llama-perplexity PPL 파싱 실패 (rc={proc.returncode}): {out[-500:]}")
+            f"llama-perplexity PPL 파싱 실패 (rc={proc.returncode}): {out[-500:]}"
+        )
     return float(m.group(1))
 
 
@@ -170,23 +218,38 @@ def main(mode: str, n: int, targets: str):
         path = tmpl.format(m=mode) if "{m}" in tmpl else tmpl
         if kind == "gguf":
             if not os.path.exists(path):
-                results[t] = {"ppl": None, "delta": None, "verdict": "SKIP",
-                              "note": f"산출물 없음: {path}"}
+                results[t] = {
+                    "ppl": None,
+                    "delta": None,
+                    "verdict": "SKIP",
+                    "note": f"산출물 없음: {path}",
+                }
                 print(f"{t:12} SKIP (no output)")
                 continue
             try:
                 p = ppl_of_gguf(path, texts)
-                results[t] = {"ppl": round(p, 3), "path": path,
-                              "note": "llama.cpp perplexity (부모 fft/qlora는 transformers 측정과 엔진 상이)"}
+                results[t] = {
+                    "ppl": round(p, 3),
+                    "path": path,
+                    "note": "llama.cpp perplexity (부모 fft/qlora는 transformers 측정과 엔진 상이)",
+                }
                 print(f"{t:12} ppl={p:.3f} (llamacpp)")
             except Exception as e:  # noqa: BLE001 — 미빌드/파싱 실패도 표에 남김
-                results[t] = {"ppl": None, "delta": None, "verdict": "SKIP",
-                              "note": f"{type(e).__name__}: {e}"}
+                results[t] = {
+                    "ppl": None,
+                    "delta": None,
+                    "verdict": "SKIP",
+                    "note": f"{type(e).__name__}: {e}",
+                }
                 print(f"{t:12} SKIP ({e})")
             continue
         if not os.path.exists(path) and t != "base":
-            results[t] = {"ppl": None, "delta": None, "verdict": "SKIP",
-                          "note": f"산출물 없음: {path}"}
+            results[t] = {
+                "ppl": None,
+                "delta": None,
+                "verdict": "SKIP",
+                "note": f"산출물 없음: {path}",
+            }
             print(f"{t:12} SKIP (no output)")
             continue
         try:
@@ -194,8 +257,12 @@ def main(mode: str, n: int, targets: str):
             results[t] = {"ppl": round(p, 3), "path": path}
             print(f"{t:12} ppl={p:.3f}")
         except Exception as e:  # noqa: BLE001 — 전 타깃 표를 끝까지 뽑기 위함
-            results[t] = {"ppl": None, "delta": None, "verdict": "SKIP",
-                          "note": f"{type(e).__name__}: {e}"}
+            results[t] = {
+                "ppl": None,
+                "delta": None,
+                "verdict": "SKIP",
+                "note": f"{type(e).__name__}: {e}",
+            }
             print(f"{t:12} SKIP ({e})")
 
     # Δ 및 판정 (부모가 측정됐을 때만)

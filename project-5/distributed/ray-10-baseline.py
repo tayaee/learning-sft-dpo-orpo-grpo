@@ -5,6 +5,7 @@ workers = 1 (1x) | 2 (2x). TorchTrainer가 10-train-entry.py의 train_fn을 감�
   uv run distributed/ray-10-baseline.py --mode mini --infra dgx-spark-1x|dgx-spark-2x
 전제: spark1·spark2에 동일 repo 경로 + ray 클러스터 (ray start --head / --address).
 """
+
 import argparse
 
 
@@ -24,6 +25,8 @@ def main(mode: str, infra: str):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", default="mini", choices=["mini", "full"])
-    ap.add_argument("--infra", default="dgx-spark-1x", choices=["dgx-spark-1x", "dgx-spark-2x"])
+    ap.add_argument(
+        "--infra", default="dgx-spark-1x", choices=["dgx-spark-1x", "dgx-spark-2x"]
+    )
     a = ap.parse_args()
     main(a.mode, a.infra)

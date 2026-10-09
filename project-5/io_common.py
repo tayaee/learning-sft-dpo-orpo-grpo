@@ -5,6 +5,7 @@
 各 스크립트는 `uv run $P5_ROOT/*.py` 로 실행되며 스크립트 디렉토리가
 sys.path에 들어오므로 plain `import io_common`으로 로드된다.
 """
+
 import os
 import shutil
 

@@ -9,6 +9,7 @@
   # 터미널2:
   uv run 81-infer-examples.py --model tayaee/Llama-3.2-1B-math-fft-mini [--n 3] [--dry-run]
 """
+
 import argparse
 import json
 import os
@@ -23,8 +24,10 @@ KO_SAMPLE = "방정식 x^2 + 5x + 6 = 0 의 해를 구하시오."
 
 
 def load_questions(n: int):
-    for cand in [os.environ.get("P5_SHARED", "") + "/datasets/gsm8k-test.jsonl",
-                 os.path.join(P5_ROOT, "data", "gsm8k-test.jsonl")]:
+    for cand in [
+        os.environ.get("P5_SHARED", "") + "/datasets/gsm8k-test.jsonl",
+        os.path.join(P5_ROOT, "data", "gsm8k-test.jsonl"),
+    ]:
         if cand and os.path.exists(cand):
             qs = []
             with open(cand, encoding="utf-8") as f:
@@ -32,7 +35,11 @@ def load_questions(n: int):
                     line = line.strip()
                     if line:
                         r = json.loads(line)
-                        q = r["source"][0] if isinstance(r["source"], list) else r["source"]
+                        q = (
+                            r["source"][0]
+                            if isinstance(r["source"], list)
+                            else r["source"]
+                        )
                         qs.append(q)
                     if len(qs) >= n:
                         break
@@ -48,17 +55,22 @@ def main(model: str, base_url: str, n: int, dry_run: bool):
             print(f"Q: {q}\n--- prompt ---\n{p}\n")
         return
     from openai import OpenAI
+
     client = OpenAI(base_url=base_url, api_key="EMPTY")
     for q, p in zip(questions, prompts):
         r = client.completions.create(
-            model=model, prompt=p,
-            temperature=0, max_tokens=512)
+            model=model, prompt=p, temperature=0, max_tokens=512
+        )
         print(f"Q: {q}\nA: {r.choices[0].text}\n{'=' * 60}")
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", required=True, help="서빙 모델명 (예: tayaee/Llama-3.2-1B-math-fft-mini)")
+    ap.add_argument(
+        "--model",
+        required=True,
+        help="서빙 모델명 (예: tayaee/Llama-3.2-1B-math-fft-mini)",
+    )
     ap.add_argument("--base-url", default="http://localhost:8000/v1")
     ap.add_argument("--n", type=int, default=3)
     ap.add_argument("--dry-run", action="store_true")

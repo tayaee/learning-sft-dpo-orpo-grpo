@@ -5,6 +5,7 @@ Blackwell 네이티브. 평가는 vLLM quantization='fp8' 경로 (71-eval.sh).
 
   uv run 41-quant-fft-fp8.py --mode mini|full [--calib N] [--calib-file PATH]
 """
+
 import argparse
 import os
 
@@ -24,11 +25,16 @@ def main(mode: str, calib: int, calib_file: str | None):
     out = f"{SHARED}/models/synthetic-fft-{mode}-single-fp8"
     texts = load_calib_texts(calib, calib_file)
     ds = Dataset.from_list([{"text": t} for t in texts])
-    recipe = QuantizationModifier(ignore=["lm_head"], scheme="FP8",
-                                  targets=["Linear"])
+    recipe = QuantizationModifier(ignore=["lm_head"], scheme="FP8", targets=["Linear"])
     tmp = clean_tmp(tmp_path(out))
-    oneshot(model=src, dataset=ds, recipe=recipe, output_dir=tmp,
-            max_seq_length=1024, num_calibration_samples=calib)
+    oneshot(
+        model=src,
+        dataset=ds,
+        recipe=recipe,
+        output_dir=tmp,
+        max_seq_length=1024,
+        num_calibration_samples=calib,
+    )
     AutoTokenizer.from_pretrained(src).save_pretrained(tmp)
     commit_dir(tmp, out)
     print(f"[{mode}] calib={calib} -> {out}")
@@ -38,9 +44,12 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", default="mini", choices=["mini", "full"])
     ap.add_argument("--calib", type=int, default=None)
-    ap.add_argument("--calib-file", default=None,
-                    help="캘리브레이션 jsonl (기본 gsm8k-calibration-256.jsonl, "
-                         "CALIB_FILE로 오버라이드 가능)")
+    ap.add_argument(
+        "--calib-file",
+        default=None,
+        help="캘리브레이션 jsonl (기본 gsm8k-calibration-256.jsonl, "
+        "CALIB_FILE로 오버라이드 가능)",
+    )
     a = ap.parse_args()
     default_calib = int(os.environ.get("CALIB_N", "32" if a.mode == "mini" else "256"))
     main(a.mode, a.calib or default_calib, a.calib_file)

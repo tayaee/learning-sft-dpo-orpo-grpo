@@ -7,6 +7,7 @@
 출력: $P5_SHARED/datasets/prompts-<mode>.parquet [prompt]
   --push 시 tayaee/alpaca_syntheticdatagen_prompt-<mode> 로 Hub 업로드
 """
+
 import argparse
 import os
 import random
@@ -25,8 +26,10 @@ def main(mode: str, seed: int, push: bool):
     import pandas as pd
 
     random.seed(seed)
-    with open(os.path.join(os.path.dirname(__file__), "assets", "template.txt"),
-              encoding="utf-8") as f:
+    with open(
+        os.path.join(os.path.dirname(__file__), "assets", "template.txt"),
+        encoding="utf-8",
+    ) as f:
         template = f.read()
     cand: pd.DataFrame = pd.read_parquet(f"{SHARED}/datasets/candidates-{mode}.parquet")
     cand = cand.sample(frac=1.0, random_state=seed).reset_index(drop=True)
@@ -34,8 +37,7 @@ def main(mode: str, seed: int, push: bool):
     for _, r in cand.head(target_n(mode)).iterrows():
         # 강의 후반 수정 반영: instruction에 input을 합친다
         inst = str(r["dg_instruction"]) + "\n" + str(r["dg_input"])
-        prompts.append(template.format(dg_instruct=inst,
-                                       dg_output=str(r["dg_output"])))
+        prompts.append(template.format(dg_instruct=inst, dg_output=str(r["dg_output"])))
     df = pd.DataFrame({"prompt": prompts})
     out = f"{SHARED}/datasets/prompts-{mode}.parquet"
     tmp = tmp_path(out)
@@ -44,8 +46,10 @@ def main(mode: str, seed: int, push: bool):
     print(f"[{mode}] n={len(df)} -> {out}")
     if push:
         from datasets import Dataset
+
         Dataset.from_pandas(df[["prompt"]]).push_to_hub(
-            f"{HF_ID}/alpaca_syntheticdatagen_prompt-{mode}")
+            f"{HF_ID}/alpaca_syntheticdatagen_prompt-{mode}"
+        )
         print(f"[{mode}] pushed: {HF_ID}/alpaca_syntheticdatagen_prompt-{mode}")
 
 

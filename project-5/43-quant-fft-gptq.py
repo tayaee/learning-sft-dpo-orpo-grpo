@@ -6,6 +6,7 @@
 
   uv run 43-quant-fft-gptq.py --mode mini|full [--calib N] [--calib-file PATH]
 """
+
 import argparse
 import os
 
@@ -37,9 +38,12 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", default="mini", choices=["mini", "full"])
     ap.add_argument("--calib", type=int, default=None)
-    ap.add_argument("--calib-file", default=None,
-                    help="캘리브레이션 jsonl (기본 gsm8k-calibration-256.jsonl, "
-                         "CALIB_FILE로 오버라이드 가능)")
+    ap.add_argument(
+        "--calib-file",
+        default=None,
+        help="캘리브레이션 jsonl (기본 gsm8k-calibration-256.jsonl, "
+        "CALIB_FILE로 오버라이드 가능)",
+    )
     a = ap.parse_args()
     default_calib = int(os.environ.get("CALIB_N", "32" if a.mode == "mini" else "256"))
     main(a.mode, a.calib or default_calib, a.calib_file)

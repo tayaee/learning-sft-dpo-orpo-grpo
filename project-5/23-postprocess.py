@@ -10,6 +10,7 @@
   uv run 23-postprocess.py --mode mini|full
 출력: $P5_SHARED/datasets/synthetic-<mode>.jsonl ({"source":[q],"target":[a]})
 """
+
 import argparse
 import json
 import os
@@ -21,7 +22,11 @@ SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
 QMARK = "Transformed Domain Question"
 AMARK = "Transformed Domain Answer"
 STRIP_PATTERNS = [
-    r"^\*\*\s*", r"\*\*$", r"^:\s*", r"^-\s*", r"^\d+[\.\)]\s*",
+    r"^\*\*\s*",
+    r"\*\*$",
+    r"^:\s*",
+    r"^-\s*",
+    r"^\d+[\.\)]\s*",
     r"^(Transformed Domain Question|Transformed Domain Answer)\s*",
 ]
 

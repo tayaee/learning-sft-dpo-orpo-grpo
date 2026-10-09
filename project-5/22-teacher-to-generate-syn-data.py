@@ -3,6 +3,7 @@
 원본: data_gen_vllm.py (apply_chat_template, 마커 3종 검사).
 마커 미포함 행은 invalid로 분리해 재생성한다 (valid가 안정될 때까지, 최대 3회).
 """
+
 import argparse
 import os
 
@@ -17,8 +18,15 @@ def is_valid(t: str) -> bool:
     return all(m in (t or "") for m in MARKERS)
 
 
-def main(mode: str, tp: int, maxlen: int, teacher: str, n: int,
-           gpu_mem_util: float, max_num_seqs: int):
+def main(
+    mode: str,
+    tp: int,
+    maxlen: int,
+    teacher: str,
+    n: int,
+    gpu_mem_util: float,
+    max_num_seqs: int,
+):
     import pandas as pd
     from tqdm import tqdm
     from vllm import LLM, SamplingParams
@@ -29,23 +37,23 @@ def main(mode: str, tp: int, maxlen: int, teacher: str, n: int,
     tok = AutoTokenizer.from_pretrained(teacher)
 
     def to_chat(p):
-        return tok.apply_chat_template([{"role": "user", "content": p}],
-                                       tokenize=False, 
-                                       add_generation_prompt=True)
+        return tok.apply_chat_template(
+            [{"role": "user", "content": p}], tokenize=False, add_generation_prompt=True
+        )
 
-    llm = LLM(model=teacher,                # teacher 8B, student 1B
-              tensor_parallel_size=tp,      # tp1
-              max_model_len=maxlen,         # 8192 (mini/full 통일)
-              trust_remote_code=True, 
-              gpu_memory_utilization=gpu_mem_util,
-              max_num_seqs=max_num_seqs,    # 8 (mini/full 통일)
-              dtype="auto", 
-              enforce_eager=True)
-    sp = SamplingParams(temperature=0.5, 
-                        top_p=0.8, 
-                        top_k=5,
-                        repetition_penalty=1.05,
-                        max_tokens=2048)
+    llm = LLM(
+        model=teacher,  # teacher 8B, student 1B
+        tensor_parallel_size=tp,  # tp1
+        max_model_len=maxlen,  # 8192 (mini/full 통일)
+        trust_remote_code=True,
+        gpu_memory_utilization=gpu_mem_util,
+        max_num_seqs=max_num_seqs,  # 8 (mini/full 통일)
+        dtype="auto",
+        enforce_eager=True,
+    )
+    sp = SamplingParams(
+        temperature=0.5, top_p=0.8, top_k=5, repetition_penalty=1.05, max_tokens=2048
+    )
     print("model ready", flush=True)
 
     df["generated"] = None
@@ -59,8 +67,10 @@ def main(mode: str, tp: int, maxlen: int, teacher: str, n: int,
             df.at[i, "generated"] = t
             if not is_valid(t):
                 nxt.append(i)
-        print(f"[{mode}] iter{it}: valid={len(pending) - len(nxt)}/{len(pending)}",
-              flush=True)
+        print(
+            f"[{mode}] iter{it}: valid={len(pending) - len(nxt)}/{len(pending)}",
+            flush=True,
+        )
         pending = nxt
         if not pending:
             break
@@ -78,15 +88,29 @@ if __name__ == "__main__":
     ap.add_argument("--maxlen", type=int, default=8192)
     ap.add_argument("--teacher", default="meta-llama/Llama-3.1-8B-Instruct")
     ap.add_argument("--n", type=int, default=None)
-    ap.add_argument("--gpu-mem-util", type=float,
-                    default=float(os.environ.get("VLLM_GPU_MEM_UTIL", "0.8")),
-                    help="vLLM gpu_memory_utilization (기본 0.8: DGX Spark 통합메모리에서 "
-                         "OS/Xorg 점유분(~13GB)을 피하려고 0.9에서 낮춤)")
-    ap.add_argument("--max-num-seqs", type=int, default=None,
-                    help="vLLM 동시 처리 시퀀스 수 (기본 8: mini/full 통일. "
-                         "VLLM_MAX_NUM_SEQS로 오버라이드 가능)")
+    ap.add_argument(
+        "--gpu-mem-util",
+        type=float,
+        default=float(os.environ.get("VLLM_GPU_MEM_UTIL", "0.8")),
+        help="vLLM gpu_memory_utilization (기본 0.8: DGX Spark 통합메모리에서 "
+        "OS/Xorg 점유분(~13GB)을 피하려고 0.9에서 낮춤)",
+    )
+    ap.add_argument(
+        "--max-num-seqs",
+        type=int,
+        default=None,
+        help="vLLM 동시 처리 시퀀스 수 (기본 8: mini/full 통일. "
+        "VLLM_MAX_NUM_SEQS로 오버라이드 가능)",
+    )
     a = ap.parse_args()
-    n = a.n if a.n is not None else int(os.environ.get("SYNTH_N", "64" if a.mode == "mini" else "10000"))
-    max_num_seqs = (a.max_num_seqs if a.max_num_seqs is not None
-                    else int(os.environ.get("VLLM_MAX_NUM_SEQS", "8")))
+    n = (
+        a.n
+        if a.n is not None
+        else int(os.environ.get("SYNTH_N", "64" if a.mode == "mini" else "10000"))
+    )
+    max_num_seqs = (
+        a.max_num_seqs
+        if a.max_num_seqs is not None
+        else int(os.environ.get("VLLM_MAX_NUM_SEQS", "8"))
+    )
     main(a.mode, a.tp, a.maxlen, a.teacher, n, a.gpu_mem_util, max_num_seqs)

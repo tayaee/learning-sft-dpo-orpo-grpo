@@ -10,6 +10,7 @@
 (llama-cli는 신버전에서 대화형으로 진입하므로 사용 금지. --no-conversation도
 llama-cli에서 미지원이라 llama-completion이 정답.)
 """
+
 import argparse
 import json
 import os
@@ -25,42 +26,59 @@ PROMPT_NO_INPUT = (
     "### Instruction:\n{instruction}\n\n### Response:"
 )
 GQUANTS = ["q8_0", "q6_k", "q5_k_m", "q4_k_m", "q3_k_m"]
-TARGETS = ([f"fft-gguf-{q}" for q in GQUANTS] +
-           [f"qlora-gguf-{q}" for q in GQUANTS])
+TARGETS = [f"fft-gguf-{q}" for q in GQUANTS] + [f"qlora-gguf-{q}" for q in GQUANTS]
 
 
 def resolve(target: str, mode: str) -> str:
     if target.startswith("fft-gguf-"):
-        q = target[len("fft-gguf-"):]
+        q = target[len("fft-gguf-") :]
         return f"{SHARED}/models/synthetic-fft-{mode}-single-gguf/model-{q}.gguf"
     if target.startswith("qlora-gguf-"):
-        q = target[len("qlora-gguf-"):]
-        return (f"{SHARED}/models/synthetic-qlora-{mode}-single-merged-gguf"
-                f"/model-{q}.gguf")
+        q = target[len("qlora-gguf-") :]
+        return (
+            f"{SHARED}/models/synthetic-qlora-{mode}-single-merged-gguf/model-{q}.gguf"
+        )
     raise SystemExit(f"unknown target: {target} (gguf 변종 10종만 지원)")
 
 
 def gen_one(cli: str, model: str, prompt: str, n_predict: int, ctx: str) -> str:
     proc = subprocess.run(
-        [cli, "-m", model, "-p", prompt, "-n", str(n_predict),
-         "-c", ctx, "--temp", "0", "--top-k", "1"],
-        capture_output=True, text=True, timeout=1200,
-        stdin=subprocess.DEVNULL)  # 대화형 진입 원천 차단
+        [
+            cli,
+            "-m",
+            model,
+            "-p",
+            prompt,
+            "-n",
+            str(n_predict),
+            "-c",
+            ctx,
+            "--temp",
+            "0",
+            "--top-k",
+            "1",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=1200,
+        stdin=subprocess.DEVNULL,
+    )  # 대화형 진입 원천 차단
     if proc.returncode != 0:
         raise RuntimeError(
-            f"llama-completion rc={proc.returncode}: {(proc.stderr or '')[-300:]}")
+            f"llama-completion rc={proc.returncode}: {(proc.stderr or '')[-300:]}"
+        )
     out = proc.stdout or ""
     if out.startswith(prompt):  # 프롬프트 에코 제거 (버전 무관)
-        out = out[len(prompt):]
+        out = out[len(prompt) :]
     return out.strip()
 
 
 def main(mode: str, target: str, n: int):
-    cli = os.environ.get("LLAMACPP_CLI",
-                         f"{LLAMACPP}/build/bin/llama-completion")
+    cli = os.environ.get("LLAMACPP_CLI", f"{LLAMACPP}/build/bin/llama-completion")
     if not (os.path.isfile(cli) and os.access(cli, os.X_OK)):
         raise FileNotFoundError(
-            f"llama-completion 없음: {cli} (llama.cpp에서 cmake --build로 빌드)")
+            f"llama-completion 없음: {cli} (llama.cpp에서 cmake --build로 빌드)"
+        )
     rows = []
     with open(f"{SHARED}/datasets/gsm8k-test.jsonl", encoding="utf-8") as f:
         for line in f:
@@ -84,13 +102,13 @@ def main(mode: str, target: str, n: int):
     tmp = tmp_path(outp)
     with open(tmp, "w", encoding="utf-8") as f:
         for i, r in enumerate(rows):
-            t = gen_one(cli, model,
-                        PROMPT_NO_INPUT.format(instruction=q_of(r)), 512, ctx)
+            t = gen_one(
+                cli, model, PROMPT_NO_INPUT.format(instruction=q_of(r)), 512, ctx
+            )
             r = dict(r)
             r["kd_data"] = [t]
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
-            print(f"[{mode}][{target}] {i + 1}/{len(rows)} chars={len(t)}",
-                  flush=True)
+            print(f"[{mode}][{target}] {i + 1}/{len(rows)} chars={len(t)}", flush=True)
     commit_file(tmp, outp)
     print(f"[{mode}][{target}] n={len(rows)} model={model} -> {outp}")
 
@@ -101,5 +119,9 @@ if __name__ == "__main__":
     ap.add_argument("--target", required=True, choices=TARGETS)
     ap.add_argument("--n", type=int, default=None)
     a = ap.parse_args()
-    n = a.n if a.n is not None else int(os.environ.get("EVAL_N", "10" if a.mode == "mini" else "0"))
+    n = (
+        a.n
+        if a.n is not None
+        else int(os.environ.get("EVAL_N", "10" if a.mode == "mini" else "0"))
+    )
     main(a.mode, a.target, n)

@@ -6,6 +6,7 @@ invalid율 + acc를 타깃별 표로 출력. (BLEU는 생략 — acc가 핵심 �
   uv run 73-score.py --mode mini|full
 입력: $P5_SHARED/outputs/eval-<mode>/*.jsonl
 """
+
 import argparse
 import glob
 import json
@@ -60,9 +61,14 @@ def main(mode: str):
                     invalid += 1
                 elif gold != INVALID and abs(float(ans) - float(gold)) < 1e-4:
                     correct += 1
-        summary[name] = {"n": n, "acc": round(correct / max(n, 1), 4),
-                         "invalid": round(invalid / max(n, 1), 4)}
-        print(f"{name:8} {n:>5} {summary[name]['acc']:>7.3f} {summary[name]['invalid']:>8.3f}")
+        summary[name] = {
+            "n": n,
+            "acc": round(correct / max(n, 1), 4),
+            "invalid": round(invalid / max(n, 1), 4),
+        }
+        print(
+            f"{name:8} {n:>5} {summary[name]['acc']:>7.3f} {summary[name]['invalid']:>8.3f}"
+        )
     out = f"{SHARED}/outputs/eval-{mode}/score.json"
     tmp = tmp_path(out)
     with open(tmp, "w", encoding="utf-8") as f:

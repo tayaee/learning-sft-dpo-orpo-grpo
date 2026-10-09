@@ -5,6 +5,7 @@ HF 산출물은 Stage 8b 서빙의 입력이 된다 (local 경로로도 서빙 �
   uv run 74-upload-hf.py --mode mini|full --targets all|fft,qlora,fft-gptq,...,fft-gguf-q4_k_m [--dry-run]
 전제: hf auth login (쓰기 권한 토큰).
 """
+
 import argparse
 import os
 
@@ -24,29 +25,54 @@ TARGETS = {
     "fft-gptq": ("synthetic-fft-{m}-single-gptq", "{slug}-math-fft-gptq-{m}", "folder"),
     "fft-awq": ("synthetic-fft-{m}-single-awq", "{slug}-math-fft-awq-{m}", "folder"),
     "fft-fp8": ("synthetic-fft-{m}-single-fp8", "{slug}-math-fft-fp8-{m}", "folder"),
-    "fft-gguf": ("synthetic-fft-{m}-single-gguf/model-q8_0.gguf",
-             "{slug}-math-fft-gguf-{m}", "gguf"),
-    "qlora-gptq": ("synthetic-qlora-{m}-single-merged-gptq", "{slug}-math-qlora-gptq-{m}", "folder"),
-    "qlora-awq": ("synthetic-qlora-{m}-single-merged-awq", "{slug}-math-qlora-awq-{m}", "folder"),
-    "qlora-fp8": ("synthetic-qlora-{m}-single-merged-fp8", "{slug}-math-qlora-fp8-{m}", "folder"),
-    "qlora-gguf": ("synthetic-qlora-{m}-single-merged-gguf/model-q8_0.gguf",
-             "{slug}-math-qlora-gguf-{m}", "gguf"),
+    "fft-gguf": (
+        "synthetic-fft-{m}-single-gguf/model-q8_0.gguf",
+        "{slug}-math-fft-gguf-{m}",
+        "gguf",
+    ),
+    "qlora-gptq": (
+        "synthetic-qlora-{m}-single-merged-gptq",
+        "{slug}-math-qlora-gptq-{m}",
+        "folder",
+    ),
+    "qlora-awq": (
+        "synthetic-qlora-{m}-single-merged-awq",
+        "{slug}-math-qlora-awq-{m}",
+        "folder",
+    ),
+    "qlora-fp8": (
+        "synthetic-qlora-{m}-single-merged-fp8",
+        "{slug}-math-qlora-fp8-{m}",
+        "folder",
+    ),
+    "qlora-gguf": (
+        "synthetic-qlora-{m}-single-merged-gguf/model-q8_0.gguf",
+        "{slug}-math-qlora-gguf-{m}",
+        "gguf",
+    ),
     "gptq": ("synthetic-fft-{m}-single-gptq", "{slug}-math-fft-gptq-{m}", "folder"),
     "awq": ("synthetic-fft-{m}-single-awq", "{slug}-math-fft-awq-{m}", "folder"),
     "fp8": ("synthetic-fft-{m}-single-fp8", "{slug}-math-fft-fp8-{m}", "folder"),
-    "gguf": ("synthetic-fft-{m}-single-gguf/model-q8_0.gguf",
-             "{slug}-math-fft-gguf-{m}", "gguf"),
+    "gguf": (
+        "synthetic-fft-{m}-single-gguf/model-q8_0.gguf",
+        "{slug}-math-fft-gguf-{m}",
+        "gguf",
+    ),
 }
 
 # GGUF 5종 변종 (42/52 산출물): fft/qlora × {q8_0,q6_k,q5_k_m,q4_k_m,q3_k_m}.
 # gguf 단일파일 업로드 분기 그대로 사용 (path_in_repo=파일명).
 GQUANTS = ["q8_0", "q6_k", "q5_k_m", "q4_k_m", "q3_k_m"]
-for _base, _local in (("fft", "synthetic-fft-{m}-single"),
-                      ("qlora", "synthetic-qlora-{m}-single-merged")):
+for _base, _local in (
+    ("fft", "synthetic-fft-{m}-single"),
+    ("qlora", "synthetic-qlora-{m}-single-merged"),
+):
     for _q in GQUANTS:
         TARGETS[f"{_base}-gguf-{_q}"] = (
             f"{_local}-gguf/model-{_q}.gguf",
-            "{slug}-math-" + f"{_base}-gguf-{_q}" + "-{m}", "gguf")
+            "{slug}-math-" + f"{_base}-gguf-{_q}" + "-{m}",
+            "gguf",
+        )
 
 
 def main(mode: str, targets: str, dry_run: bool):
@@ -54,8 +80,14 @@ def main(mode: str, targets: str, dry_run: bool):
     plan = []
     for t in sel:
         local_t, repo_t, kind = TARGETS[t]
-        plan.append((t, f"{SHARED}/models/" + local_t.format(m=mode),
-                     f"{HF_ID}/" + repo_t.format(m=mode, slug=SLUG), kind))
+        plan.append(
+            (
+                t,
+                f"{SHARED}/models/" + local_t.format(m=mode),
+                f"{HF_ID}/" + repo_t.format(m=mode, slug=SLUG),
+                kind,
+            )
+        )
     for t, local, repo, kind in plan:
         print(f"[{t}] {local} -> {repo} ({kind})")
         if dry_run:
@@ -64,13 +96,17 @@ def main(mode: str, targets: str, dry_run: bool):
             print(f"  SKIP: no local output (run that stage first)")
             continue
         from huggingface_hub import HfApi
+
         api = HfApi()
         api.create_repo(repo, exist_ok=True)
         if kind == "folder":
             api.upload_folder(repo_id=repo, folder_path=local)
         else:  # gguf 단일 파일 (tokenizer는 폴더 타깃 repo에 동봉 전제)
-            api.upload_file(repo_id=repo, path_or_fileobj=local,
-                            path_in_repo=os.path.basename(local))
+            api.upload_file(
+                repo_id=repo,
+                path_or_fileobj=local,
+                path_in_repo=os.path.basename(local),
+            )
         print(f"  OK: https://huggingface.co/{repo}")
 
 

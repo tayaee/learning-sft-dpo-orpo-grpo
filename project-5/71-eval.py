@@ -6,6 +6,7 @@ GGUF 10종(fft/qlora-gguf-*)은 vLLM 미지원 → 72-eval-gguf.py(llama-complet
 
   uv run 71-eval.py --mode mini|full --target base|fft|qlora|fft-gptq|fft-awq|fft-fp8|qlora-gptq|qlora-awq|qlora-fp8 [--n N] [--tp 1]
 """
+
 import argparse
 import json
 import os
@@ -20,11 +21,18 @@ PROMPT_NO_INPUT = (
     "### Instruction:\n{instruction}\n\n### Response:"
 )
 # llmcompressor 산출물(AWQ/FP8)은 compressed-tensors 포맷으로 저장된다.
-QUANT = {"fft-gptq": "gptq", "qlora-gptq": "gptq",
-         "fft-awq": "compressed-tensors", "qlora-awq": "compressed-tensors",
-         "fft-fp8": "compressed-tensors", "qlora-fp8": "compressed-tensors",
-         # 구이름 호환: gptq/awq/fp8 = fft-gptq/awq/fp8
-         "gptq": "gptq", "awq": "compressed-tensors", "fp8": "compressed-tensors"}
+QUANT = {
+    "fft-gptq": "gptq",
+    "qlora-gptq": "gptq",
+    "fft-awq": "compressed-tensors",
+    "qlora-awq": "compressed-tensors",
+    "fft-fp8": "compressed-tensors",
+    "qlora-fp8": "compressed-tensors",
+    # 구이름 호환: gptq/awq/fp8 = fft-gptq/awq/fp8
+    "gptq": "gptq",
+    "awq": "compressed-tensors",
+    "fp8": "compressed-tensors",
+}
 
 
 def resolve(target: str, mode: str) -> str:
@@ -43,8 +51,9 @@ def resolve(target: str, mode: str) -> str:
     raise SystemExit(f"unknown target: {target} (gguf는 vLLM 미지원, llama.cpp로 평가)")
 
 
-def main(mode: str, target: str, n: int, tp: int,
-           gpu_mem_util: float, max_num_seqs: int):
+def main(
+    mode: str, target: str, n: int, tp: int, gpu_mem_util: float, max_num_seqs: int
+):
     from vllm import LLM, SamplingParams
 
     rows = []
@@ -56,9 +65,15 @@ def main(mode: str, target: str, n: int, tp: int,
     if n > 0:
         rows = rows[:n]
     model = resolve(target, mode)
-    kw = dict(model=model, tensor_parallel_size=tp, trust_remote_code=True,
-              gpu_memory_utilization=gpu_mem_util, max_num_seqs=max_num_seqs,
-              dtype="auto", enforce_eager=True)
+    kw = dict(
+        model=model,
+        tensor_parallel_size=tp,
+        trust_remote_code=True,
+        gpu_memory_utilization=gpu_mem_util,
+        max_num_seqs=max_num_seqs,
+        dtype="auto",
+        enforce_eager=True,
+    )
     if target in QUANT:
         kw["quantization"] = QUANT[target]
     llm = LLM(**kw)
@@ -86,21 +101,48 @@ def main(mode: str, target: str, n: int, tp: int,
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", default="mini", choices=["mini", "full"])
-    ap.add_argument("--target", required=True,
-                    choices=["base", "fft", "qlora",
-                             "fft-gptq", "fft-awq", "fft-fp8",
-                             "qlora-gptq", "qlora-awq", "qlora-fp8",
-                             "gptq", "awq", "fp8"])
+    ap.add_argument(
+        "--target",
+        required=True,
+        choices=[
+            "base",
+            "fft",
+            "qlora",
+            "fft-gptq",
+            "fft-awq",
+            "fft-fp8",
+            "qlora-gptq",
+            "qlora-awq",
+            "qlora-fp8",
+            "gptq",
+            "awq",
+            "fp8",
+        ],
+    )
     ap.add_argument("--n", type=int, default=None)
     ap.add_argument("--tp", type=int, default=int(os.environ.get("TP", "1")))
-    ap.add_argument("--gpu-mem-util", type=float,
-                    default=float(os.environ.get("VLLM_GPU_MEM_UTIL", "0.8")),
-                    help="vLLM gpu_memory_utilization (기본 0.8: DGX Spark 통합메모리에서 "
-                         "OS/Xorg 점유분을 피하려고 0.9에서 낮춤. 22-teacher와 동일)")
-    ap.add_argument("--max-num-seqs", type=int, default=None,
-                    help="vLLM 동시 처리 시퀀스 수 (기본 8: VLLM_MAX_NUM_SEQS로 오버라이드 가능)")
+    ap.add_argument(
+        "--gpu-mem-util",
+        type=float,
+        default=float(os.environ.get("VLLM_GPU_MEM_UTIL", "0.8")),
+        help="vLLM gpu_memory_utilization (기본 0.8: DGX Spark 통합메모리에서 "
+        "OS/Xorg 점유분을 피하려고 0.9에서 낮춤. 22-teacher와 동일)",
+    )
+    ap.add_argument(
+        "--max-num-seqs",
+        type=int,
+        default=None,
+        help="vLLM 동시 처리 시퀀스 수 (기본 8: VLLM_MAX_NUM_SEQS로 오버라이드 가능)",
+    )
     a = ap.parse_args()
-    n = a.n if a.n is not None else int(os.environ.get("EVAL_N", "10" if a.mode == "mini" else "0"))
-    max_num_seqs = (a.max_num_seqs if a.max_num_seqs is not None
-                    else int(os.environ.get("VLLM_MAX_NUM_SEQS", "8")))
+    n = (
+        a.n
+        if a.n is not None
+        else int(os.environ.get("EVAL_N", "10" if a.mode == "mini" else "0"))
+    )
+    max_num_seqs = (
+        a.max_num_seqs
+        if a.max_num_seqs is not None
+        else int(os.environ.get("VLLM_MAX_NUM_SEQS", "8"))
+    )
     main(a.mode, a.target, n, a.tp, a.gpu_mem_util, max_num_seqs)

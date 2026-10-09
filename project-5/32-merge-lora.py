@@ -6,6 +6,7 @@ base는 학습 때와 동일한 모델(unsloth 미러/smoke, meta-llama/full)을
 
   uv run 32-merge-lora.py --mode mini|full [--base <model-id>]
 """
+
 import argparse
 import os
 
@@ -20,6 +21,7 @@ PAD_TOKEN = "[PAD]"
 def main(mode: str, base: str):
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
+
     try:
         from transformers import BloomPreTrainedModel  # noqa
     except ImportError:  # peft<=0.19 + transformers 5.x 호환 shim (10번과 동일)
@@ -34,6 +36,7 @@ def main(mode: str, base: str):
     # 개명됨. isinstance 체크용이므로 alias로 충분 (fp 레이어는 매칭 안 됨).
     try:
         from gptqmodel.nn_modules.qlinear import gemm_awq as _ga
+
         if not hasattr(_ga, "AwqGEMMQuantLinear") and hasattr(_ga, "AwqGEMMLinear"):
             _ga.AwqGEMMQuantLinear = _ga.AwqGEMMLinear
     except ImportError:
