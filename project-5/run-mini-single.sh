@@ -11,9 +11,8 @@
 # 스텝명: setup baseline syndata fft qlora merge quant ppl eval (기본 STEPS=all)
 # 스텝별 소요시간: stdout + logs/timing-mini-single.log
 set -euo pipefail
-MODE=mini; STRAT=single
-export INFRA=dgx-spark-1x  # single은 항상 1x (외부 INFRA export가 있어도 무시)
-export TP=1  # single은 노드 단독 1GPU (외부 TP export가 있어도 무시, 1노드=1GPU 하드웨어)
+# 프리셋은 run-mini-single.inc에 (수동 실행: source ./run-mini-single.inc 후 단계 스크립트 인자 없이 실행)
+source "$(dirname "$0")/run-mini-single.inc"
 ROOT="$(cd "$(dirname "$0")" && pwd)"; cd "$ROOT"
 source "$ROOT/config/common.env" "$MODE"
 
