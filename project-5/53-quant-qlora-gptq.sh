@@ -8,7 +8,9 @@ CALIB="${2:-$CALIB_N}"
 SRC="$P5_MODELS/synthetic-qlora-$MODE-single-merged"
 OUT="$P5_MODELS/synthetic-qlora-$MODE-single-merged-gptq"
 p5_require "$SRC/config.json" "$CALIB_FILE"
-if [ -f "$OUT/config.json" ] && p5_fresh "$OUT" "$SRC" "$CALIB_FILE"; then
+# 마커 파일끼리 비교: 양자화 save()는 기존 파일을 제자리 덮어쓰기해서
+# 디렉토리 mtime이 안 바뀌므로, 디렉토리끼리 비교하면 항상 stale이 된다.
+if [ -f "$OUT/config.json" ] && p5_fresh "$OUT/config.json" "$SRC/config.json" "$CALIB_FILE"; then
   p5_log "skip: fresh $OUT (FORCE=1 to rebuild)"
   echo ---- result ----
   (set -x; ls -l "$OUT")
