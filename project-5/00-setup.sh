@@ -56,4 +56,4 @@ nvidia-smi -L 2>/dev/null || echo "-> no nvidia-smi, check on DGX OS"
 p5_log "OK. shared=$P5_SHARED (compare ls on spark1/spark2)"
 
 echo ---- result ----
-ls -lh "$P5_DATASETS/"
+(set -x; ls -lh "$P5_DATASETS/")

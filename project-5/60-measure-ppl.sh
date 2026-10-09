@@ -7,9 +7,20 @@ set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-mini}"
 N="${PPL_N:-32}"
 TARGETS="${2:-all}"
+SUMMARY="$P5_OUTPUTS/ppl-$MODE/summary.json"
+if [ "${FORCE:-0}" != 1 ] && [ -f "$SUMMARY" ]; then
+  # 모델 디렉토리 중 SUMMARY보다新しい 것이 하나도 없으면 스킵
+  if [ -z "$(find "$P5_MODELS" -maxdepth 1 -newer "$SUMMARY" 2>/dev/null | head -1)" ]; then
+    p5_log "skip: fresh $SUMMARY (FORCE=1 to rebuild)"
+    echo ---- result ----
+    (set -x; ls -l "$P5_OUTPUTS/ppl-$MODE/")
+    (set -x; cat "$SUMMARY")
+    exit 0
+  fi
+fi
 p5_log "ppl_n=$N targets=$TARGETS"
 (set -x; uv run "$P5_ROOT/60-measure-ppl.py" --mode "$MODE" --n "$N" --targets "$TARGETS")
 
 echo ---- result ----
-ls -l "$P5_OUTPUTS/ppl-$MODE/"
-cat "$P5_OUTPUTS/ppl-$MODE/summary.json"
+(set -x; ls -l "$P5_OUTPUTS/ppl-$MODE/")
+(set -x; cat "$P5_OUTPUTS/ppl-$MODE/summary.json")

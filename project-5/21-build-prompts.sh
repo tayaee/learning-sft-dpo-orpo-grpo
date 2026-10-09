@@ -5,8 +5,17 @@ set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-mini}"
 ARGS=()
 [ "${PUSH:-0}" = 1 ] && ARGS+=(--push)
+IN="$P5_DATASETS/candidates-$MODE.parquet"
+OUT="$P5_DATASETS/prompts-$MODE.parquet"
+p5_require "$IN"
+if [ "${PUSH:-0}" != 1 ] && p5_fresh "$OUT" "$IN"; then
+  p5_log "skip: fresh $OUT (FORCE=1 to rebuild)"
+  echo ---- result ----
+  (set -x; ls -lh "$OUT")
+  exit 0
+fi
 p5_log "push=${PUSH:-0}"
 uv run "$P5_ROOT/21-build-prompts.py" --mode "$MODE" "${ARGS[@]}"
 
 echo ---- result ----
-ls -lh "$P5_DATASETS/prompts-$MODE.parquet"
+(set -x; ls -lh "$P5_DATASETS/prompts-$MODE.parquet")

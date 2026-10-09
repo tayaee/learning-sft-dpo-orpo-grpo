@@ -7,4 +7,4 @@ p5_log "evaldir=$P5_OUTPUTS/eval-$MODE"
 uv run "$P5_ROOT/72-score.py" --mode "$MODE"
 
 echo ---- result ----
-ls -l "$P5_OUTPUTS/eval-$MODE/"
+(set -x; ls -l "$P5_OUTPUTS/eval-$MODE/")

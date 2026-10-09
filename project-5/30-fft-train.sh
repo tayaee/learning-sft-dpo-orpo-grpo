@@ -6,6 +6,14 @@ source "$(dirname "$0")/config/common.env" "${1:-mini}"
 p5_resolve_strat "${2:-single}"
 
 OUT="$P5_MODELS/synthetic-fft-$MODE-$STRAT"
+IN="$P5_DATASETS/synthetic-$MODE.jsonl"
+p5_require "$IN"
+if [ -f "$OUT/config.json" ] && p5_fresh "$OUT" "$IN"; then
+  p5_log "skip: fresh $OUT (FORCE=1 to rebuild)"
+  echo ---- result ----
+  (set -x; ls -l "$OUT")
+  exit 0
+fi
 mkdir -p "$OUT"  # 출력 부모 사전 생성 (공유FS 동시 makedirs race 회피)
 p5_log "train=$P5_DATASETS/synthetic-$MODE.jsonl out=$OUT strat=$STRAT world=$WORLD accum=$ACCUM"
 
@@ -16,4 +24,4 @@ p5_log "train=$P5_DATASETS/synthetic-$MODE.jsonl out=$OUT strat=$STRAT world=$WO
   --max_rows "$GSM_ROWS")
 
 echo ---- result ----
-ls -l "$OUT"
+(set -x; ls -l "$OUT")
