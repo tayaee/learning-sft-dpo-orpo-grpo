@@ -334,11 +334,31 @@ def main():
     if _dcp_2node:
         _save_fsdp_dcp(trainer.model, model.config, tok, a.out, dtype)
     else:
-        tmp = clean_tmp(tmp_path(a.out))
-        trainer.save_model(tmp)
-        tok.save_pretrained(tmp)
-        commit_dir(tmp, a.out)
-    print(f"saved -> {a.out}")
+        # 분산 저장 레이스 방지: 공유FS의 <out>.tmp에 양 rank가 동시 쓰기+rmtree하면
+        # ENOTEMPTY 등으로 한쪽이 죽는다 (DCP 경로는 이미 rank0-only). 저장은 rank0만,
+        # 나머지는 barrier로 대기 후 함께 종료 (elastic agent 조기 종료 오판 방지).
+        import torch.distributed as dist
+
+        if dist.is_available() and dist.is_initialized():
+            _rank = dist.get_rank()
+        else:
+            _rank = 0
+        if _rank == 0:
+            tmp = clean_tmp(tmp_path(a.out))
+            trainer.save_model(tmp)
+            # DDP 래핑 시 trainer.model이 PreTrainedModel이 아니라 save_model이
+            # config.json을 생략한다 (가중치는 저장됨) → .module 언랩해 직접 보완.
+            # 없으면 vLLM 로드·p5_fresh가 깨진다.
+            _unwrapped = getattr(trainer.model, "module", trainer.model)
+            if _unwrapped is not trainer.model:
+                _unwrapped.config.save_pretrained(tmp)
+            tok.save_pretrained(tmp)
+            commit_dir(tmp, a.out)
+            print(f"saved -> {a.out}")
+        else:
+            print(f"rank {_rank} done (model saved by rank 0)")
+        if dist.is_available() and dist.is_initialized():
+            dist.barrier()
 
 
 if __name__ == "__main__":
