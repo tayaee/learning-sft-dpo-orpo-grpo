@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """23-postprocess.py — Stage 2c. 생성 CSV 후처리 → SFT/캘리브용 JSONL.
 원본: data_check.ipynb (Q/A 마커 split, 케이스별 예외, 패턴 제거+rstrip).
 규칙:

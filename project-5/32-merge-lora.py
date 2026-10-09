@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """32-merge-lora.py — Stage 3c. QLoRA 어댑터 병합 (31 직후, 5* PTQ·7* 평가 전 필수).
 원본 tried: base 로드 → 특수토큰(<mask> 등) 동일 추가 → resize_token_embeddings
 → merge_and_unload → 저장. resize 생략 시 size-mismatch 에러.

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """81-infer-examples.py — Stage 8c. 서빙 중인 모델에 추론 예제 요청.
 80-serve-vllm.sh가 띄운 OpenAI-호환 엔드포인트로 질의한다.
 예제는 벤더링된 gsm8k-test.jsonl 앞 N개 + 한국어 수학 1문제로,

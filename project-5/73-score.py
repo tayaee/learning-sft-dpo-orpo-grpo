@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """73-score.py — Stage 7c. '#### <숫자>' 추출 채점 (원본 get_gsm8k_res.py).
 invalid율 + acc를 타깃별 표로 출력. (BLEU는 생략 — acc가 핵심 지표.)
 표 출력 후 eval-<mode>/score.json 아티팩트 저장 (73-score.sh fresh 스킵용).

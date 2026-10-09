@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """10-train-entry.py — Stage 1/3 공용 학습 진입점 (TRL SFTTrainer).
 
 원본: main.py + trainer436 + train_basic/FFT/QLoRA.sh → 2026 스택으로 이식.
@@ -103,7 +102,6 @@ def _save_fsdp_dcp(fsdp_model, model_cfg, tok, out_dir, dtype):
     (수 바이트)뿐이며, 노드 속도 차는 barrier가 흡수한다.
     shard 파일은 out_dir/shards/ 에 남긴다 (재조립·디버그용).
     """
-    import torch
     import torch.distributed as dist
     from torch.distributed.checkpoint import FileSystemReader, FileSystemWriter
     from torch.distributed.checkpoint import load as dcp_load
@@ -140,7 +138,7 @@ def _save_fsdp_dcp(fsdp_model, model_cfg, tok, out_dir, dtype):
             full, options=StateDictOptions(full_state_dict=True, cpu_offload=True)
         )
         dcp_load(full_sd, storage_reader=FileSystemReader(shard_dir), no_dist=True)
-        missing, unexpected = set_model_state_dict(
+        missing, _ = set_model_state_dict(
             full, full_sd, options=StateDictOptions(full_state_dict=True)
         )
         assert not missing, f"DCP consolidate missing keys: {sorted(missing)[:5]}"

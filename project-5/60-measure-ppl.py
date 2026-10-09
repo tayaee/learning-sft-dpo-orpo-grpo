@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """60-measure-ppl.py — Stage 6. 전 타깃 PPL 측정 + Accept/Conditional/Discard 판정.
 대상 19종: base, fft, qlora(merged) + HF 양자화 6종 + GGUF 10종(fft/qlora × 5).
 GGUF는 transformers 대신 llama-perplexity로 측정 (미빌드 시 해당 타깃만 SKIP).

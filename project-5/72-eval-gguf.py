@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """72-eval-gguf.py — Stage 7b-gguf. llama-completion greedy GSM8K 추론 (GGUF 10종).
 71-eval.py(vLLM)는 GGUF 미지원 → llama.cpp로 별도 평가한다.
 조건 동일 강제: PROMPT_NO_INPUT 포맷, greedy(temp 0), max 512, gsm8k-test 앞 N개.

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """05-prep-calibration.py — AWQ/GPTQ/FP8 캘리브레이션용 GSM8K 슬라이스 생성.
 gsm8k-train.jsonl → seed 고정 shuffle → 앞 N개 → gsm8k-calibration-<N>.jsonl.
 순서 편향을 피하려고 shuffle 필수. train에서만 자르고 test는 절대 제외.
@@ -7,7 +6,6 @@ gsm8k-train.jsonl → seed 고정 shuffle → 앞 N개 → gsm8k-calibration-<N>
 """
 
 import argparse
-import json
 import os
 import random
 
@@ -32,8 +30,7 @@ def main(n: int, seed: int):
     rng.shuffle(idx)
     tmp = tmp_path(out)
     with open(tmp, "w", encoding="utf-8") as f:
-        for i in idx[:n]:
-            f.write(rows[i] + "\n")
+        f.writelines(rows[i] + "\n" for i in idx[:n])
     commit_file(tmp, out)
     print(f"train={len(rows)} seed={seed} n={n} -> {out}")
 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """21-build-prompts.py — Stage 2b. 후보 2개씩 template에 채워 프롬프트 생성.
 원본: template.txt({dg_instruct}/{dg_output}) + notebook 후반부
 (강의는 나중에 instruction+input 합침 → dg_instruct에 input 포함).

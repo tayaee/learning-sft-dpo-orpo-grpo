@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """43-quant-fft-gptq.py — Stage 4d. FFT → GPTQ 4bit-g128 (gptqmodel 7.x).
 원본: quantizaton_math.ipynb 전반 (auto-gptq) → GPTQModel.load/quantize/save.
 캘리브: gsm8k-calibration-256.jsonl (05-prep-calibration.sh 생성), 학습 프롬프트 템플릿 적용.

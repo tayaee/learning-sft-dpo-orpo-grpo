@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """22-generate.py — teacher로 합성 생성 + invalid 재생성 루프.
 원본: data_gen_vllm.py (apply_chat_template, 마커 3종 검사).
 마커 미포함 행은 invalid로 분리해 재생성한다 (valid가 안정될 때까지, 최대 3회).
@@ -28,9 +27,8 @@ def main(
     max_num_seqs: int,
 ):
     import pandas as pd
-    from tqdm import tqdm
-    from vllm import LLM, SamplingParams
     from transformers import AutoTokenizer
+    from vllm import LLM, SamplingParams
 
     df = pd.read_parquet(f"{SHARED}/datasets/prompts-{mode}.parquet").head(n)
     df = df.reset_index(drop=True)

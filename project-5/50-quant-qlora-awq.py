@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """50-quant-qlora-awq.py — Stage 5a. QLoRA-merged → AWQ 4bit (llmcompressor oneshot + AWQModifier).
 FFT용 40-quant-fft-awq.py와 동일 플로우, 입력만 merged.
 입력: synthetic-qlora-<mode>-single-merged → 출력: synthetic-qlora-<mode>-single-merged-awq
@@ -18,9 +17,9 @@ SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
 
 def main(mode: str, calib: int, calib_file: str | None):
     from datasets import Dataset
-    from transformers import AutoTokenizer
     from llmcompressor import oneshot
     from llmcompressor.modifiers.awq import AWQModifier
+    from transformers import AutoTokenizer
 
     src = f"{SHARED}/models/synthetic-qlora-{mode}-single-merged"
     out = f"{SHARED}/models/synthetic-qlora-{mode}-single-merged-awq"

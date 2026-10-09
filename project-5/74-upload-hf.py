@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """74-upload-hf.py — Stage 7a. 로컬 산출물을 HF Hub(tayaee/*)에 업로드.
 HF 산출물은 Stage 8b 서빙의 입력이 된다 (local 경로로도 서빙 가능).
 
@@ -93,7 +92,7 @@ def main(mode: str, targets: str, dry_run: bool):
         if dry_run:
             continue
         if not os.path.exists(local):
-            print(f"  SKIP: no local output (run that stage first)")
+            print("  SKIP: no local output (run that stage first)")
             continue
         from huggingface_hub import HfApi
 

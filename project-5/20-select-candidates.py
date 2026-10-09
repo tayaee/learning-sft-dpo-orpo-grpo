@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """20-select-candidates.py — Stage 2a. Alpaca에서 GSM8K 유사 후보 선별.
 원본: datagen.ipynb 전반 (all-mpnet-base-v2, 500개 배치, cosine, top1000→100).
 

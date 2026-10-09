@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """71-eval.py — Stage 7b. vLLM greedy GSM8K 추론 (원본 gen_math_greedy.py).
 prompt_no_input 포맷, temp 0, max 512. 타깃별 quant flag 적용.
 출력: $P5_SHARED/outputs/eval-<mode>/<target>.jsonl (kd_data 포함).

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """distributed/ray-10-baseline.py — L2. Ray Train으로 Stage 1 동일 학습을 분산 실행.
 workers = 1 (1x) | 2 (2x). TorchTrainer가 10-train-entry.py의 train_fn을 감싼다.
 

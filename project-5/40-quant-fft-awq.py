@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """40-quant-fft-awq.py — Stage 4a. FFT → AWQ 4bit (llmcompressor oneshot + AWQModifier).
 원본: quantizaton_math.ipynb 후반 (autoawq) → llmcompressor로 교체.
 입력: synthetic-fft-<mode>-single. 출력에 tokenizer 동봉 필수.
@@ -19,9 +18,9 @@ SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
 
 def main(mode: str, calib: int, calib_file: str | None):
     from datasets import Dataset
-    from transformers import AutoTokenizer
     from llmcompressor import oneshot
     from llmcompressor.modifiers.awq import AWQModifier
+    from transformers import AutoTokenizer
 
     src = f"{SHARED}/models/synthetic-fft-{mode}-single"
     out = f"{SHARED}/models/synthetic-fft-{mode}-single-awq"

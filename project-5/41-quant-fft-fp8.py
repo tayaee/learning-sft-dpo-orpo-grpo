@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """41-quant-fft-fp8.py — Stage 4b. FFT → FP8 static quant (llmcompressor oneshot).
 Blackwell 네이티브. 평가는 vLLM quantization='fp8' 경로 (71-eval.sh).
 캘리브레이션: gsm8k-calibration-256.jsonl (05-prep-calibration.sh 생성).
@@ -17,9 +16,9 @@ SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
 
 def main(mode: str, calib: int, calib_file: str | None):
     from datasets import Dataset
-    from transformers import AutoTokenizer
     from llmcompressor import oneshot
     from llmcompressor.modifiers.quantization import QuantizationModifier
+    from transformers import AutoTokenizer
 
     src = f"{SHARED}/models/synthetic-fft-{mode}-single"
     out = f"{SHARED}/models/synthetic-fft-{mode}-single-fp8"
