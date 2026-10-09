@@ -58,14 +58,14 @@
 | `./30-fft-train.sh mini single` | |
 | # 3. QLoRA | |
 | `./31-qlora-train.sh mini single` | |
-| # 4. GGUF Q8_0 | |
-| `./40-quant-gguf.sh mini` | |
-| # 4. GPTQ | |
-| `uv run 41-quant-gptq.py --mode mini` | |
 | # 4. AWQ | |
-| `uv run 42-quant-awq.py --mode mini` | |
+| `uv run 40-quant-awq.py --mode mini` | |
 | # 4. FP8 | |
-| `uv run 43-quant-fp8.py --mode mini` | |
+| `uv run 41-quant-fp8.py --mode mini` | |
+| # 4. GGUF Q8_0 | |
+| `./42-quant-gguf.sh mini` | |
+| # 4. GPTQ | |
+| `uv run 43-quant-gptq.py --mode mini` | |
 | # 5. LoRA 병합 | |
 | `uv run 50-merge-lora.py --mode mini` | |
 | # 5. 평가 | |
@@ -99,14 +99,14 @@
 | `./30-fft-train.sh full single` | |
 | # 3. QLoRA | |
 | `./31-qlora-train.sh full single` | |
-| # 4. GGUF Q8_0 | |
-| `./40-quant-gguf.sh full` | |
-| # 4. GPTQ | |
-| `uv run 41-quant-gptq.py --mode full` | |
 | # 4. AWQ | |
-| `uv run 42-quant-awq.py --mode full` | |
+| `uv run 40-quant-awq.py --mode full` | |
 | # 4. FP8 | |
-| `uv run 43-quant-fp8.py --mode full` | |
+| `uv run 41-quant-fp8.py --mode full` | |
+| # 4. GGUF Q8_0 | |
+| `./42-quant-gguf.sh full` | |
+| # 4. GPTQ | |
+| `uv run 43-quant-gptq.py --mode full` | |
 | # 5. LoRA 병합 | |
 | `uv run 50-merge-lora.py --mode full` | |
 | # 5. 평가 | |
@@ -138,14 +138,14 @@
 | `INFRA=dgx-spark-2x ./30-fft-train.sh full ddp` | `INFRA=dgx-spark-2x ./30-fft-train.sh full ddp` |
 | # 3. QLoRA DDP (rank 0 먼저 기동) | # 3. QLoRA DDP (rank 0 기동 후 실행) |
 | `INFRA=dgx-spark-2x ./31-qlora-train.sh full ddp` | `INFRA=dgx-spark-2x ./31-qlora-train.sh full ddp` |
-| # 4. GGUF Q8_0 (spark1 단독) | # spark2: 대기 |
-| `./40-quant-gguf.sh full` | |
-| # 4. GPTQ (spark1 단독) | # spark2: 대기 |
-| `uv run 41-quant-gptq.py --mode full` | |
 | # 4. AWQ (spark1 단독) | # spark2: 대기 |
-| `uv run 42-quant-awq.py --mode full` | |
+| `uv run 40-quant-awq.py --mode full` | |
 | # 4. FP8 (spark1 단독) | # spark2: 대기 |
-| `uv run 43-quant-fp8.py --mode full` | |
+| `uv run 41-quant-fp8.py --mode full` | |
+| # 4. GGUF Q8_0 (spark1 단독) | # spark2: 대기 |
+| `./42-quant-gguf.sh full` | |
+| # 4. GPTQ (spark1 단독) | # spark2: 대기 |
+| `uv run 43-quant-gptq.py --mode full` | |
 | # 5. LoRA 병합 (spark1 단독) | # spark2: 대기 |
 | `uv run 50-merge-lora.py --mode full` | |
 | # 5. 평가 (spark1 단독) | # spark2: 대기 |
@@ -177,14 +177,14 @@
 | `INFRA=dgx-spark-2x ./30-fft-train.sh full fsdp` | `INFRA=dgx-spark-2x ./30-fft-train.sh full fsdp` |
 | # 3. QLoRA FSDP (rank 0 먼저 기동, 학습용 — 강의는 비권장) | # 3. QLoRA FSDP (rank 0 기동 후 실행, 학습용) |
 | `INFRA=dgx-spark-2x ./31-qlora-train.sh full fsdp` | `INFRA=dgx-spark-2x ./31-qlora-train.sh full fsdp` |
-| # 4. GGUF Q8_0 (spark1 단독) | # spark2: 대기 |
-| `./40-quant-gguf.sh full` | |
-| # 4. GPTQ (spark1 단독) | # spark2: 대기 |
-| `uv run 41-quant-gptq.py --mode full` | |
 | # 4. AWQ (spark1 단독) | # spark2: 대기 |
-| `uv run 42-quant-awq.py --mode full` | |
+| `uv run 40-quant-awq.py --mode full` | |
 | # 4. FP8 (spark1 단독) | # spark2: 대기 |
-| `uv run 43-quant-fp8.py --mode full` | |
+| `uv run 41-quant-fp8.py --mode full` | |
+| # 4. GGUF Q8_0 (spark1 단독) | # spark2: 대기 |
+| `./42-quant-gguf.sh full` | |
+| # 4. GPTQ (spark1 단독) | # spark2: 대기 |
+| `uv run 43-quant-gptq.py --mode full` | |
 | # 5. LoRA 병합 (spark1 단독) | # spark2: 대기 |
 | `uv run 50-merge-lora.py --mode full` | |
 | # 5. 평가 (spark1 단독) | # spark2: 대기 |

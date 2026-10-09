@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""52-quant-qlora-awq.py — Stage 5c. QLoRA-merged → AWQ 4bit (llmcompressor oneshot + AWQModifier).
-FFT용 42-quant-fft-awq.py와 동일 플로우, 입력만 merged.
-입력: synthetic-qlora-<mode>-single-merged → 출력: synthetic-qlora-<mode>-single-merged-awq
+"""40-quant-fft-awq.py — Stage 4a. FFT → AWQ 4bit (llmcompressor oneshot + AWQModifier).
+원본: quantizaton_math.ipynb 후반 (autoawq) → llmcompressor로 교체.
+입력: synthetic-fft-<mode>-single. 출력에 tokenizer 동봉 필수.
 
-  uv run 52-quant-qlora-awq.py --mode mini|full [--calib N]
+  uv run 40-quant-fft-awq.py --mode mini|full [--calib N]
 """
 import argparse
 import json
@@ -30,8 +30,8 @@ def main(mode: str, calib: int):
     from llmcompressor import oneshot
     from llmcompressor.modifiers.awq import AWQModifier
 
-    src = f"{SHARED}/models/synthetic-qlora-{mode}-single-merged"
-    out = f"{SHARED}/models/synthetic-qlora-{mode}-single-merged-awq"
+    src = f"{SHARED}/models/synthetic-fft-{mode}-single"
+    out = f"{SHARED}/models/synthetic-fft-{mode}-single-awq"
     texts = []
     with open(f"{SHARED}/datasets/synthetic-{mode}.jsonl", encoding="utf-8") as f:
         for line in f:

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""43-quant-fft-fp8.py — Stage 4d. FFT → FP8 static quant (llmcompressor oneshot).
-Blackwell 네이티브. 평가는 vLLM quantization='fp8' 경로 (71-eval.sh).
+"""50-quant-qlora-awq.py — Stage 5a. QLoRA-merged → AWQ 4bit (llmcompressor oneshot + AWQModifier).
+FFT용 40-quant-fft-awq.py와 동일 플로우, 입력만 merged.
+입력: synthetic-qlora-<mode>-single-merged → 출력: synthetic-qlora-<mode>-single-merged-awq
 
-  uv run 43-quant-fft-fp8.py --mode mini|full [--calib N]
+  uv run 50-quant-qlora-awq.py --mode mini|full [--calib N]
 """
 import argparse
 import json
@@ -27,10 +28,10 @@ def main(mode: str, calib: int):
     from datasets import Dataset
     from transformers import AutoTokenizer
     from llmcompressor import oneshot
-    from llmcompressor.modifiers.quantization import QuantizationModifier
+    from llmcompressor.modifiers.awq import AWQModifier
 
-    src = f"{SHARED}/models/synthetic-fft-{mode}-single"
-    out = f"{SHARED}/models/synthetic-fft-{mode}-single-fp8"
+    src = f"{SHARED}/models/synthetic-qlora-{mode}-single-merged"
+    out = f"{SHARED}/models/synthetic-qlora-{mode}-single-merged-awq"
     texts = []
     with open(f"{SHARED}/datasets/synthetic-{mode}.jsonl", encoding="utf-8") as f:
         for line in f:
@@ -39,11 +40,10 @@ def main(mode: str, calib: int):
                 r = json.loads(line)
                 texts.append(PROMPT_TEMPLATE.format(instruction=first(r["source"]),
                                                     response=first(r["target"])))
-            if len(texts) >= max(calib, 64):
+            if len(texts) >= max(calib, 10):
                 break
     ds = Dataset.from_list([{"text": t} for t in texts])
-    recipe = QuantizationModifier(ignore=["lm_head"], scheme="FP8",
-                                  targets=["Linear"])
+    recipe = AWQModifier(ignore=["lm_head"], scheme="W4A16", targets=["Linear"])
     oneshot(model=src, dataset=ds, recipe=recipe, output_dir=out,
             max_seq_length=1024, num_calibration_samples=calib)
     AutoTokenizer.from_pretrained(src).save_pretrained(out)
@@ -55,5 +55,5 @@ if __name__ == "__main__":
     ap.add_argument("--mode", default="mini", choices=["mini", "full"])
     ap.add_argument("--calib", type=int, default=None)
     a = ap.parse_args()
-    default_calib = int(os.environ.get("CALIB_N", "2" if a.mode == "mini" else "64"))
+    default_calib = int(os.environ.get("CALIB_N", "2" if a.mode == "mini" else "10"))
     main(a.mode, a.calib or default_calib)

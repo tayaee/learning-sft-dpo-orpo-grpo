@@ -7,10 +7,10 @@ uv run 21-build-prompts.py --mode mini
 uv run 23-postprocess.py --mode mini
 ./30-fft-train.sh mini single
 ./31-qlora-train.sh mini single
-./40-quant-gguf.sh mini
-uv run 41-quant-gptq.py --mode mini
-uv run 42-quant-awq.py --mode mini
-uv run 43-quant-fp8.py --mode mini
+uv run 40-quant-awq.py --mode mini
+uv run 41-quant-fp8.py --mode mini
+./42-quant-gguf.sh mini
+uv run 43-quant-gptq.py --mode mini
 uv run 50-merge-lora.py --mode mini
 ./51-eval.sh mini
 uv run 52-score.py --mode mini

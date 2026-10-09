@@ -61,18 +61,18 @@ want_step qlora && p5_step "31-qlora-$STRAT" ./31-qlora-train.sh "$MODE" "$STRAT
 want_step merge && p5_step "32-merge-lora" ./32-merge-lora.sh "$MODE"
 
 if want_step quant; then
+  p5_step "40-quant-fft-awq" ./40-quant-fft-awq.sh "$MODE"
+  p5_step "41-quant-fft-fp8" ./41-quant-fft-fp8.sh "$MODE"
+  p5_step "43-quant-fft-gptq" ./43-quant-fft-gptq.sh "$MODE"
+  p5_step "50-quant-qlora-awq" ./50-quant-qlora-awq.sh "$MODE"
+  p5_step "51-quant-qlora-fp8" ./51-quant-qlora-fp8.sh "$MODE"
+  p5_step "53-quant-qlora-gptq" ./53-quant-qlora-gptq.sh "$MODE"
   if [ -x "${LLAMACPP:-$HOME/git/llama.cpp}/build/bin/llama-quantize" ]; then
-    p5_step "40-quant-fft-gguf" ./40-quant-fft-gguf.sh "$MODE"
-    p5_step "50-quant-qlora-gguf" ./50-quant-qlora-gguf.sh "$MODE"
+    p5_step "42-quant-fft-gguf" ./42-quant-fft-gguf.sh "$MODE"
+    p5_step "52-quant-qlora-gguf" ./52-quant-qlora-gguf.sh "$MODE"
   else
-    p5_log "WARN: no llama-quantize, GGUF SKIP (run 40/50 after build)"
+    p5_log "WARN: no llama-quantize, GGUF SKIP (run 42/52 after build)"
   fi
-  p5_step "41-quant-fft-gptq" ./41-quant-fft-gptq.sh "$MODE"
-  p5_step "42-quant-fft-awq" ./42-quant-fft-awq.sh "$MODE"
-  p5_step "43-quant-fft-fp8" ./43-quant-fft-fp8.sh "$MODE"
-  p5_step "51-quant-qlora-gptq" ./51-quant-qlora-gptq.sh "$MODE"
-  p5_step "52-quant-qlora-awq" ./52-quant-qlora-awq.sh "$MODE"
-  p5_step "53-quant-qlora-fp8" ./53-quant-qlora-fp8.sh "$MODE"
 fi
 
 want_step ppl && p5_step "60-measure-ppl" ./60-measure-ppl.sh "$MODE"

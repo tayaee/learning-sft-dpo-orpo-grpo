@@ -7,10 +7,10 @@ uv run 21-build-prompts.py --mode full
 uv run 23-postprocess.py --mode full
 ./30-fft-train.sh full single
 ./31-qlora-train.sh full single
-./40-quant-gguf.sh full
-uv run 41-quant-gptq.py --mode full
-uv run 42-quant-awq.py --mode full
-uv run 43-quant-fp8.py --mode full
+uv run 40-quant-awq.py --mode full
+uv run 41-quant-fp8.py --mode full
+./42-quant-gguf.sh full
+uv run 43-quant-gptq.py --mode full
 uv run 50-merge-lora.py --mode full
 ./51-eval.sh full
 uv run 52-score.py --mode full

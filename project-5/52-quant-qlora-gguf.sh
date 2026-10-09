@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# 50-quant-qlora-gguf.sh [mini|full] — Stage 5a. QLoRA-merged → GGUF F16 → Q8_0.
+# 52-quant-qlora-gguf.sh [mini|full] — Stage 5c. QLoRA-merged → GGUF F16 → Q8_0.
 # 입력: 32-merge-lora.py 결과 ($P5_MODELS/synthetic-qlora-<mode>-single-merged).
 # 출력: $P5_MODELS/synthetic-qlora-<mode>-single-merged-gguf/model-q8_0.gguf
-# FFT용 40-quant-fft-gguf.sh와 동일 플로우, 입력만 merged.
+# FFT용 42-quant-fft-gguf.sh와 동일 플로우, 입력만 merged.
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-mini}"
 

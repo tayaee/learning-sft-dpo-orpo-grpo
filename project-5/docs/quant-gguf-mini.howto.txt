@@ -5,4 +5,4 @@ uv run 21-build-prompts.py --mode mini
 ./22-generate.sh mini
 uv run 23-postprocess.py --mode mini
 ./30-fft-train.sh mini single
-./40-quant-gguf.sh mini
+./42-quant-gguf.sh mini

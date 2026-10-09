@@ -5,7 +5,7 @@
   //   22-generate.sh       → uv run 22-generate.py
   //   51-eval.sh           → uv run 51-eval.py (target 루프)
   //   53-upload-hf.sh      → uv run 53-upload-hf.py
-  //   40-quant-gguf.sh     → $VENV_BIN/python $LLAMACPP/convert_hf_to_gguf.py (외부 파일)
+  //   42-quant-gguf.sh     → $VENV_BIN/python $LLAMACPP/convert_hf_to_gguf.py (외부 파일)
   //   60-serve-vllm.sh     → $VLLM_BIN serve (vllm.entrypoints.openai.api_server 모듈)
   //   00-setup.sh          → python -c 인라인 한 줄 (파일 없음, 제외)
   //   12-compare-strategies.sh → python 없음 (cmp/sha256sum만, 제외)
@@ -226,7 +226,7 @@
       ]
     },
     {
-      "name": "40-gguf convert (40-quant-gguf.sh -> convert_hf_to_gguf.py)",
+      "name": "42-gguf convert (42-quant-gguf.sh -> convert_hf_to_gguf.py)",
       "type": "debugpy",
       "request": "launch",
       "preLaunchTask": "uv-sync",
@@ -325,12 +325,12 @@
       ]
     },
     {
-      "name": "41-quant-gptq (uv run 직접실행)",
+      "name": "40-quant-awq (uv run 직접실행)",
       "type": "debugpy",
       "request": "launch",
       "preLaunchTask": "uv-sync",
       "python": ".venv/bin/python",
-      "program": "41-quant-gptq.py",
+      "program": "40-quant-awq.py",
       "cwd": "${workspaceFolder}/project-5",
       "env": {
         "UV_NO_SYNC": "1"
@@ -341,12 +341,12 @@
       ]
     },
     {
-      "name": "42-quant-awq (uv run 직접실행)",
+      "name": "41-quant-fp8 (uv run 직접실행)",
       "type": "debugpy",
       "request": "launch",
       "preLaunchTask": "uv-sync",
       "python": ".venv/bin/python",
-      "program": "42-quant-awq.py",
+      "program": "41-quant-fp8.py",
       "cwd": "${workspaceFolder}/project-5",
       "env": {
         "UV_NO_SYNC": "1"
@@ -357,12 +357,12 @@
       ]
     },
     {
-      "name": "43-quant-fp8 (uv run 직접실행)",
+      "name": "43-quant-gptq (uv run 직접실행)",
       "type": "debugpy",
       "request": "launch",
       "preLaunchTask": "uv-sync",
       "python": ".venv/bin/python",
-      "program": "43-quant-fp8.py",
+      "program": "43-quant-gptq.py",
       "cwd": "${workspaceFolder}/project-5",
       "env": {
         "UV_NO_SYNC": "1"

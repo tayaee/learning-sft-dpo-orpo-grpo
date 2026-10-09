@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""42-quant-fft-awq.py — Stage 4c. FFT → AWQ 4bit (llmcompressor oneshot + AWQModifier).
-원본: quantizaton_math.ipynb 후반 (autoawq) → llmcompressor로 교체.
-입력: synthetic-fft-<mode>-single. 출력에 tokenizer 동봉 필수.
+"""53-quant-qlora-gptq.py — Stage 5d. QLoRA-merged → GPTQ 4bit-g128 (gptqmodel 7.x).
+FFT용 43-quant-fft-gptq.py와 동일 플로우, 입력만 merged.
+캘리브: synthetic-<mode>.jsonl에서 CALIB_N개, 학습 프롬프트 템플릿 적용.
+입력: synthetic-qlora-<mode>-single-merged → 출력: synthetic-qlora-<mode>-single-merged-gptq
 
-  uv run 42-quant-fft-awq.py --mode mini|full [--calib N]
+  uv run 53-quant-qlora-gptq.py --mode mini|full [--calib N]
 """
 import argparse
 import json
@@ -25,13 +26,11 @@ def first(v):
 
 
 def main(mode: str, calib: int):
-    from datasets import Dataset
+    from gptqmodel import GPTQModel, QuantizeConfig
     from transformers import AutoTokenizer
-    from llmcompressor import oneshot
-    from llmcompressor.modifiers.awq import AWQModifier
 
-    src = f"{SHARED}/models/synthetic-fft-{mode}-single"
-    out = f"{SHARED}/models/synthetic-fft-{mode}-single-awq"
+    src = f"{SHARED}/models/synthetic-qlora-{mode}-single-merged"
+    out = f"{SHARED}/models/synthetic-qlora-{mode}-single-merged-gptq"
     texts = []
     with open(f"{SHARED}/datasets/synthetic-{mode}.jsonl", encoding="utf-8") as f:
         for line in f:
@@ -42,11 +41,12 @@ def main(mode: str, calib: int):
                                                     response=first(r["target"])))
             if len(texts) >= max(calib, 10):
                 break
-    ds = Dataset.from_list([{"text": t} for t in texts])
-    recipe = AWQModifier(ignore=["lm_head"], scheme="W4A16", targets=["Linear"])
-    oneshot(model=src, dataset=ds, recipe=recipe, output_dir=out,
-            max_seq_length=1024, num_calibration_samples=calib)
-    AutoTokenizer.from_pretrained(src).save_pretrained(out)
+    tok = AutoTokenizer.from_pretrained(src)
+    qc = QuantizeConfig(bits=4, group_size=128)
+    model = GPTQModel.load(src, qc)
+    model.quantize(calibration=texts[:calib], tokenizer=tok)
+    model.save(out)
+    tok.save_pretrained(out)
     print(f"[{mode}] calib={calib} -> {out}")
 
 

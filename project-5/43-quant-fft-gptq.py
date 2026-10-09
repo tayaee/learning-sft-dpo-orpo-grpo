@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""41-quant-fft-gptq.py — Stage 4b. FFT → GPTQ 4bit-g128 (gptqmodel 7.x).
+"""43-quant-fft-gptq.py — Stage 4d. FFT → GPTQ 4bit-g128 (gptqmodel 7.x).
 원본: quantizaton_math.ipynb 전반 (auto-gptq) → GPTQModel.load/quantize/save.
 캘리브: synthetic-<mode>.jsonl에서 CALIB_N개, 학습 프롬프트 템플릿 적용.
 입력: synthetic-fft-<mode>-single (전략별 산출물 중 single만 하류 사용).
 
-  uv run 41-quant-fft-gptq.py --mode mini|full [--calib N]
+  uv run 43-quant-fft-gptq.py --mode mini|full [--calib N]
 """
 import argparse
 import json

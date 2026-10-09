@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""53-quant-qlora-fp8.py — Stage 5d. QLoRA-merged → FP8 static quant (llmcompressor oneshot).
-FFT용 43-quant-fft-fp8.py와 동일 플로우, 입력만 merged.
-입력: synthetic-qlora-<mode>-single-merged → 출력: synthetic-qlora-<mode>-single-merged-fp8
+"""41-quant-fft-fp8.py — Stage 4b. FFT → FP8 static quant (llmcompressor oneshot).
+Blackwell 네이티브. 평가는 vLLM quantization='fp8' 경로 (71-eval.sh).
 
-  uv run 53-quant-qlora-fp8.py --mode mini|full [--calib N]
+  uv run 41-quant-fft-fp8.py --mode mini|full [--calib N]
 """
 import argparse
 import json
@@ -30,8 +29,8 @@ def main(mode: str, calib: int):
     from llmcompressor import oneshot
     from llmcompressor.modifiers.quantization import QuantizationModifier
 
-    src = f"{SHARED}/models/synthetic-qlora-{mode}-single-merged"
-    out = f"{SHARED}/models/synthetic-qlora-{mode}-single-merged-fp8"
+    src = f"{SHARED}/models/synthetic-fft-{mode}-single"
+    out = f"{SHARED}/models/synthetic-fft-{mode}-single-fp8"
     texts = []
     with open(f"{SHARED}/datasets/synthetic-{mode}.jsonl", encoding="utf-8") as f:
         for line in f:

@@ -76,30 +76,30 @@
       "presentation": { "reveal": "always", "panel": "new" }
     },
     {
-      "label": "p5: 40-quant-gguf.sh mini",
+      "label": "p5: 40-quant-awq.py",
       "type": "shell",
-      "command": "./40-quant-gguf.sh mini",
+      "command": "export UV_NO_SYNC=1 && uv run 40-quant-awq.py --mode mini",
       "options": { "cwd": "${workspaceFolder}" },
       "presentation": { "reveal": "always", "panel": "new" }
     },
     {
-      "label": "p5: 41-quant-gptq.py",
+      "label": "p5: 41-quant-fp8.py",
       "type": "shell",
-      "command": "export UV_NO_SYNC=1 && uv run 41-quant-gptq.py --mode mini",
+      "command": "export UV_NO_SYNC=1 && uv run 41-quant-fp8.py --mode mini",
       "options": { "cwd": "${workspaceFolder}" },
       "presentation": { "reveal": "always", "panel": "new" }
     },
     {
-      "label": "p5: 42-quant-awq.py",
+      "label": "p5: 42-quant-gguf.sh mini",
       "type": "shell",
-      "command": "export UV_NO_SYNC=1 && uv run 42-quant-awq.py --mode mini",
+      "command": "./42-quant-gguf.sh mini",
       "options": { "cwd": "${workspaceFolder}" },
       "presentation": { "reveal": "always", "panel": "new" }
     },
     {
-      "label": "p5: 43-quant-fp8.py",
+      "label": "p5: 43-quant-gptq.py",
       "type": "shell",
-      "command": "export UV_NO_SYNC=1 && uv run 43-quant-fp8.py --mode mini",
+      "command": "export UV_NO_SYNC=1 && uv run 43-quant-gptq.py --mode mini",
       "options": { "cwd": "${workspaceFolder}" },
       "presentation": { "reveal": "always", "panel": "new" }
     },

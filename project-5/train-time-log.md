@@ -33,14 +33,14 @@
 | 30-fft-single | 3m | |
 | 31-qlora-single | 3m | |
 | 32-merge-lora | 1m | |
-| 40-quant-fft-gguf | 1m | convert+quantize |
-| 41-quant-fft-gptq | 2m | calib 2 |
-| 42-quant-fft-awq | 1m | llmcompressor 0.14.0 + compressed-tensors 0.19.0 |
-| 43-quant-fft-fp8 | <1m | |
-| 50-quant-qlora-gguf | 2m | |
-| 51-quant-qlora-gptq | 2m | |
-| 52-quant-qlora-awq | 1m | |
-| 53-quant-qlora-fp8 | <1m | |
+| 40-quant-fft-awq | 1m | llmcompressor 0.14.0 + compressed-tensors 0.19.0 |
+| 41-quant-fft-fp8 | <1m | |
+| 42-quant-fft-gguf | 1m | convert+quantize |
+| 43-quant-fft-gptq | 2m | calib 2 |
+| 50-quant-qlora-awq | 1m | |
+| 51-quant-qlora-fp8 | <1m | |
+| 52-quant-qlora-gguf | 2m | |
+| 53-quant-qlora-gptq | 2m | |
 | 60-measure-ppl | 2m | 9타깃×32텍스트, GGUF 2종 SKIP |
 | 71-eval | 11m | 9타깃×10문항 (타깃당 ~1m) |
 | 72-score | <1m | |

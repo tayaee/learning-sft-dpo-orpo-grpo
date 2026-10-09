@@ -27,8 +27,8 @@
 | 2b. 프롬프트+생성 | `21-build-prompts.py`, `22-teacher-to-generate-syn-data.sh/py` | 후보 → `template.txt` 프롬프트 10k → Llama-3.1-8B-Instruct(vLLM) → `generated-<mode>.csv` (+invalid 재생성 루프) |
 | 2c. 후처리 | `23-postprocess.py` | 생성 CSV → Q/A split, 패턴 제거 → `synthetic-<mode>.jsonl` (`source`/`target` 리스트형) |
 | 3. 합성 SFT+merge | `30-fft-train.sh` / `31-qlora-train.sh` / `32-merge-lora.py` | `synthetic-<mode>.jsonl` → `synthetic-fft-…/` (FFT) + `synthetic-qlora-…/` (어댑터) → `synthetic-qlora-…-merged/` (bf16 풀모델) |
-| 4. PTQ(FFT) | `40-quant-fft-gguf.sh`, `41/42/43-quant-fft-*.py` | FFT **single** 결과 → GGUF Q8_0 / GPTQ-4bit-g128 / AWQ-4bit / **FP8(w8a8)** |
-| 5. PTQ(QLoRA) | `50-quant-qlora-gguf.sh`, `51/52/53-quant-qlora-*.py` | QLoRA-merged 결과 → 동일 4종 (`...-merged-gguf/gptq/awq/fp8`). 양자화 총 8종 |
+| 4. PTQ(FFT) | `42-quant-fft-gguf.sh`, `40/41/43-quant-fft-*.py` | FFT **single** 결과 → AWQ-4bit / **FP8(w8a8)** / GGUF Q8_0 / GPTQ-4bit-g128 |
+| 5. PTQ(QLoRA) | `52-quant-qlora-gguf.sh`, `50/51/53-quant-qlora-*.py` | QLoRA-merged 결과 → 동일 4종 (`...-merged-awq/fp8/gguf/gptq`). 양자화 총 8종 |
 | 6. PPL 게이트 | `60-measure-ppl.sh/py` | base + FP 2종 + 양자화 8종 → in-domain PPL + Δ판정 (Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard, GGUF는 SKIP) |
 | 7. 평가 | `71-eval.sh/py`, `72-score.py` | base / fft / qlora / fft-gptq/awq/fp8 / qlora-gptq/awq/fp8 → `eval-<mode>/` → 정답 추출 (`####` / `The answer is` / OpenAI-mini 보조). GGUF 2종은 llama.cpp 별도 |
 | 8. 배포 | `73-upload-hf.sh/py`, `80-serve-vllm.sh`, `81-infer-examples.py` | 산출물 → `tayaee/*` 업로드 → vLLM OpenAI-호환 서빙 → 추론 예제 |
@@ -82,17 +82,17 @@ Q/A 마커 기준 split + 케이스별 예외 + 잔여 패턴 제거 + `rstrip` 
   resize 생략시 size-mismatch. merged가 Stage 5 PTQ와 Stage 7 평가의 입력.
 
 ### Stage 4. PTQ-FFT (입력: FFT **single** 결과)
-1. **llama.cpp** (`40-quant-fft-gguf.sh`): `convert_hf_to_gguf.py` → FP16 GGUF → `llama-quantize Q8_0`.
-   강의의 vocab assert 수동패치는 2026 빌드에서 불필요.
-2. **GPTQ** (`41-quant-fft-gptq.py`, `gptqmodel`): 4bit-g128, damp 0.1 + synthetic 캘리브 토크나이즈 →
-   `save_quantized` + tokenizer 동봉.
-3. **AWQ** (`42-quant-fft-awq.py`, `llm-compressor`): 4bit-g128 GEMM + `calib_data=text_lst` →
+1. **AWQ** (`40-quant-fft-awq.py`, `llm-compressor`): 4bit-g128 GEMM + `calib_data=text_lst` →
    **`model.to('cpu')` 후 저장** + tokenizer 동봉.
-4. **FP8** (`43-quant-fft-fp8.py`, `llm-compressor` w8a8 e4m3, Blackwell 네이티브):
+2. **FP8** (`41-quant-fft-fp8.py`, `llm-compressor` w8a8 e4m3, Blackwell 네이티브):
    mini 캘리브 4 / full 64. 평가는 vLLM `quantization='fp8'`.
+3. **llama.cpp** (`42-quant-fft-gguf.sh`): `convert_hf_to_gguf.py` → FP16 GGUF → `llama-quantize Q8_0`.
+   강의의 vocab assert 수동패치는 2026 빌드에서 불필요.
+4. **GPTQ** (`43-quant-fft-gptq.py`, `gptqmodel`): 4bit-g128, damp 0.1 + synthetic 캘리브 토크나이즈 →
+   `save_quantized` + tokenizer 동봉.
 
 ### Stage 5. PTQ-QLoRA (입력: `32` merged 결과)
-- `50-quant-qlora-gguf.sh` / `51-quant-qlora-gptq.py` / `52-quant-qlora-awq.py` / `53-quant-qlora-fp8.py`:
+- `50-quant-qlora-awq.py` / `51-quant-qlora-fp8.py` / `52-quant-qlora-gguf.sh` / `53-quant-qlora-gptq.py`:
   Stage 4와 동일 플로우, 입력만 `synthetic-qlora-<mode>-single-merged` →
   출력 `...-merged-gguf/gptq/awq/fp8`. FFT 4종과 합쳐 양자화 총 8종.
 - QLoRA-merged를 거치는 이유: 어댑터 상태로는 PTQ 불가, bf16 풀모델로 먼저 복원해야 함.
@@ -154,11 +154,11 @@ Q/A 마커 기준 split + 케이스별 예외 + 잔여 패턴 제거 + `rstrip` 
 | 3 | `30-fft` | 2.2분 | 실측 | train_runtime 133.5s, 3스텝, loss 1.50 |
 | 3 | `31-qlora` | 2.3분 | 실측 | train_runtime 139.1s, 3스텝, loss 1.62 |
 | 3 | `32-merge` | ~3분 | 추정 | 1B 로드 + 병합 + 저장 (구 `50-merge`) |
-| 4 | `40-fft-gguf` | ~2분 | 추정 | quantize 34초 실측 + convert. llama.cpp CPU 빌드 별도 ~10분(1회) |
-| 4 | `41-fft-gptq` | ~4분 | 추정 | 1B 로드 + 4캘리브 + 저장 |
-| 4 | `42-fft-awq` | ~6분 | 추정 | oneshot smoothing + 112모듈 compress + 저장 |
-| 4 | `43-fft-fp8` | ~5분 | 추정 | 42와 동형 |
-| 5 | `50~53-qlora-*` | ~17분 | 추정 | Stage 4와 동형 ×4 (merged 입력, GGUF 2분+GPTQ 4분+AWQ 6분+FP8 5분) |
+| 4 | `40-fft-awq` | ~6분 | 추정 | oneshot smoothing + 112모듈 compress + 저장 |
+| 4 | `41-fft-fp8` | ~5분 | 추정 | 40과 동형 |
+| 4 | `42-fft-gguf` | ~2분 | 추정 | quantize 34초 실측 + convert. llama.cpp CPU 빌드 별도 ~10분(1회) |
+| 4 | `43-fft-gptq` | ~4분 | 추정 | 1B 로드 + 4캘리브 + 저장 |
+| 5 | `50~53-qlora-*` | ~17분 | 추정 | Stage 4와 동형 ×4 (merged 입력, AWQ 6분+FP8 5분+GGUF 2분+GPTQ 4분) |
 | 6 | `60-ppl` | ~5분 | 추정 | 11타깃 × 32텍스트 (GGUF 2종 SKIP) |
 | 7 | `71-eval` | ~9분 | 추정 | 9타깃×10개 (1타깃 85초 실측, GGUF 제외). 50개 시 ~20분 |
 | 7 | `72-score` | ~5초 | 추정 | 9타깃 전부 acc 0.000 (3스텝 undertraining, §1 Stage 7 참조) |

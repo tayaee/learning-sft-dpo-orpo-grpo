@@ -40,17 +40,17 @@ uv run 23-postprocess.py --mode mini
 ./31-qlora-train.sh mini
 uv run 32-merge-lora.py --mode mini        # → synthetic-qlora-mini-single-merged/ (bf16)
 
-# 4) PTQ-FFT (택1~전체): GGUF Q8_0 / GPTQ-4bit / AWQ-4bit / FP8
-./40-quant-fft-gguf.sh mini
-uv run 41-quant-fft-gptq.py --mode mini
-uv run 42-quant-fft-awq.py --mode mini
-uv run 43-quant-fft-fp8.py --mode mini
+# 4) PTQ-FFT (택1~전체): AWQ-4bit / FP8 / GGUF Q8_0 / GPTQ-4bit
+uv run 40-quant-fft-awq.py --mode mini
+uv run 41-quant-fft-fp8.py --mode mini
+./42-quant-fft-gguf.sh mini
+uv run 43-quant-fft-gptq.py --mode mini
 
 # 5) PTQ-QLoRA (택1~전체, 입력=merged): 동일 4종 → 양자화 총 8종
-./50-quant-qlora-gguf.sh mini
-uv run 51-quant-qlora-gptq.py --mode mini
-uv run 52-quant-qlora-awq.py --mode mini
-uv run 53-quant-qlora-fp8.py --mode mini
+uv run 50-quant-qlora-awq.py --mode mini
+uv run 51-quant-qlora-fp8.py --mode mini
+./52-quant-qlora-gguf.sh mini
+uv run 53-quant-qlora-gptq.py --mode mini
 
 # 6) PPL 게이트 (base + FP 2종 + 양자화 8종, Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard)
 ./60-measure-ppl.sh mini                 # → outputs/ppl-mini/ (GGUF 2종은 SKIP)

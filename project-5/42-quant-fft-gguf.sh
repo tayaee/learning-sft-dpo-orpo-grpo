@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 40-quant-fft-gguf.sh [mini|full] — Stage 4a. FFT → llama.cpp GGUF F16 → Q8_0.
+# 42-quant-fft-gguf.sh [mini|full] — Stage 4c. FFT → llama.cpp GGUF F16 → Q8_0.
 # 원본: convert_hf_to_gguf.py + quantize (vocab assert 수동패치 불필요, 2026 빌드).
 # 입력: FFT **single** 결과 ($P5_MODELS/synthetic-fft-<mode>-single). 전략별 산출물 중
 # single만 하류에서 사용한다 (ddp/fsdp는 12-compare-strategies.sh 비교용).
