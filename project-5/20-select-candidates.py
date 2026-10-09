@@ -7,6 +7,7 @@
   $P5_SHARED/datasets/alpaca-embeddings.parquet (52k, 캐시 — 모드 공용)
   $P5_SHARED/datasets/candidates-<mode>.parquet (gsm_idx, dg_instruction, dg_input, dg_output)
 """
+
 import argparse
 import os
 import random
@@ -18,10 +19,10 @@ TOPK, SAMPLEK = 1000, 100
 
 
 def main(mode: str, seed: int):
+    import numpy as np
+    import pandas as pd
     from datasets import load_dataset
     from sentence_transformers import SentenceTransformer
-    import pandas as pd
-    import numpy as np
     from sklearn.metrics.pairwise import cosine_similarity
 
     random.seed(seed)
@@ -35,12 +36,12 @@ def main(mode: str, seed: int):
         raw_df = pd.DataFrame(load_dataset("tatsu-lab/alpaca")["train"])
         raw_df["cri"] = raw_df["instruction"] + raw_df["output"]
         st = SentenceTransformer(EMB_MODEL)
-        
+
         vecs = []
         for s in range(0, len(raw_df), BATCH):
-            batch_texts = raw_df["cri"].tolist()[s:s + BATCH]
+            batch_texts = raw_df["cri"].tolist()[s : s + BATCH]
             vecs.extend(st.encode(batch_texts, show_progress_bar=False).tolist())
-            
+
         raw_df["embedding"] = vecs
         raw_df[["instruction", "input", "output", "embedding"]].to_parquet(emb_path)
         print(f"[{mode}] embeddings built and cached: {len(raw_df)}")
@@ -54,6 +55,7 @@ def main(mode: str, seed: int):
     gsm_texts, gsm_idx = [], []
     with open(f"{SHARED}/datasets/gsm8k-train.jsonl", encoding="utf-8") as f:
         import json
+
         for i, line in enumerate(f):
             line = line.strip()
             if not line:
@@ -66,9 +68,9 @@ def main(mode: str, seed: int):
     gsm_rows = int(os.environ.get("GSM_ROWS", "256" if mode == "mini" else "0"))
     if gsm_rows > 0:
         gsm_texts, gsm_idx = gsm_texts[:gsm_rows], gsm_idx[:gsm_rows]
-    gsm_vecs = np.array(st.encode(gsm_texts, 
-                                  batch_size=32,
-                                  show_progress_bar=False), dtype=np.float32)
+    gsm_vecs = np.array(
+        st.encode(gsm_texts, batch_size=32, show_progress_bar=False), dtype=np.float32
+    )
     dg_vecs = np.array(dg["embedding"].tolist(), dtype=np.float32)
 
     sim = cosine_similarity(gsm_vecs, dg_vecs)  # [G, 52k]
@@ -76,11 +78,17 @@ def main(mode: str, seed: int):
     for gi, grow in zip(gsm_idx, sim):
         top = np.argsort(grow)[-TOPK:]  # 상위 1000
         for j in random.sample(top.tolist(), SAMPLEK):
-            rows.append((gi, 
-                         dg.iloc[j]["instruction"], 
-                         dg.iloc[j]["input"],
-                         dg.iloc[j]["output"]))
-    out = pd.DataFrame(rows, columns=["gsm_idx", "dg_instruction", "dg_input", "dg_output"])
+            rows.append(
+                (
+                    gi,
+                    dg.iloc[j]["instruction"],
+                    dg.iloc[j]["input"],
+                    dg.iloc[j]["output"],
+                )
+            )
+    out = pd.DataFrame(
+        rows, columns=["gsm_idx", "dg_instruction", "dg_input", "dg_output"]
+    )
     out_path = f"{SHARED}/datasets/candidates-{mode}.parquet"
     out.to_parquet(out_path)
     print(f"[{mode}] gsm={len(gsm_idx)} candidates={len(out)} -> {out_path}")

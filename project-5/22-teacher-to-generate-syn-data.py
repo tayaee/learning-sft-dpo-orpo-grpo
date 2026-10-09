@@ -15,7 +15,8 @@ def is_valid(t: str) -> bool:
     return all(m in (t or "") for m in MARKERS)
 
 
-def main(mode: str, tp: int, maxlen: int, teacher: str, n: int):
+def main(mode: str, tp: int, maxlen: int, teacher: str, n: int,
+           gpu_mem_util: float, max_num_seqs: int):
     import pandas as pd
     from tqdm import tqdm
     from vllm import LLM, SamplingParams
@@ -32,9 +33,10 @@ def main(mode: str, tp: int, maxlen: int, teacher: str, n: int):
 
     llm = LLM(model=teacher,                # teacher 8B, student 1B
               tensor_parallel_size=tp,      # tp1
-              max_model_len=maxlen,         # 4096
+              max_model_len=maxlen,         # 8192 (mini/full 통일)
               trust_remote_code=True, 
-              gpu_memory_utilization=0.9,
+              gpu_memory_utilization=gpu_mem_util,
+              max_num_seqs=max_num_seqs,    # 8 (mini/full 통일)
               dtype="auto", 
               enforce_eager=True)
     sp = SamplingParams(temperature=0.5, 
@@ -69,9 +71,18 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", default="mini")
     ap.add_argument("--tp", type=int, default=1)
-    ap.add_argument("--maxlen", type=int, default=4096)
+    ap.add_argument("--maxlen", type=int, default=8192)
     ap.add_argument("--teacher", default="meta-llama/Llama-3.1-8B-Instruct")
     ap.add_argument("--n", type=int, default=None)
+    ap.add_argument("--gpu-mem-util", type=float,
+                    default=float(os.environ.get("VLLM_GPU_MEM_UTIL", "0.8")),
+                    help="vLLM gpu_memory_utilization (기본 0.8: DGX Spark 통합메모리에서 "
+                         "OS/Xorg 점유분(~13GB)을 피하려고 0.9에서 낮춤)")
+    ap.add_argument("--max-num-seqs", type=int, default=None,
+                    help="vLLM 동시 처리 시퀀스 수 (기본 8: mini/full 통일. "
+                         "VLLM_MAX_NUM_SEQS로 오버라이드 가능)")
     a = ap.parse_args()
     n = a.n if a.n is not None else int(os.environ.get("SYNTH_N", "64" if a.mode == "mini" else "10000"))
-    main(a.mode, a.tp, a.maxlen, a.teacher, n)
+    max_num_seqs = (a.max_num_seqs if a.max_num_seqs is not None
+                    else int(os.environ.get("VLLM_MAX_NUM_SEQS", "8")))
+    main(a.mode, a.tp, a.maxlen, a.teacher, n, a.gpu_mem_util, max_num_seqs)
