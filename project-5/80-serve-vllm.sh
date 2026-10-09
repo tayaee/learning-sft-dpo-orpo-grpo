@@ -3,6 +3,7 @@
 # target: fft|qlora|fft-gptq|fft-awq|fft-fp8|qlora-gptq|qlora-awq|qlora-fp8|fft-gguf|qlora-gguf (기본 fft).
 # SOURCE=local|hf (기본 local; hf면 tayaee/* repo로 서빙). PORT 기본 8000.
 # 예: SOURCE=hf ./80-serve-vllm.sh mini fft-gptq
+#     QTYPE=q4_k_m ./80-serve-vllm.sh mini fft-gguf  # GGUF 변종 선택 (기본 q8_0)
 #     81-infer-examples.py --model tayaee/Llama-3.2-1B-math-fft-gptq-mini (별도 터미널)
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-mini}"
@@ -29,13 +30,14 @@ esac
 MODEL_SLUG="${BASE_MODEL##*/}"
 REPO="tayaee/${MODEL_SLUG}-math-${TARGET}-${MODE}"
 if [ "$SOURCE" = "hf" ]; then MODEL="$REPO"; else MODEL="$P5_MODELS/$SUF"; fi
-case "$TARGET" in *-gguf) [ "$SOURCE" = "local" ] && MODEL="$MODEL/model-q8_0.gguf" ;; esac
+case "$TARGET" in *-gguf) [ "$SOURCE" = "local" ] && MODEL="$MODEL/model-${QTYPE:-q8_0}.gguf" ;; esac
 
 p5_log "serving model=$MODEL quant=${QUANT:-none} tp=$TP port=$PORT"
 # FLASH_ATTN 고정 + flashinfer sampler off: flashinfer JIT(sampling 커널) 빌드가
 # GB10에서 깨짐 (ninja 실패 → Engine core init 실패)
 export VLLM_ATTENTION_BACKEND="${VLLM_ATTENTION_BACKEND:-FLASH_ATTN}"
 export VLLM_USE_FLASHINFER_SAMPLER=0
+set -x
 exec "$VLLM_BIN" serve "$MODEL" \
   --host 0.0.0.0 --port "$PORT" \
   --served-model-name "$REPO" \

@@ -140,6 +140,7 @@ fi
 want_step ppl && p5_step "60-measure-ppl" ./60-measure-ppl.sh "$MODE"
 if want_step eval; then
   p5_step "71-eval" ./71-eval.sh "$MODE"
+  p5_step "71-eval-gguf" ./71-eval-gguf.sh "$MODE"
   p5_step "72-score" ./72-score.sh "$MODE"
 fi
 

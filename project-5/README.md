@@ -46,17 +46,18 @@ uv run 41-quant-fft-fp8.py --mode mini
 ./42-quant-fft-gguf.sh mini
 uv run 43-quant-fft-gptq.py --mode mini
 
-# 5) PTQ-QLoRA (택1~전체, 입력=merged): 동일 4종 → 양자화 총 8종
+# 5) PTQ-QLoRA (택1~전체, 입력=merged): 동일 5종 → HF 6종 + GGUF 10종, 양자화 총 16종
 uv run 50-quant-qlora-awq.py --mode mini
 uv run 51-quant-qlora-fp8.py --mode mini
 ./52-quant-qlora-gguf.sh mini
 uv run 53-quant-qlora-gptq.py --mode mini
 
-# 6) PPL 게이트 (base + FP 2종 + 양자화 8종, Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard)
-./60-measure-ppl.sh mini                 # → outputs/ppl-mini/ (GGUF 2종은 SKIP)
+# 6) PPL 게이트 (base + FP 2종 + 양자화 16종, Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard)
+./60-measure-ppl.sh mini                 # → outputs/ppl-mini/ (GGUF 10종은 llama-perplexity)
 
-# 7) 평가 (HF 9종, GGUF는 llama.cpp 별도)
+# 7) 평가 (HF 9종 + GGUF 10종)
 ./71-eval.sh mini
+./71-eval-gguf.sh mini   # llama-cli 필요, 미빌드 시 SKIP
 uv run 72-score.py --mode mini
 
 # 8) HF 업로드 → vLLM 서빙 → 추론 예제
@@ -103,7 +104,7 @@ uv run 81-infer-examples.py --model tayaee/Llama-3.2-1B-math-fft-mini  # 터미�
 | `31-qlora-train.sh` | `train_QLoRA.sh` |
 | `32-merge-lora.py` | `save_new_vocab_model.ipynb` 계열 |
 | `40~43-quant-fft-*` | `quantizaton_math.ipynb` (+FP8) — FFT 입력 4종 |
-| `50~53-quant-qlora-*` | 신규: 동일 4종, QLoRA-merged 입력 (양자화 총 8종) |
+| `50~53-quant-qlora-*` | 신규: 동일 5종, QLoRA-merged 입력 (HF 6종 + GGUF 10종, 양자화 총 16종) |
 | `60-measure-ppl.sh/py` | 신규: PPL 게이트 (Accept/Conditional/Discard) |
 | `71-eval.sh` / `72-score.py` | `evaluation/` 3종 |
 | `73-upload-hf.sh/py` | 신규: Hub 업로드 (`tayaee/*`) |

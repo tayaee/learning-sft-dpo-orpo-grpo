@@ -7,7 +7,7 @@ BASE="${2:-$BASE_MODEL}"
 OUT="$P5_MODELS/synthetic-qlora-$MODE-single-merged"
 mkdir -p "$OUT"
 p5_log "base=$BASE out=$OUT"
-uv run "$P5_ROOT/32-merge-lora.py" --mode "$MODE" --base "$BASE"
+(set -x; uv run "$P5_ROOT/32-merge-lora.py" --mode "$MODE" --base "$BASE")
 
 echo ---- result ----
 ls -l "$OUT"

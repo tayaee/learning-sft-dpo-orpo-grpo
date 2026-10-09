@@ -11,11 +11,11 @@ OUT="$P5_MODELS/synthetic-qlora-$MODE-$STRAT"
 mkdir -p "$OUT"  # 출력 부모 사전 생성 (공유FS 동시 makedirs race 회피)
 p5_log "train=$P5_DATASETS/synthetic-$MODE.jsonl out=$OUT (adapter only) strat=$STRAT world=$WORLD accum=$ACCUM"
 
-"${LAUNCH[@]}" "$P5_ROOT/10-train-entry.py" --peft \
+(set -x; "${LAUNCH[@]}" "$P5_ROOT/10-train-entry.py" --peft \
   --model "$BASE_MODEL" --train "$P5_DATASETS/synthetic-$MODE.jsonl" \
   --out "$OUT" --epochs "$EPOCHS" --mode "$MODE" \
   --strategy "$STRAT" --accum "$ACCUM" \
-  --max_rows "$GSM_ROWS"
+  --max_rows "$GSM_ROWS")
 
 echo ---- result ----
 ls -l "$OUT"

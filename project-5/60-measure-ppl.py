@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """60-measure-ppl.py — Stage 6. 전 타깃 PPL 측정 + Accept/Conditional/Discard 판정.
-대상 11종: base, fft, qlora(merged) + 양자화 8종(fft×4, qlora-merged×4).
-GGUF 2종은 transformers로 PPL 불가 → SKIP (llama.cpp perplexity로 별도 측정).
+대상 19종: base, fft, qlora(merged) + HF 양자화 6종 + GGUF 10종(fft/qlora × 5).
+GGUF는 transformers 대신 llama-perplexity로 측정 (미빌드 시 해당 타깃만 SKIP).
 
 판정 기준 (부모 FP 대비 ΔPPL):
   Δ < 0.3            → Accept (그대로 배포)
@@ -22,6 +22,7 @@ import os
 
 SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
 BASE = os.environ.get("BASE_MODEL", "unsloth/Llama-3.2-1B")
+LLAMACPP = os.environ.get("LLAMACPP", os.path.expanduser("~/git/llama.cpp"))
 PROMPT_TEMPLATE = (
     "Below is an instruction that describes a task, paired with an input "
     "that provides further context.\n"
@@ -31,7 +32,10 @@ PROMPT_TEMPLATE = (
     "### Response:\n{response}"
 )
 
-# target → (kind, 경로템플릿, 부모타깃). gguf는 PPL SKIP.
+# target → (kind, 경로템플릿, 부모타깃).
+# GGUF 5종 변종 (42/52 산출물): kind="gguf"는 llama-perplexity로 측정.
+# 기존 fft-gguf/qlora-gguf 키는 q8_0 호환용으로 유지.
+GQUANTS = ["q8_0", "q6_k", "q5_k_m", "q4_k_m", "q3_k_m"]
 TARGETS = {
     "base": ("hf", BASE, None),
     "fft": ("hf", f"{SHARED}/models/synthetic-fft-{{m}}-single", "base"),
@@ -45,9 +49,16 @@ TARGETS = {
     "qlora-awq": ("hf", f"{SHARED}/models/synthetic-qlora-{{m}}-single-merged-awq", "qlora"),
     "qlora-fp8": ("hf", f"{SHARED}/models/synthetic-qlora-{{m}}-single-merged-fp8", "qlora"),
 }
+for _base, _local, _parent in (
+        ("fft-gguf", "synthetic-fft-{m}-single-gguf", "fft"),
+        ("qlora-gguf", "synthetic-qlora-{m}-single-merged-gguf", "qlora")):
+    for _q in GQUANTS:
+        TARGETS.setdefault(f"{_base}-{_q}", (
+            "gguf", f"{SHARED}/models/{_local}/model-{_q}.gguf", _parent))
 ORDER = ["base", "fft", "qlora",
          "fft-gguf", "fft-gptq", "fft-awq", "fft-fp8",
-         "qlora-gguf", "qlora-gptq", "qlora-awq", "qlora-fp8"]
+         "qlora-gguf", "qlora-gptq", "qlora-awq", "qlora-fp8"] + \
+    [f"{b}-{q}" for b in ("fft-gguf", "qlora-gguf") for q in GQUANTS]
 
 
 def verdict(delta):
@@ -109,6 +120,44 @@ def ppl_of(model_path: str, texts):
     return math.exp(nll_sum / max(tok_count, 1))
 
 
+def ppl_of_gguf(model_path: str, texts) -> float:
+    """llama-perplexity로 GGUF PPL 측정. 바이너리 미빌드 시 FileNotFoundError.
+    텍스트는 load_texts()와 동일물이라 HF 타깃과 입력 정의가 같다.
+    단 청킹 방식이 달라 부모(fft/qlora, transformers per-text)와 엔진이 상이 —
+    결과에 note를 남기고 Δ 판정은 동일 임계로 적용한다.
+    """
+    import re
+    import subprocess
+    import tempfile
+
+    clip = os.environ.get("LLAMACPP_BIN",
+                          f"{LLAMACPP}/build/bin/llama-perplexity")
+    if not (os.path.isfile(clip) and os.access(clip, os.X_OK)):
+        raise FileNotFoundError(
+            f"llama-perplexity 없음: {clip} (llama.cpp에서 cmake --build로 빌드)")
+    with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False,
+                                     encoding="utf-8") as f:
+        f.write("\n\n".join(texts) + "\n")
+        prompt_file = f.name
+    try:
+        ctx = os.environ.get("LLAMACPP_CTX", "2048")
+        cmd = [clip, "-m", model_path, "-f", prompt_file, "-c", ctx]
+        ngl = os.environ.get("LLAMACPP_NGL", "")
+        if ngl:
+            cmd += ["-ngl", ngl]
+        print(f"+ {subprocess.list2cmdline(cmd)}")
+        proc = subprocess.run(cmd, capture_output=True, text=True,
+                              timeout=3600)
+    finally:
+        os.unlink(prompt_file)
+    out = (proc.stdout or "") + (proc.stderr or "")
+    m = re.search(r"Final estimate:\s*PPL\s*=\s*([0-9.]+)", out)
+    if not m:
+        raise RuntimeError(
+            f"llama-perplexity PPL 파싱 실패 (rc={proc.returncode}): {out[-500:]}")
+    return float(m.group(1))
+
+
 def main(mode: str, n: int, targets: str):
     sel = ORDER if targets == "all" else targets.split(",")
     texts = load_texts(mode, n)
@@ -118,9 +167,20 @@ def main(mode: str, n: int, targets: str):
         kind, tmpl, parent = TARGETS[t]
         path = tmpl.format(m=mode) if "{m}" in tmpl else tmpl
         if kind == "gguf":
-            results[t] = {"ppl": None, "delta": None, "verdict": "SKIP",
-                          "note": "GGUF는 transformers PPL 불가 — llama.cpp perplexity로 별도 측정"}
-            print(f"{t:12} SKIP (gguf, {path})")
+            if not os.path.exists(path):
+                results[t] = {"ppl": None, "delta": None, "verdict": "SKIP",
+                              "note": f"산출물 없음: {path}"}
+                print(f"{t:12} SKIP (no output)")
+                continue
+            try:
+                p = ppl_of_gguf(path, texts)
+                results[t] = {"ppl": round(p, 3), "path": path,
+                              "note": "llama.cpp perplexity (부모 fft/qlora는 transformers 측정과 엔진 상이)"}
+                print(f"{t:12} ppl={p:.3f} (llamacpp)")
+            except Exception as e:  # noqa: BLE001 — 미빌드/파싱 실패도 표에 남김
+                results[t] = {"ppl": None, "delta": None, "verdict": "SKIP",
+                              "note": f"{type(e).__name__}: {e}"}
+                print(f"{t:12} SKIP ({e})")
             continue
         if not os.path.exists(path) and t != "base":
             results[t] = {"ppl": None, "delta": None, "verdict": "SKIP",

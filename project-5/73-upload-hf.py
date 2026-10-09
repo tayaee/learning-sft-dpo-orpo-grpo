@@ -2,7 +2,7 @@
 """73-upload-hf.py — Stage 7a. 로컬 산출물을 HF Hub(tayaee/*)에 업로드.
 HF 산출물은 Stage 8b 서빙의 입력이 된다 (local 경로로도 서빙 가능).
 
-  uv run 73-upload-hf.py --mode mini|full --targets all|fft,qlora,fft-gptq,...,qlora-gguf [--dry-run]
+  uv run 73-upload-hf.py --mode mini|full --targets all|fft,qlora,fft-gptq,...,fft-gguf-q4_k_m [--dry-run]
 전제: hf auth login (쓰기 권한 토큰).
 """
 import argparse
@@ -16,7 +16,8 @@ HF_ID = os.environ.get("HF_ID", "tayaee")
 SLUG = os.environ.get("BASE_MODEL", "unsloth/Llama-3.2-1B").split("/")[-1]
 
 # target → (로컬 디렉토리 템플릿, HF repo 템플릿, 업로드 방식)
-# 양자화 총 8종: fft×4 + qlora-merged×4. 구이름(gptq/awq/fp8/gguf)은 fft-* 별칭.
+# 양자화 총 16종: HF 폴더 6종(gptq/awq/fp8 × fft/qlora) + GGUF 10종(fft/qlora × 5).
+# 구이름(gptq/awq/fp8/gguf)은 fft-* 별칭. fft-gguf/qlora-gguf/gguf 키는 q8_0 호환용으로 유지.
 TARGETS = {
     "fft": ("synthetic-fft-{m}-single", "{slug}-math-fft-{m}", "folder"),
     "qlora": ("synthetic-qlora-{m}-single-merged", "{slug}-math-qlora-{m}", "folder"),
@@ -36,6 +37,16 @@ TARGETS = {
     "gguf": ("synthetic-fft-{m}-single-gguf/model-q8_0.gguf",
              "{slug}-math-fft-gguf-{m}", "gguf"),
 }
+
+# GGUF 5종 변종 (42/52 산출물): fft/qlora × {q8_0,q6_k,q5_k_m,q4_k_m,q3_k_m}.
+# gguf 단일파일 업로드 분기 그대로 사용 (path_in_repo=파일명).
+GQUANTS = ["q8_0", "q6_k", "q5_k_m", "q4_k_m", "q3_k_m"]
+for _base, _local in (("fft", "synthetic-fft-{m}-single"),
+                      ("qlora", "synthetic-qlora-{m}-single-merged")):
+    for _q in GQUANTS:
+        TARGETS[f"{_base}-gguf-{_q}"] = (
+            f"{_local}-gguf/model-{_q}.gguf",
+            "{slug}-math-" + f"{_base}-gguf-{_q}" + "-{m}", "gguf")
 
 
 def main(mode: str, targets: str, dry_run: bool):

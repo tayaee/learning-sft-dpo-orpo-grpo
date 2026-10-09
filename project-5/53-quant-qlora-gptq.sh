@@ -7,7 +7,7 @@ CALIB="${2:-$CALIB_N}"
 : "${CALIB_FILE:=$P5_DATASETS/gsm8k-calibration-256.jsonl}"
 OUT="$P5_MODELS/synthetic-qlora-$MODE-single-merged-gptq"
 p5_log "calib=$CALIB src=$CALIB_FILE out=$OUT"
-uv run "$P5_ROOT/53-quant-qlora-gptq.py" --mode "$MODE" --calib "$CALIB" --calib-file "$CALIB_FILE"
+(set -x; uv run "$P5_ROOT/53-quant-qlora-gptq.py" --mode "$MODE" --calib "$CALIB" --calib-file "$CALIB_FILE")
 
 echo ---- result ----
 ls -l "$OUT"

@@ -62,7 +62,7 @@
 | `uv run 40-quant-awq.py --mode mini` | |
 | # 4. FP8 | |
 | `uv run 41-quant-fp8.py --mode mini` | |
-| # 4. GGUF Q8_0 | |
+| # 4. GGUF 5종 | |
 | `./42-quant-gguf.sh mini` | |
 | # 4. GPTQ | |
 | `uv run 43-quant-gptq.py --mode mini` | |
@@ -103,7 +103,7 @@
 | `uv run 40-quant-awq.py --mode full` | |
 | # 4. FP8 | |
 | `uv run 41-quant-fp8.py --mode full` | |
-| # 4. GGUF Q8_0 | |
+| # 4. GGUF 5종 | |
 | `./42-quant-gguf.sh full` | |
 | # 4. GPTQ | |
 | `uv run 43-quant-gptq.py --mode full` | |
@@ -142,7 +142,7 @@
 | `uv run 40-quant-awq.py --mode full` | |
 | # 4. FP8 (spark1 단독) | # spark2: 대기 |
 | `uv run 41-quant-fp8.py --mode full` | |
-| # 4. GGUF Q8_0 (spark1 단독) | # spark2: 대기 |
+| # 4. GGUF 5종 (spark1 단독) | # spark2: 대기 |
 | `./42-quant-gguf.sh full` | |
 | # 4. GPTQ (spark1 단독) | # spark2: 대기 |
 | `uv run 43-quant-gptq.py --mode full` | |
@@ -181,7 +181,7 @@
 | `uv run 40-quant-awq.py --mode full` | |
 | # 4. FP8 (spark1 단독) | # spark2: 대기 |
 | `uv run 41-quant-fp8.py --mode full` | |
-| # 4. GGUF Q8_0 (spark1 단독) | # spark2: 대기 |
+| # 4. GGUF 5종 (spark1 단독) | # spark2: 대기 |
 | `./42-quant-gguf.sh full` | |
 | # 4. GPTQ (spark1 단독) | # spark2: 대기 |
 | `uv run 43-quant-gptq.py --mode full` | |

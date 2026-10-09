@@ -2,7 +2,7 @@
 """71-eval.py — Stage 7b. vLLM greedy GSM8K 추론 (원본 gen_math_greedy.py).
 prompt_no_input 포맷, temp 0, max 512. 타깃별 quant flag 적용.
 출력: $P5_SHARED/outputs/eval-<mode>/<target>.jsonl (kd_data 포함).
-GGUF 2종(fft-gguf/qlora-gguf)은 vLLM 미지원 → llama.cpp로 별도 평가, 여기선 SKIP.
+GGUF 10종(fft/qlora-gguf-*)은 vLLM 미지원 → 71-eval-gguf.py(llama-cli)로 별도 평가, 여기선 SKIP.
 
   uv run 71-eval.py --mode mini|full --target base|fft|qlora|fft-gptq|fft-awq|fft-fp8|qlora-gptq|qlora-awq|qlora-fp8 [--n N] [--tp 1]
 """

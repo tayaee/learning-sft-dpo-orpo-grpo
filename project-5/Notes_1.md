@@ -1,8 +1,5 @@
 이 파이프라인이 무엇을 하고 있는가
 
-모델을 몇 개 만들까. 어떻게 평가할까.
-동일 입력의 양자화 8종(FFT 4 + merged 4) 크기(GB) 대비 정확도 비교가 핵심.
-
 범용 베이스 모델 unsloth/Llama-3.2-1B
     수학 파인 튜닝 base-gsm8k-mini-single [10] (하류에서 로드 안함, 12번 해시 대조용)
 	수학 풀 파인튜닝 모델 synthetic-fft-mini-single [30] (하류 입력은 single만)
@@ -16,6 +13,10 @@
 		fp8 양자화 모델 synthetic-qlora-mini-single-merged-fp8 [51]
 		gguf 양자화 모델 synthetic-qlora-mini-single-merged-gguf [52]
 		gptq 양자화 모델 synthetic-qlora-mini-single-merged-gptq [53]
+
+Notes:
+	- mini: 최소 데이터를 사용한 파이프라인 점검용 (다른 옵션: full)
+	- single: 싱글 노드 싱글 GPU 사용 파이프라인 (다른 옵션: ddp, fsdp)
 
 데이터 파이프라인 중간 정리
 	unsloth/Llama-3.2-1B 범용 모델
@@ -79,18 +80,18 @@
 	QuantizationModifier(scheme="FP8") 양자화 레시피 (W8A8 FP8_E4M3, 활성화 스케일 동적이라 캘리브 의존도 낮음, AWQ와 oneshot 동일 계열, GPTQ만 라이브러리 다름) 만든 후, oneshot() 호출로 양자화 한 후 저장하여
 	$P5_SHARED/models/synthetic-fft-mini-single-fp8/ 에 저장 (6개 파일, 1.43GB, compressed-tensors).
 
-42 gguf 양자화 (full 파인튜닝 출력 bf16 이 여기의 입력)
+42 gguf 양자화 (full 파인튜닝 출력 bf16 이 여기의 입력, Q8_0/Q6_K/Q5_K_M/Q4_K_M/Q3_K_M 5종 루프)
 	$P5_SHARED/models/synthetic-fft-mini-single/ 입력을 convert_hf_to_gguf.py를 사용하여
 	$P5_SHARED/models/synthetic-fft-mini-single-gguf/model-f16.gguf 로 1차 변환 저장함 (bf16 -> f16 2.37GB).
 	$P5_SHARED/models/synthetic-fft-mini-single-gguf/model-f16.gguf 를 llama-quantize 도구를 사용하여
-	$P5_SHARED/models/synthetic-fft-mini-single-gguf/model-q8_0.gguf 으로 양자화 저장 (1.26GB, gguf 8비트 양자화에는 추가 데이터가 필요 없네)
+	model-{q8_0,q6_k,q5_k_m,q4_k_m,q3_k_m}.gguf 5종으로 양자화 저장 (mini 실측 q8_0 1.3G / q6_k 975M / q5_k_m 870M / q4_k_m 771M / q3_k_m 659M, 추가 데이터 불필요, QTYPES로 부분 실행)
 
 43 gptq 양자화 (full 파인튜닝 출력 bf16 이 여기의 입력)
 	$P5_SHARED/models/synthetic-fft-mini-single/ full 파인튜닝 모델을 로딩하고
 	$P5_SHARED/datasets/synthetic-mini.jsonl 에서 CALIB_N개만 캘리브레이션에 사용 (mini 2 / full 10, 로딩 상한 max(calib,10), 188개 전부가 아님)
 	QuantizeConfig(bits=4, group_size=128) 양자화 구성 이용하여, load(src, qc), quantize(calibration=texts[:calib], tokenizer) 호출로 양자화 한 후 save() + tokenizer 저장하여
 	$P5_SHARED/models/synthetic-fft-mini-single-gptq/ 에 저장 (7개 파일, quant_log.csv 포함, 985MB)
-	실측 용량: FFT bf16 2.47GB -> AWQ 980MB / FP8 1.43GB / GGUF Q8_0 1.26GB / GPTQ 985MB
+	실측 용량: FFT bf16 2.47GB -> AWQ 980MB / FP8 1.43GB / GGUF 5종 1.3G~659M / GPTQ 985MB
 
 32 어댑터 머지 (31 직후 실행, 50~53의 입력)
 	31 출력 $P5_SHARED/models/synthetic-qlora-mini-single/ 어댑터를 로딩하여
@@ -102,10 +103,10 @@
 	$P5_SHARED/models/synthetic-qlora-mini-single-merged/ 를 입력으로 50-awq / 51-fp8 / 52-gguf / 53-gptq 동일하게 뽑음 (CALIB_N mini 2 / full 10)
 
 60 ppl 측정
-	60-measure-ppl.sh/py 로 모델별 in-domain perplexity 측정 + base 대비 Δ판정 (GGUF 2종은 transformers로 불가라 SKIP)
+	60-measure-ppl.sh/py 로 모델별 in-domain perplexity 측정 + base 대비 Δ판정 (GGUF 10종은 llama-perplexity로 측정)
 
 71 평가
-	71-eval.sh/py 로 vLLM greedy(temp 0, max_tokens 512) GSM8K 추론, 타깃 base/fft/qlora/fft-gptq/fft-awq/fft-fp8/qlora-gptq/qlora-awq/qlora-fp8 (기본 all, GGUF는 llama.cpp 별도)
+	71-eval.sh/py 로 vLLM greedy(temp 0, max_tokens 512) GSM8K 추론, 타깃 base/fft/qlora/fft-gptq/fft-awq/fft-fp8/qlora-gptq/qlora-awq/qlora-fp8 (기본 all, GGUF 10종은 71-eval-gguf.sh로 llama-cli 평가)
 	평가 프롬프트는 prompt_no_input 고정 템플릿, gsm8k-test 앞 EVAL_N개 (mini 10 / full 0=전체), 출력 $P5_SHARED/outputs/eval-<mode>/<target>.jsonl, 양자화 타깃은 quantization flag 부여
 
 72 스코어

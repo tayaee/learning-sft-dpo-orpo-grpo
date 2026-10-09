@@ -35,14 +35,15 @@
 | 32-merge-lora | 1m | |
 | 40-quant-fft-awq | 1m | llmcompressor 0.14.0 + compressed-tensors 0.19.0 |
 | 41-quant-fft-fp8 | <1m | |
-| 42-quant-fft-gguf | 1m | convert+quantize |
+| 42-quant-fft-gguf | 1m | convert+quantize (Q8_0 1종 실측, 5종 전량 ~2분, f16 기변환·q8_0 skip 시) |
 | 43-quant-fft-gptq | 2m | calib 2 |
 | 50-quant-qlora-awq | 1m | |
 | 51-quant-qlora-fp8 | <1m | |
-| 52-quant-qlora-gguf | 2m | |
+| 52-quant-qlora-gguf | 2m | Q8_0 1종 실측, 5종 전량 ~2분 (f16 기변환·q8_0 skip 시) |
 | 53-quant-qlora-gptq | 2m | |
-| 60-measure-ppl | 2m | 9타깃×32텍스트, GGUF 2종 SKIP |
+| 60-measure-ppl | 2m | 9타깃×32텍스트 실측, 19타깃 시 증가 (GGUF 10종은 llama-perplexity) |
 | 71-eval | 11m | 9타깃×10문항 (타깃당 ~1m) |
+| 71-eval-gguf | 미측정 | 10타깃×10문항, llama-cli CPU (PROCEDURE 추정 ~30분) |
 | 72-score | <1m | |
 | **합계** | **약 43m** | PROCEDURE §3의 약 30분보다 김 (eval·teacher 실측 반영) |
 

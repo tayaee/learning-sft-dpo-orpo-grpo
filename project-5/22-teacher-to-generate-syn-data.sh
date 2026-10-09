@@ -12,9 +12,9 @@ MAXLEN=8192
 # 8개 동시 = 8GB 수준이라 서빙급 선점(80GB)은 불필요.
 : "${VLLM_MAX_NUM_SEQS:=8}"
 p5_log "teacher=$TEACHER_MODEL tp=$TP maxlen=$MAXLEN n=$SYNTH_N gpu_mem_util=${VLLM_GPU_MEM_UTIL:-0.8} max_num_seqs=$VLLM_MAX_NUM_SEQS"
-uv run "$P5_ROOT/22-teacher-to-generate-syn-data.py" --mode "$MODE" --tp "$TP" --maxlen "$MAXLEN" \
+(set -x; uv run "$P5_ROOT/22-teacher-to-generate-syn-data.py" --mode "$MODE" --tp "$TP" --maxlen "$MAXLEN" \
   --teacher "$TEACHER_MODEL" --n "$SYNTH_N" --gpu-mem-util "${VLLM_GPU_MEM_UTIL:-0.8}" \
-  --max-num-seqs "$VLLM_MAX_NUM_SEQS"
+  --max-num-seqs "$VLLM_MAX_NUM_SEQS")
 
 echo ---- result ----
 ls -lh "$P5_DATASETS/generated-$MODE.csv"
