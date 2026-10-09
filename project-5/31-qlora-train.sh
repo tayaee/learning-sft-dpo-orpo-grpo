@@ -17,7 +17,9 @@ if [ -f "$OUT/adapter_config.json" ] && p5_fresh "$OUT/adapter_config.json" "$IN
   (set -x; ls -l "$OUT")
   exit 0
 fi
-mkdir -p "$OUT"  # 출력 부모 사전 생성 (공유FS 동시 makedirs race 회피)
+# 출력 디렉토리는 rank0만 생성 (양쪽 동시 mkdir -p가 공유FS에서 EEXIST로 죽는
+# 레이스 실측). rank1은 OUT에 쓰지 않는다 (중간 ckpt·최종 저장 모두 rank0-only).
+if [ "${NODE_RANK:-0}" = "0" ]; then mkdir -p "$OUT"; fi
 p5_log "train=$P5_DATASETS/synthetic-$MODE.jsonl out=$OUT (adapter only) strat=$STRAT world=$WORLD accum=$ACCUM"
 
 (set -x; "${LAUNCH[@]}" "$P5_ROOT/10-train-entry.py" --peft \
