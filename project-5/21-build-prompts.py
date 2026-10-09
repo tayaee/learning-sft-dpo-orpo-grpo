@@ -11,6 +11,8 @@ import argparse
 import os
 import random
 
+from io_common import commit_file, tmp_path
+
 SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
 HF_ID = os.environ.get("HF_ID", "tayaee")
 
@@ -36,7 +38,9 @@ def main(mode: str, seed: int, push: bool):
                                        dg_output=str(r["dg_output"])))
     df = pd.DataFrame({"prompt": prompts})
     out = f"{SHARED}/datasets/prompts-{mode}.parquet"
-    df.to_parquet(out)
+    tmp = tmp_path(out)
+    df.to_parquet(tmp)
+    commit_file(tmp, out)
     print(f"[{mode}] n={len(df)} -> {out}")
     if push:
         from datasets import Dataset

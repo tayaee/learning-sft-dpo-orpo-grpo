@@ -9,6 +9,7 @@ FFT용 40-quant-fft-awq.py와 동일 플로우, 입력만 merged.
 import argparse
 import os
 
+from io_common import clean_tmp, commit_dir, tmp_path
 from quant_common import load_calib_texts
 
 SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
@@ -25,9 +26,11 @@ def main(mode: str, calib: int, calib_file: str | None):
     texts = load_calib_texts(calib, calib_file)
     ds = Dataset.from_list([{"text": t} for t in texts])
     recipe = AWQModifier(ignore=["lm_head"], scheme="W4A16", targets=["Linear"])
-    oneshot(model=src, dataset=ds, recipe=recipe, output_dir=out,
+    tmp = clean_tmp(tmp_path(out))
+    oneshot(model=src, dataset=ds, recipe=recipe, output_dir=tmp,
             max_seq_length=1024, num_calibration_samples=calib)
-    AutoTokenizer.from_pretrained(src).save_pretrained(out)
+    AutoTokenizer.from_pretrained(src).save_pretrained(tmp)
+    commit_dir(tmp, out)
     print(f"[{mode}] calib={calib} -> {out}")
 
 

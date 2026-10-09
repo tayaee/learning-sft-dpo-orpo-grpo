@@ -106,7 +106,7 @@ Notes:
 	60-measure-ppl.sh/py 로 모델별 in-domain perplexity 측정 + base 대비 Δ판정 (GGUF 10종은 llama-perplexity로 측정)
 
 71 평가
-	71-eval.sh/py 로 vLLM greedy(temp 0, max_tokens 512) GSM8K 추론, 타깃 base/fft/qlora/fft-gptq/fft-awq/fft-fp8/qlora-gptq/qlora-awq/qlora-fp8 (기본 all, GGUF 10종은 72-eval-gguf.sh로 llama-cli 평가)
+	71-eval.sh/py 로 vLLM greedy(temp 0, max_tokens 512) GSM8K 추론, 타깃 base/fft/qlora/fft-gptq/fft-awq/fft-fp8/qlora-gptq/qlora-awq/qlora-fp8 (기본 all, GGUF 10종은 72-eval-gguf.sh로 llama-completion 평가)
 	평가 프롬프트는 prompt_no_input 고정 템플릿, gsm8k-test 앞 EVAL_N개 (mini 10 / full 0=전체), 출력 $P5_SHARED/outputs/eval-<mode>/<target>.jsonl, 양자화 타깃은 quantization flag 부여
 
 72 스코어

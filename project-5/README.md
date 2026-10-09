@@ -57,7 +57,7 @@ uv run 53-quant-qlora-gptq.py --mode mini
 
 # 7) 평가 (HF 9종 + GGUF 10종)
 ./71-eval.sh mini
-./72-eval-gguf.sh mini   # llama-cli 필요, 미빌드 시 SKIP
+./72-eval-gguf.sh mini   # llama-completion 필요, 미빌드 시 SKIP
 uv run 73-score.py --mode mini
 
 # 8) HF 업로드 → vLLM 서빙 → 추론 예제

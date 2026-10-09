@@ -9,6 +9,8 @@ base는 학습 때와 동일한 모델(unsloth 미러/smoke, meta-llama/full)을
 import argparse
 import os
 
+from io_common import clean_tmp, commit_dir, tmp_path
+
 SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
 BASE = os.environ.get("BASE_MODEL", "unsloth/Llama-3.2-1B")
 MASK_TOKEN = "<mask>"
@@ -57,8 +59,10 @@ def main(mode: str, base: str):
     model.resize_token_embeddings(len(tok))
     model = PeftModel.from_pretrained(model, adapter)
     model = model.merge_and_unload()
-    model.save_pretrained(out)
-    tok.save_pretrained(out)
+    tmp = clean_tmp(tmp_path(out))
+    model.save_pretrained(tmp)
+    tok.save_pretrained(tmp)
+    commit_dir(tmp, out)
     print(f"[{mode}] merged -> {out}")
 
 

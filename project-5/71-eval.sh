@@ -8,6 +8,7 @@ TARGETS="${2:-all}"
 N="$EVAL_N"  # mini 10 / full 0=전체 (common.env)
 TEST="$P5_DATASETS/gsm8k-test.jsonl"
 p5_require "$TEST"
+: "${VLLM_MAX_NUM_SEQS:=8}"
 # 71-eval.py resolve()의 bash 미러 — base(HF)는 로컬 타임스탬프 없음
 target_model() {
   case "$1" in
@@ -20,7 +21,7 @@ target_model() {
     *) echo "" ;;
   esac
 }
-p5_log "tp=$TP targets=$TARGETS n=$N"
+p5_log "tp=$TP targets=$TARGETS n=$N gpu_mem_util=${VLLM_GPU_MEM_UTIL:-0.8} max_num_seqs=$VLLM_MAX_NUM_SEQS"
 for t in $TARGETS; do
   out="$P5_OUTPUTS/eval-$MODE/$t.jsonl"
   m="$(target_model "$t")"
@@ -29,7 +30,8 @@ for t in $TARGETS; do
   elif [ -f "$m/config.json" ] && [ -f "$out" ] && p5_fresh "$out" "$m/config.json" "$TEST"; then
     p5_log "skip: fresh $out (FORCE=1 to rebuild)"; continue
   fi
-  (set -x; uv run "$P5_ROOT/71-eval.py" --mode "$MODE" --target "$t" --n "$N" --tp "$TP")
+  (set -x; uv run "$P5_ROOT/71-eval.py" --mode "$MODE" --target "$t" --n "$N" --tp "$TP" \
+    --gpu-mem-util "${VLLM_GPU_MEM_UTIL:-0.8}" --max-num-seqs "$VLLM_MAX_NUM_SEQS")
 done
 
 echo ---- result ----

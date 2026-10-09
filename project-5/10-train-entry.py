@@ -19,6 +19,8 @@ import json
 import os
 import random
 
+from io_common import clean_tmp, commit_dir, tmp_path
+
 PROMPT_TEMPLATE = (
     "Below is an instruction that describes a task, paired with an input "
     "that provides further context.\n"
@@ -125,8 +127,10 @@ def _save_fsdp_dcp(fsdp_model, model_cfg, tok, out_dir, dtype):
         missing, unexpected = set_model_state_dict(
             full, full_sd, options=StateDictOptions(full_state_dict=True))
         assert not missing, f"DCP consolidate missing keys: {sorted(missing)[:5]}"
-        full.save_pretrained(out_dir, safe_serialization=True)
-        tok.save_pretrained(out_dir)
+        tmp = clean_tmp(tmp_path(out_dir))
+        full.save_pretrained(tmp, safe_serialization=True)
+        tok.save_pretrained(tmp)
+        commit_dir(tmp, out_dir)
     dist.barrier()
 
 
@@ -279,8 +283,10 @@ def main():
     if _dcp_2node:
         _save_fsdp_dcp(trainer.model, model.config, tok, a.out, dtype)
     else:
-        trainer.save_model(a.out)
-        tok.save_pretrained(a.out)
+        tmp = clean_tmp(tmp_path(a.out))
+        trainer.save_model(tmp)
+        tok.save_pretrained(tmp)
+        commit_dir(tmp, a.out)
     print(f"saved -> {a.out}")
 
 

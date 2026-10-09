@@ -41,9 +41,13 @@ else
   p5_log "maskedthought present, reference only"
 fi
 
-p5_log "copy vendored data to shared datasets (if missing)"
-[ -f "$P5_DATASETS/gsm8k-train.jsonl" ] || cp "$P5_DATA/gsm8k-train.jsonl" "$P5_DATASETS/gsm8k-train.jsonl"
-[ -f "$P5_DATASETS/gsm8k-test.jsonl" ] || cp "$P5_DATA/gsm8k-test.jsonl" "$P5_DATASETS/gsm8k-test.jsonl"
+p5_log "copy vendored data to shared datasets (if missing, via .tmp+rename)"
+for _bn in gsm8k-train.jsonl gsm8k-test.jsonl; do
+  if [ ! -f "$P5_DATASETS/$_bn" ]; then
+    cp "$P5_DATA/$_bn" "$P5_DATASETS/$_bn.tmp" && mv "$P5_DATASETS/$_bn.tmp" "$P5_DATASETS/$_bn"
+  fi
+done
+unset _bn
 
 p5_log "HF login check (Llama gated)"
 

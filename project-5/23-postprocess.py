@@ -15,6 +15,8 @@ import json
 import os
 import re
 
+from io_common import commit_file, tmp_path
+
 SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
 QMARK = "Transformed Domain Question"
 AMARK = "Transformed Domain Answer"
@@ -57,9 +59,11 @@ def main(mode: str):
             continue
         rows.append({"source": [r[0]], "target": [r[1]]})
     out = f"{SHARED}/datasets/synthetic-{mode}.jsonl"
-    with open(out, "w", encoding="utf-8") as f:
+    tmp = tmp_path(out)
+    with open(tmp, "w", encoding="utf-8") as f:
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    commit_file(tmp, out)
     print(f"[{mode}] kept={len(rows)} dropped={dropped} -> {out}")
 
 

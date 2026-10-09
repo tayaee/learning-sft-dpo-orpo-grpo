@@ -20,6 +20,8 @@ import json
 import math
 import os
 
+from io_common import commit_file, tmp_path
+
 SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
 BASE = os.environ.get("BASE_MODEL", "unsloth/Llama-3.2-1B")
 LLAMACPP = os.environ.get("LLAMACPP", os.path.expanduser("~/git/llama.cpp"))
@@ -224,11 +226,15 @@ def main(mode: str, n: int, targets: str):
     outdir = f"{SHARED}/outputs/ppl-{mode}"
     os.makedirs(outdir, exist_ok=True)
     for t in sel:
-        with open(f"{outdir}/{t}.json", "w", encoding="utf-8") as f:
+        tmp = tmp_path(f"{outdir}/{t}.json")
+        with open(tmp, "w", encoding="utf-8") as f:
             json.dump(results[t], f, ensure_ascii=False, indent=2)
+        commit_file(tmp, f"{outdir}/{t}.json")
     outp = f"{outdir}/summary.json"
-    with open(outp, "w", encoding="utf-8") as f:
+    tmp = tmp_path(outp)
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
+    commit_file(tmp, outp)
     print(f"-> {outdir}/ (summary.json + {len(sel)} targets)")
 
 

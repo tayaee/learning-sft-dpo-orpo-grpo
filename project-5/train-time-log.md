@@ -43,7 +43,7 @@
 | 53-quant-qlora-gptq | 2m | |
 | 60-measure-ppl | 2m | 9타깃×32텍스트 실측, 19타깃 시 증가 (GGUF 10종은 llama-perplexity) |
 | 71-eval | 11m | 9타깃×10문항 (타깃당 ~1m) |
-| 72-eval-gguf | 미측정 | 10타깃×10문항, llama-cli CPU (PROCEDURE 추정 ~30분) |
+| 72-eval-gguf | 미측정 | 10타깃×10문항, llama-completion CPU (PROCEDURE 추정 ~30분) |
 | 73-score | <1m | |
 | **합계** | **약 43m** | PROCEDURE §3의 약 30분보다 김 (eval·teacher 실측 반영) |
 

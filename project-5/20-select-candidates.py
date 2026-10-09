@@ -12,6 +12,8 @@ import argparse
 import os
 import random
 
+from io_common import commit_file, tmp_path
+
 SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
 EMB_MODEL = "sentence-transformers/all-mpnet-base-v2"
 BATCH = 500
@@ -43,7 +45,9 @@ def main(mode: str, seed: int):
             vecs.extend(st.encode(batch_texts, show_progress_bar=False).tolist())
 
         raw_df["embedding"] = vecs
-        raw_df[["instruction", "input", "output", "embedding"]].to_parquet(emb_path)
+        tmp = tmp_path(emb_path)
+        raw_df[["instruction", "input", "output", "embedding"]].to_parquet(tmp)
+        commit_file(tmp, emb_path)
         print(f"[{mode}] embeddings built and cached: {len(raw_df)}")
 
     # 2. 파일이 존재하고 dg가 아직 None이면 로드
@@ -90,7 +94,9 @@ def main(mode: str, seed: int):
         rows, columns=["gsm_idx", "dg_instruction", "dg_input", "dg_output"]
     )
     out_path = f"{SHARED}/datasets/candidates-{mode}.parquet"
-    out.to_parquet(out_path)
+    tmp = tmp_path(out_path)
+    out.to_parquet(tmp)
+    commit_file(tmp, out_path)
     print(f"[{mode}] gsm={len(gsm_idx)} candidates={len(out)} -> {out_path}")
 
 

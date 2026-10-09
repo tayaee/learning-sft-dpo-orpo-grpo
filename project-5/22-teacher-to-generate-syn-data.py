@@ -6,6 +6,8 @@
 import argparse
 import os
 
+from io_common import commit_file, tmp_path
+
 SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
 MARKERS = ("Transformed Domain Question", "Transformed Domain Answer", "The answer is")
 MAX_ITERS = 3
@@ -63,7 +65,9 @@ def main(mode: str, tp: int, maxlen: int, teacher: str, n: int,
         if not pending:
             break
     out = f"{SHARED}/datasets/generated-{mode}.csv"
-    df.to_csv(out, index=False)
+    tmp = tmp_path(out)
+    df.to_csv(tmp, index=False)
+    commit_file(tmp, out)
     print(f"[{mode}] invalid_remain={len(pending)} -> {out}")
 
 

@@ -10,6 +10,8 @@ import json
 import os
 import random
 
+from io_common import commit_file, tmp_path
+
 SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
 
 
@@ -27,9 +29,11 @@ def main(n: int, seed: int):
     rng = random.Random(seed)
     idx = list(range(len(rows)))
     rng.shuffle(idx)
-    with open(out, "w", encoding="utf-8") as f:
+    tmp = tmp_path(out)
+    with open(tmp, "w", encoding="utf-8") as f:
         for i in idx[:n]:
             f.write(rows[i] + "\n")
+    commit_file(tmp, out)
     print(f"train={len(rows)} seed={seed} n={n} -> {out}")
 
 

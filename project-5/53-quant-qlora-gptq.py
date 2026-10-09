@@ -9,6 +9,7 @@ FFT용 43-quant-fft-gptq.py와 동일 플로우, 입력만 merged.
 import argparse
 import os
 
+from io_common import clean_tmp, commit_dir, tmp_path
 from quant_common import load_calib_texts
 
 SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
@@ -25,8 +26,10 @@ def main(mode: str, calib: int, calib_file: str | None):
     qc = QuantizeConfig(bits=4, group_size=128)
     model = GPTQModel.load(src, qc)
     model.quantize(calibration=texts[:calib], tokenizer=tok)
-    model.save(out)
-    tok.save_pretrained(out)
+    tmp = clean_tmp(tmp_path(out))
+    model.save(tmp)
+    tok.save_pretrained(tmp)
+    commit_dir(tmp, out)
     print(f"[{mode}] calib={calib} -> {out}")
 
 
