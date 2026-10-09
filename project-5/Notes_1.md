@@ -2,17 +2,17 @@
 
 범용 베이스 모델 unsloth/Llama-3.2-1B
     수학 파인 튜닝 base-gsm8k-mini-single [10] (하류에서 로드 안함, 12번 해시 대조용)
-	수학 풀 파인튜닝 모델 synthetic-fft-mini-single [30] (하류 입력은 single만)
-		awq 양자화 모델 synthetic-fft-mini-single-awq [40]
-		fp8 양자화 모델 synthetic-fft-mini-single-fp8 [41]
-		gguf 양자화 모델 synthetic-fft-mini-single-gguf [42]
-		gptq 양자화 모델 synthetic-fft-mini-single-gptq [43]
-	수학 qlora 어댑터 synthetic-qlora-mini-single [31]
-	수학 qlora 모델 synthetic-qlora-mini-single-merged [32]
-		awq 양자화 모델 synthetic-qlora-mini-single-merged-awq [50]
-		fp8 양자화 모델 synthetic-qlora-mini-single-merged-fp8 [51]
-		gguf 양자화 모델 synthetic-qlora-mini-single-merged-gguf [52]
-		gptq 양자화 모델 synthetic-qlora-mini-single-merged-gptq [53]
+		수학 풀 파인튜닝 모델 synthetic-fft-mini-single [30] (하류 입력은 single만)
+			awq 양자화 모델 synthetic-fft-mini-single-awq [40]
+			fp8 양자화 모델 synthetic-fft-mini-single-fp8 [41]
+			gguf 양자화 모델 synthetic-fft-mini-single-gguf [42]
+			gptq 양자화 모델 synthetic-fft-mini-single-gptq [43]
+		수학 qlora 어댑터 synthetic-qlora-mini-single [31]
+			수학 qlora 모델 synthetic-qlora-mini-single-merged [32]
+				awq 양자화 모델 synthetic-qlora-mini-single-merged-awq [50]
+				fp8 양자화 모델 synthetic-qlora-mini-single-merged-fp8 [51]
+				gguf 양자화 모델 synthetic-qlora-mini-single-merged-gguf [52]
+				gptq 양자화 모델 synthetic-qlora-mini-single-merged-gptq [53]
 
 Notes:
 	- mini: 최소 데이터를 사용한 파이프라인 점검용 (다른 옵션: full)
