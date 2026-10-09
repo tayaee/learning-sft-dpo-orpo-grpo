@@ -53,7 +53,7 @@ def main(mode: str, base: str):
         tok.pad_token = PAD_TOKEN
     print(f"[{mode}] vocab {n0} -> {len(tok)}")
 
-    model = AutoModelForCausalLM.from_pretrained(base, torch_dtype=torch.bfloat16)
+    model = AutoModelForCausalLM.from_pretrained(base, dtype=torch.bfloat16)
     model.resize_token_embeddings(len(tok))
     model = PeftModel.from_pretrained(model, adapter)
     model = model.merge_and_unload()

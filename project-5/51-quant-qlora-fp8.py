@@ -2,8 +2,9 @@
 """51-quant-qlora-fp8.py — Stage 5b. QLoRA-merged → FP8 static quant (llmcompressor oneshot).
 FFT용 41-quant-fft-fp8.py와 동일 플로우, 입력만 merged.
 입력: synthetic-qlora-<mode>-single-merged → 출력: synthetic-qlora-<mode>-single-merged-fp8
+캘리브레이션: gsm8k-calibration-256.jsonl (05-prep-calibration.sh 생성).
 
-  uv run 51-quant-qlora-fp8.py --mode mini|full [--calib N]
+  uv run 51-quant-qlora-fp8.py --mode mini|full [--calib N] [--calib-file PATH]
 """
 import argparse
 import json
@@ -24,7 +25,7 @@ def first(v):
     return v[0] if isinstance(v, list) else v
 
 
-def main(mode: str, calib: int):
+def main(mode: str, calib: int, calib_file: str | None):
     from datasets import Dataset
     from transformers import AutoTokenizer
     from llmcompressor import oneshot
@@ -32,16 +33,25 @@ def main(mode: str, calib: int):
 
     src = f"{SHARED}/models/synthetic-qlora-{mode}-single-merged"
     out = f"{SHARED}/models/synthetic-qlora-{mode}-single-merged-fp8"
+    calib_file = calib_file or os.environ.get(
+        "CALIB_FILE", f"{SHARED}/datasets/gsm8k-calibration-256.jsonl")
+    if not os.path.exists(calib_file):
+        raise SystemExit(f"missing calibration file: {calib_file} "
+                         "(run 05-prep-calibration.sh first)")
     texts = []
-    with open(f"{SHARED}/datasets/synthetic-{mode}.jsonl", encoding="utf-8") as f:
+    with open(calib_file, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if line:
                 r = json.loads(line)
                 texts.append(PROMPT_TEMPLATE.format(instruction=first(r["source"]),
                                                     response=first(r["target"])))
-            if len(texts) >= max(calib, 64):
+            if len(texts) >= calib:
                 break
+    if len(texts) < calib:
+        raise SystemExit(f"calibration file has {len(texts)} rows "
+                         f"< requested calib={calib}")
+    print(f"[{mode}] calib_src={calib_file} n={len(texts)}")
     ds = Dataset.from_list([{"text": t} for t in texts])
     recipe = QuantizationModifier(ignore=["lm_head"], scheme="FP8",
                                   targets=["Linear"])
@@ -55,6 +65,9 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", default="mini", choices=["mini", "full"])
     ap.add_argument("--calib", type=int, default=None)
+    ap.add_argument("--calib-file", default=None,
+                    help="캘리브레이션 jsonl (기본 gsm8k-calibration-256.jsonl, "
+                         "CALIB_FILE로 오버라이드 가능)")
     a = ap.parse_args()
-    default_calib = int(os.environ.get("CALIB_N", "2" if a.mode == "mini" else "64"))
-    main(a.mode, a.calib or default_calib)
+    default_calib = int(os.environ.get("CALIB_N", "32" if a.mode == "mini" else "256"))
+    main(a.mode, a.calib or default_calib, a.calib_file)
