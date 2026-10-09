@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # 10-baseline-train.sh [mini|full] [single|ddp|fsdp] — Stage 1. GSM8K 베이스라인.
+# 전략 선택: $2 > $STRAT(환경) > single.
 # 원본: train_basic.sh (torchrun nproc=4 + FSDP full_shard).
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-mini}"
-p5_resolve_strat "${2:-single}"
+p5_resolve_strat "${2:-${STRAT:-single}}"
 
 OUT="$P5_MODELS/base-gsm8k-$MODE-$STRAT"
 IN="$P5_DATASETS/gsm8k-train.jsonl"

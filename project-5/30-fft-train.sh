@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # 30-fft-train.sh [mini|full] [single|ddp|fsdp] — Stage 3a. 합성데이터 FFT.
+# 전략 선택: $2 > $STRAT(환경) > single.
 # 원본: train_FFT.sh. --train_dir → synthetic-<mode>.jsonl
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-mini}"
-p5_resolve_strat "${2:-single}"
+p5_resolve_strat "${2:-${STRAT:-single}}"
 
 OUT="$P5_MODELS/synthetic-fft-$MODE-$STRAT"
 IN="$P5_DATASETS/synthetic-$MODE.jsonl"
