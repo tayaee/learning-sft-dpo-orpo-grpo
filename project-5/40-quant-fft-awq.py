@@ -8,22 +8,11 @@ gsm8k-train에서 seed 고정 추출). AWQ 예제 정석 256.
   uv run 40-quant-fft-awq.py --mode mini|full [--calib N] [--calib-file PATH]
 """
 import argparse
-import json
 import os
 
+from quant_common import load_calib_texts
+
 SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
-PROMPT_TEMPLATE = (
-    "Below is an instruction that describes a task, paired with an input "
-    "that provides further context.\n"
-    "Write a response that appropriately completes the request.\n\n"
-    "### Instruction:\n{instruction}\n\n"
-    "### Input:\nGive a response as the assistant with the input conversation history\n\n"
-    "### Response:\n{response}"
-)
-
-
-def first(v):
-    return v[0] if isinstance(v, list) else v
 
 
 def main(mode: str, calib: int, calib_file: str | None):
@@ -34,25 +23,7 @@ def main(mode: str, calib: int, calib_file: str | None):
 
     src = f"{SHARED}/models/synthetic-fft-{mode}-single"
     out = f"{SHARED}/models/synthetic-fft-{mode}-single-awq"
-    calib_file = calib_file or os.environ.get(
-        "CALIB_FILE", f"{SHARED}/datasets/gsm8k-calibration-256.jsonl")
-    if not os.path.exists(calib_file):
-        raise SystemExit(f"missing calibration file: {calib_file} "
-                         "(run 05-prep-calibration.sh first)")
-    texts = []
-    with open(calib_file, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                r = json.loads(line)
-                texts.append(PROMPT_TEMPLATE.format(instruction=first(r["source"]),
-                                                    response=first(r["target"])))
-            if len(texts) >= calib:
-                break
-    if len(texts) < calib:
-        raise SystemExit(f"calibration file has {len(texts)} rows "
-                         f"< requested calib={calib}")
-    print(f"[{mode}] calib_src={calib_file} n={len(texts)}")
+    texts = load_calib_texts(calib, calib_file)
     ds = Dataset.from_list([{"text": t} for t in texts])
     recipe = AWQModifier(ignore=["lm_head"], scheme="W4A16", targets=["Linear"])
     oneshot(model=src, dataset=ds, recipe=recipe, output_dir=out,
