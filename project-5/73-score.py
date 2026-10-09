@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """73-score.py — Stage 7c. '#### <숫자>' 추출 채점 (원본 get_gsm8k_res.py).
 invalid율 + acc를 타깃별 표로 출력. (BLEU는 생략 — acc가 핵심 지표.)
+표 출력 후 eval-<mode>/score.json 아티팩트 저장 (73-score.sh fresh 스킵용).
 
   uv run 73-score.py --mode mini|full
 입력: $P5_SHARED/outputs/eval-<mode>/*.jsonl
@@ -10,6 +11,8 @@ import glob
 import json
 import os
 import re
+
+from io_common import commit_file, tmp_path
 
 SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
 ANS_RE = re.compile(r"#### (\-?[0-9\.\,]+)")
@@ -38,6 +41,7 @@ def extract(t: str) -> str:
 
 def main(mode: str):
     print(f"{'target':8} {'n':>5} {'acc':>7} {'invalid':>8}")
+    summary = {}
     for path in sorted(glob.glob(f"{SHARED}/outputs/eval-{mode}/*.jsonl")):
         name = os.path.splitext(os.path.basename(path))[0]
         correct = invalid = n = 0
@@ -56,7 +60,15 @@ def main(mode: str):
                     invalid += 1
                 elif gold != INVALID and abs(float(ans) - float(gold)) < 1e-4:
                     correct += 1
-        print(f"{name:8} {n:>5} {correct / max(n, 1):>7.3f} {invalid / max(n, 1):>8.3f}")
+        summary[name] = {"n": n, "acc": round(correct / max(n, 1), 4),
+                         "invalid": round(invalid / max(n, 1), 4)}
+        print(f"{name:8} {n:>5} {summary[name]['acc']:>7.3f} {summary[name]['invalid']:>8.3f}")
+    out = f"{SHARED}/outputs/eval-{mode}/score.json"
+    tmp = tmp_path(out)
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(summary, f, ensure_ascii=False, indent=2)
+    commit_file(tmp, out)
+    print(f"-> {out}")
 
 
 if __name__ == "__main__":
