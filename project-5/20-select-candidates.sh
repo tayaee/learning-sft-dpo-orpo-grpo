@@ -8,4 +8,5 @@ p5_log "seed=$SEED"
 uv run "$P5_ROOT/20-select-candidates.py" --mode "$MODE" --seed "$SEED"
 
 echo ---- result ----
-ls -lh "$P5_DATASETS/alpaca-embeddings.parquet" "$P5_DATASETS/candidates-$MODE.parquet"
+ls -lh "$P5_DATASETS/alpaca-embeddings.parquet" 
+ls -lh "$P5_DATASETS/candidates-$MODE.parquet"
