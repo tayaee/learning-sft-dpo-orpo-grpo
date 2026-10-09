@@ -8,7 +8,7 @@ CALIB="${2:-$CALIB_N}"
 SRC="$P5_MODELS/synthetic-fft-$MODE-single"
 OUT="$P5_MODELS/synthetic-fft-$MODE-single-awq"
 p5_require "$SRC/config.json" "$CALIB_FILE"
-if [ -f "$OUT/config.json" ] && p5_fresh "$OUT" "$SRC" "$CALIB_FILE"; then
+if [ -f "$OUT/config.json" ] && p5_fresh "$OUT/config.json" "$SRC/config.json" "$CALIB_FILE"; then
   p5_log "skip: fresh $OUT (FORCE=1 to rebuild)"
   echo ---- result ----
   (set -x; ls -l "$OUT")

@@ -10,7 +10,7 @@ p5_resolve_strat "${2:-single}"
 OUT="$P5_MODELS/synthetic-qlora-$MODE-$STRAT"
 IN="$P5_DATASETS/synthetic-$MODE.jsonl"
 p5_require "$IN"
-if [ -f "$OUT/adapter_config.json" ] && p5_fresh "$OUT" "$IN"; then
+if [ -f "$OUT/adapter_config.json" ] && p5_fresh "$OUT/adapter_config.json" "$IN"; then
   p5_log "skip: fresh $OUT (FORCE=1 to rebuild)"
   echo ---- result ----
   (set -x; ls -l "$OUT")
