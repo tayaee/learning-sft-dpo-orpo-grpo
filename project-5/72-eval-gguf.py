@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""71-eval-gguf.py — Stage 7b-gguf. llama-cli greedy GSM8K 추론 (GGUF 10종).
+"""72-eval-gguf.py — Stage 7b-gguf. llama-cli greedy GSM8K 추론 (GGUF 10종).
 71-eval.py(vLLM)는 GGUF 미지원 → llama.cpp로 별도 평가한다.
 조건 동일 강제: PROMPT_NO_INPUT 포맷, greedy(temp 0), max 512, gsm8k-test 앞 N개.
-출력: $P5_SHARED/outputs/eval-<mode>/<target>.jsonl (원본행 + kd_data, 72-score 호환).
+출력: $P5_SHARED/outputs/eval-<mode>/<target>.jsonl (원본행 + kd_data, 73-score 호환).
 
-  uv run 71-eval-gguf.py --mode mini|full --target fft-gguf-q4_k_m [--n N]
+  uv run 72-eval-gguf.py --mode mini|full --target fft-gguf-q4_k_m [--n N]
   타깃: fft-gguf-{q8_0,q6_k,q5_k_m,q4_k_m,q3_k_m}, qlora-gguf-{...}
 전제: llama-cli 빌드 ($LLAMACPP/build/bin/llama-cli). 없으면 FileNotFoundError.
 """

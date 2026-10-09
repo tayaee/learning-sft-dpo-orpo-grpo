@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""73-upload-hf.py — Stage 7a. 로컬 산출물을 HF Hub(tayaee/*)에 업로드.
+"""74-upload-hf.py — Stage 7a. 로컬 산출물을 HF Hub(tayaee/*)에 업로드.
 HF 산출물은 Stage 8b 서빙의 입력이 된다 (local 경로로도 서빙 가능).
 
-  uv run 73-upload-hf.py --mode mini|full --targets all|fft,qlora,fft-gptq,...,fft-gguf-q4_k_m [--dry-run]
+  uv run 74-upload-hf.py --mode mini|full --targets all|fft,qlora,fft-gptq,...,fft-gguf-q4_k_m [--dry-run]
 전제: hf auth login (쓰기 권한 토큰).
 """
 import argparse

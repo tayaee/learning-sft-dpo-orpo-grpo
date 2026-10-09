@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 71-eval.sh [mini|full] [target...] — Stage 7b wrapper. target 기본 all.
-# all = base + fft/qlora FP 2종 + HF 양자화 6종 (GGUF 10종 제외, 71-eval-gguf.sh 별도 평가).
+# all = base + fft/qlora FP 2종 + HF 양자화 6종 (GGUF 10종 제외, 72-eval-gguf.sh 별도 평가).
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-mini}"
 TARGETS="${2:-all}"

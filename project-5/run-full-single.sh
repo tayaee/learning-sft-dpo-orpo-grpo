@@ -4,7 +4,7 @@
 # → 합성 FFT + QLoRA + merge → PTQ 8종(FFT 4 + QLoRA-merged 4)
 # → PPL 게이트 → vLLM eval + score.
 # NOTE: 22-teacher 합성생성(10k, 약 5~6시간)이 가장 오래 걸리므로 밤샘 실행 권장.
-# 제외: 73-upload-hf (Hub 업로드), 80-serve-vllm (상주 서버), 81-infer-examples
+# 제외: 74-upload-hf (Hub 업로드), 80-serve-vllm (상주 서버), 81-infer-examples
 #   → 필요시 맨 아래 주석 명령으로 개별 실행.
 # 사용: ./run-full-single.sh
 #   SKIP_SETUP=1 ./run-full-single.sh   # 00-setup 생략 (양 노드 1회 수행済み)
@@ -78,12 +78,12 @@ fi
 want_step ppl && p5_step "60-measure-ppl" ./60-measure-ppl.sh "$MODE"
 if want_step eval; then
   p5_step "71-eval" ./71-eval.sh "$MODE"
-  p5_step "71-eval-gguf" ./71-eval-gguf.sh "$MODE"
-  p5_step "72-score" ./72-score.sh "$MODE"
+  p5_step "72-eval-gguf" ./72-eval-gguf.sh "$MODE"
+  p5_step "73-score" ./73-score.sh "$MODE"
 fi
 
 p5_log "run-$MODE-$STRAT done"
 # --- 선택 (수동) ---
-# ./73-upload-hf.sh full
+# ./74-upload-hf.sh full
 # ./80-serve-vllm.sh full fft            # 터미널1 (상주)
 # ./81-infer-examples.sh tayaee/Llama-3.2-1B-math-fft-full  # 터미널2

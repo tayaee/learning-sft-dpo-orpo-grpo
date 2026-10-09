@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 71-eval-gguf.sh [mini|full] [target...] — Stage 7b-gguf wrapper. llama-cli greedy GSM8K 추론.
+# 72-eval-gguf.sh [mini|full] [target...] — Stage 7b-gguf wrapper. llama-cli greedy GSM8K 추론.
 # target 기본 all = GGUF 10종 (fft/qlora × {q8_0,q6_k,q5_k_m,q4_k_m,q3_k_m}).
 # 전제: llama-cli 빌드 ($LLAMACPP/build/bin/llama-cli). 없으면 전 타깃 SKIP (rc=0).
 set -euo pipefail
@@ -15,7 +15,7 @@ if [ ! -x "$LLAMACPP/build/bin/llama-cli" ]; then
 fi
 TEST="$P5_DATASETS/gsm8k-test.jsonl"
 p5_require "$TEST"
-# <target> → GGUF 파일 (71-eval-gguf.py TARGETS 규칙 미러)
+# <target> → GGUF 파일 (72-eval-gguf.py TARGETS 규칙 미러)
 gguf_file() {
   case "$1" in
     fft-gguf-*) echo "$P5_MODELS/synthetic-fft-$MODE-single-gguf/model-${1#fft-gguf-}.gguf" ;;
@@ -29,7 +29,7 @@ for t in $TARGETS; do
   if [ -n "$g" ] && [ -f "$g" ] && [ -f "$out" ] && p5_fresh "$out" "$g" "$TEST"; then
     p5_log "skip: fresh $out (FORCE=1 to rebuild)"; continue
   fi
-  (set -x; uv run "$P5_ROOT/71-eval-gguf.py" --mode "$MODE" --target "$t" --n "$N")
+  (set -x; uv run "$P5_ROOT/72-eval-gguf.py" --mode "$MODE" --target "$t" --n "$N")
 done
 
 echo ---- result ----

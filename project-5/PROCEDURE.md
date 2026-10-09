@@ -30,8 +30,8 @@
 | 4. PTQ(FFT) | `42-quant-fft-gguf.sh`, `40/41/43-quant-fft-*.py` | FFT **single** 결과 → AWQ-4bit / **FP8(w8a8)** / GGUF 5종 / GPTQ-4bit-g128 |
 | 5. PTQ(QLoRA) | `52-quant-qlora-gguf.sh`, `50/51/53-quant-qlora-*.py` | QLoRA-merged 결과 → 동일 5종 (`...-merged-awq/fp8/gguf-5종/gptq`). 양자화 총 HF 6종 + GGUF 10종 |
 | 6. PPL 게이트 | `60-measure-ppl.sh/py` | base + FP 2종 + 양자화 16종 → in-domain PPL + Δ판정 (Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard, GGUF 10종은 llama-perplexity) |
-| 7. 평가 | `71-eval.sh/py`, `72-score.py` | base / fft / qlora / fft-gptq/awq/fp8 / qlora-gptq/awq/fp8 → `eval-<mode>/` → 정답 추출 (`####` / `The answer is` / OpenAI-mini 보조). GGUF 10종은 `71-eval-gguf.sh`(llama-cli) 별도 |
-| 8. 배포 | `73-upload-hf.sh/py`, `80-serve-vllm.sh`, `81-infer-examples.py` | 산출물 → `tayaee/*` 업로드 → vLLM OpenAI-호환 서빙 → 추론 예제 |
+| 7. 평가 | `71-eval.sh/py`, `73-score.py` | base / fft / qlora / fft-gptq/awq/fp8 / qlora-gptq/awq/fp8 → `eval-<mode>/` → 정답 추출 (`####` / `The answer is` / OpenAI-mini 보조). GGUF 10종은 `72-eval-gguf.sh`(llama-cli) 별도 |
+| 8. 배포 | `74-upload-hf.sh/py`, `80-serve-vllm.sh`, `81-infer-examples.py` | 산출물 → `tayaee/*` 업로드 → vLLM OpenAI-호환 서빙 → 추론 예제 |
 
 핵심 포인트 (강의에서 강조, 구현에 반영):
 - 로그의 `gram loss/acc`는 커스텀 트레이너 용어 — **CE loss 하락만 볼 것**.
@@ -108,7 +108,7 @@ Q/A 마커 기준 split + 케이스별 예외 + 잔여 패턴 제거 + `rstrip` 
 ### Stage 7. Inference·평가
 1. vLLM greedy (`71`): `SamplingParams(temp 0, max 512)`, `prompt_no_input` 포맷.
    타깃: base / fft / qlora(-merged) / fft-gptq/awq/fp8 / qlora-gptq/awq/fp8 (HF 9종).
-   양자화 타깃은 quant flag 부여. GGUF 10종은 vLLM 미지원이라 `71-eval-gguf.sh`(llama-cli)로 별도 평가.
+   양자화 타깃은 quant flag 부여. GGUF 10종은 vLLM 미지원이라 `72-eval-gguf.sh`(llama-cli)로 별도 평가.
 2. 채점 (`72`): `#### <숫자>` 추출, invalid율/acc/BLEU. base처럼 `The answer is`를 안 뱉는
    모델은 CSV 덤프 후 OpenAI `gpt-4o-mini`로 답만 재추출 (강의 방식, 선택).
 
@@ -161,8 +161,8 @@ Q/A 마커 기준 split + 케이스별 예외 + 잔여 패턴 제거 + `rstrip` 
 | 5 | `50~53-qlora-*` | ~17분 | 추정 | Stage 4와 동형 ×4 (merged 입력, AWQ 6분+FP8 5분+GGUF 2분+GPTQ 4분) |
 | 6 | `60-ppl` | ~8분 | 추정 | 19타깃 × 32텍스트 (GGUF 10종은 llama-perplexity) |
 | 7 | `71-eval` | ~9분 | 추정 | 9타깃×10개 (1타깃 85초 실측, GGUF 제외). 50개 시 ~20분 |
-| 7 | `71-eval-gguf` | ~30분 | 추정 | 10타깃×10개, llama-cli CPU 추론 (빌드 필요, 미빌드 시 SKIP) |
-| 7 | `72-score` | ~5초 | 추정 | 19타깃 acc/invalid 표 (3스텝 undertraining이면 acc 0.000, §1 Stage 7 참조) |
-| 8 | `73-upload` | ~10분 | 추정 | ~14GB→약 25GB(8종) 업로드, 회선依存 |
+| 7 | `72-eval-gguf` | ~30분 | 추정 | 10타깃×10개, llama-cli CPU 추론 (빌드 필요, 미빌드 시 SKIP) |
+| 7 | `73-score` | ~5초 | 추정 | 19타깃 acc/invalid 표 (3스텝 undertraining이면 acc 0.000, §1 Stage 7 참조) |
+| 8 | `74-upload` | ~10분 | 추정 | ~14GB→약 25GB(8종) 업로드, 회선依存 |
 | 8 | `80-serve` | ~3분 | 실측 | 기동~`/v1/models` UP (1B 모델 상주 후) |
 | 8 | `81-infer` | ~30초 | 추정 | 3문항 completions 왕복 |

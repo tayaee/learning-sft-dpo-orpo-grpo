@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""72-score.py — Stage 7c. '#### <숫자>' 추출 채점 (원본 get_gsm8k_res.py).
+"""73-score.py — Stage 7c. '#### <숫자>' 추출 채점 (원본 get_gsm8k_res.py).
 invalid율 + acc를 타깃별 표로 출력. (BLEU는 생략 — acc가 핵심 지표.)
 
-  uv run 72-score.py --mode mini|full
+  uv run 73-score.py --mode mini|full
 입력: $P5_SHARED/outputs/eval-<mode>/*.jsonl
 """
 import argparse

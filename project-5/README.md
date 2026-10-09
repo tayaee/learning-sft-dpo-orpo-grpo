@@ -57,11 +57,11 @@ uv run 53-quant-qlora-gptq.py --mode mini
 
 # 7) 평가 (HF 9종 + GGUF 10종)
 ./71-eval.sh mini
-./71-eval-gguf.sh mini   # llama-cli 필요, 미빌드 시 SKIP
-uv run 72-score.py --mode mini
+./72-eval-gguf.sh mini   # llama-cli 필요, 미빌드 시 SKIP
+uv run 73-score.py --mode mini
 
 # 8) HF 업로드 → vLLM 서빙 → 추론 예제
-./73-upload-hf.sh mini            # → tayaee/Llama-3.2-1B-math-*-mini (targets 지정 가능)
+./74-upload-hf.sh mini            # → tayaee/Llama-3.2-1B-math-*-mini (targets 지정 가능)
 ./80-serve-vllm.sh mini fft      # 터미널1: OpenAI-호환 서버 (:8000)
 uv run 81-infer-examples.py --model tayaee/Llama-3.2-1B-math-fft-mini  # 터미널2
 # SOURCE=hf ./80-serve-vllm.sh mini fft-gptq  # Hub repo 직접 서빙 예시
@@ -106,7 +106,7 @@ uv run 81-infer-examples.py --model tayaee/Llama-3.2-1B-math-fft-mini  # 터미�
 | `40~43-quant-fft-*` | `quantizaton_math.ipynb` (+FP8) — FFT 입력 4종 |
 | `50~53-quant-qlora-*` | 신규: 동일 5종, QLoRA-merged 입력 (HF 6종 + GGUF 10종, 양자화 총 16종) |
 | `60-measure-ppl.sh/py` | 신규: PPL 게이트 (Accept/Conditional/Discard) |
-| `71-eval.sh` / `72-score.py` | `evaluation/` 3종 |
-| `73-upload-hf.sh/py` | 신규: Hub 업로드 (`tayaee/*`) |
+| `71-eval.sh` / `73-score.py` | `evaluation/` 3종 |
+| `74-upload-hf.sh/py` | 신규: Hub 업로드 (`tayaee/*`) |
 | `80-serve-vllm.sh` | 신규: vLLM OpenAI-호환 서빙 |
 | `81-infer-examples.py` | 신규: 서빙 추론 예제 (GSM8K N개 + 한국어 1개) |

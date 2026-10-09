@@ -26,7 +26,7 @@ case "$TARGET" in
   *) echo "target: fft|qlora|fft-gptq|fft-awq|fft-fp8|qlora-gptq|qlora-awq|qlora-fp8|fft-gguf|qlora-gguf" >&2; exit 1 ;;
 esac
 
-# HF repo명 규칙은 73-upload-hf.py TARGETS와 동일 (베이스 slug 포함)
+# HF repo명 규칙은 74-upload-hf.py TARGETS와 동일 (베이스 slug 포함)
 MODEL_SLUG="${BASE_MODEL##*/}"
 REPO="tayaee/${MODEL_SLUG}-math-${TARGET}-${MODE}"
 if [ "$SOURCE" = "hf" ]; then MODEL="$REPO"; else MODEL="$P5_MODELS/$SUF"; fi

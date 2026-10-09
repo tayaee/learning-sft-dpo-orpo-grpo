@@ -106,14 +106,14 @@ Notes:
 	60-measure-ppl.sh/py 로 모델별 in-domain perplexity 측정 + base 대비 Δ판정 (GGUF 10종은 llama-perplexity로 측정)
 
 71 평가
-	71-eval.sh/py 로 vLLM greedy(temp 0, max_tokens 512) GSM8K 추론, 타깃 base/fft/qlora/fft-gptq/fft-awq/fft-fp8/qlora-gptq/qlora-awq/qlora-fp8 (기본 all, GGUF 10종은 71-eval-gguf.sh로 llama-cli 평가)
+	71-eval.sh/py 로 vLLM greedy(temp 0, max_tokens 512) GSM8K 추론, 타깃 base/fft/qlora/fft-gptq/fft-awq/fft-fp8/qlora-gptq/qlora-awq/qlora-fp8 (기본 all, GGUF 10종은 72-eval-gguf.sh로 llama-cli 평가)
 	평가 프롬프트는 prompt_no_input 고정 템플릿, gsm8k-test 앞 EVAL_N개 (mini 10 / full 0=전체), 출력 $P5_SHARED/outputs/eval-<mode>/<target>.jsonl, 양자화 타깃은 quantization flag 부여
 
 72 스코어
-	72-score.py 로 #### <숫자> 추출, 없으면 The answer is: X 보조 추출, 둘 다 없으면 [invalid] -> 타깃별 acc / invalid율 표 (mini는 3스텝 undertraining이라 전 타깃 acc 0.000 / invalid 0.98~1.00)
+	73-score.py 로 #### <숫자> 추출, 없으면 The answer is: X 보조 추출, 둘 다 없으면 [invalid] -> 타깃별 acc / invalid율 표 (mini는 3스텝 undertraining이라 전 타깃 acc 0.000 / invalid 0.98~1.00)
 
 73 HF 업로드
-	73-upload-hf.sh/py 로 TARGETS 맵대로 tayaee/<slug>-math-<target>-<mode> 업로드, 없는 산출물 SKIP, --dry-run 지원
+	74-upload-hf.sh/py 로 TARGETS 맵대로 tayaee/<slug>-math-<target>-<mode> 업로드, 없는 산출물 SKIP, --dry-run 지원
 
 80 서빙
 	80-serve-vllm.sh 로 vLLM OpenAI-호환 서버(:8000), --served-model-name tayaee/..., 타깃별 --quantization (gptq vs compressed-tensors vs gguf), SOURCE=hf면 Hub 직접 서빙, VLLM_ATTENTION_BACKEND=FLASH_ATTN + VLLM_USE_FLASHINFER_SAMPLER=0

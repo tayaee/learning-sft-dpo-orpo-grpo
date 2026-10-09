@@ -140,12 +140,12 @@ fi
 want_step ppl && p5_step "60-measure-ppl" ./60-measure-ppl.sh "$MODE"
 if want_step eval; then
   p5_step "71-eval" ./71-eval.sh "$MODE"
-  p5_step "71-eval-gguf" ./71-eval-gguf.sh "$MODE"
-  p5_step "72-score" ./72-score.sh "$MODE"
+  p5_step "72-eval-gguf" ./72-eval-gguf.sh "$MODE"
+  p5_step "73-score" ./73-score.sh "$MODE"
 fi
 
 p5_log "run-$MODE-$STRAT done"
 # --- 선택 (수동, 2x면 rank0) ---
-# ./73-upload-hf.sh mini
+# ./74-upload-hf.sh mini
 # ./80-serve-vllm.sh mini fft            # 터미널1 (상주)
 # ./81-infer-examples.sh tayaee/Llama-3.2-1B-math-fft-mini  # 터미널2
