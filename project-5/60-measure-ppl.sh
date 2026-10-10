@@ -13,8 +13,10 @@ p5_repro_echo
 SUMMARY="$P5_OUTPUTS/ppl-$MODE-$STRAT/summary.json"
 p5_lock "${SUMMARY%/*}"
 if [ "${FORCE:-0}" != 1 ] && [ -f "$SUMMARY" ]; then
-  # 모델 디렉토리 중 SUMMARY보다新しい 것이 하나도 없으면 스킵
-  if [ -z "$(find "$P5_MODELS" -maxdepth 1 -newer "$SUMMARY" 2>/dev/null | head -1)" ]; then
+  # 이 strat 산출물 중 SUMMARY보다新しい 것이 하나도 없으면 스킵.
+  # $P5_MODELS 전체를 보면 타 strat 빌드 때마다 전부 재측정된다 (실측:
+  # ddp 빌드 후 single 60이 재실행됨). *-MODE-STRAT* 한정이 정확하다.
+  if [ -z "$(find "$P5_MODELS" -maxdepth 1 -name "*-$MODE-$STRAT*" -newer "$SUMMARY" 2>/dev/null | head -1)" ]; then
     p5_log "skip: fresh $SUMMARY (FORCE=1 to rebuild)"
     echo ---- result ----
     (set -x; ls -l "$P5_OUTPUTS/ppl-$MODE-$STRAT/")
