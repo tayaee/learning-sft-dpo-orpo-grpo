@@ -128,7 +128,7 @@ if __name__ == "__main__":
     ap.add_argument(
         "--gpu-mem-util",
         type=float,
-        default=float(os.environ.get("VLLM_GPU_MEM_UTIL", "0.8")),
+        default=float(os.environ.get("VLLM_GPU_MEM_UTIL", "0.5")),
         help="vLLM gpu_memory_utilization (기본 0.8: DGX Spark 통합메모리에서 "
         "OS/Xorg 점유분을 피하려고 0.9에서 낮춤. 22-teacher와 동일)",
     )

@@ -24,7 +24,10 @@ target_model() {
     *) echo "" ;;
   esac
 }
-p5_log "tp=$TP targets=$TARGETS n=$N gpu_mem_util=${VLLM_GPU_MEM_UTIL:-0.8} max_num_seqs=$VLLM_MAX_NUM_SEQS"
+# VLLM_GPU_MEM_UTIL: 평가는 배치 작업이라 서빙급 예약 불필요 (1B 가중치 ~3GB +
+# 짧은 프롬프트/512 생성. 22-teacher와 같은 0.5로 통일). 실행 중 잡에는 영향 없음.
+: "${VLLM_GPU_MEM_UTIL:=0.5}"
+p5_log "tp=$TP targets=$TARGETS n=$N gpu_mem_util=$VLLM_GPU_MEM_UTIL max_num_seqs=$VLLM_MAX_NUM_SEQS"
 p5_lock "$P5_OUTPUTS/eval-$MODE-$STRAT"
 for t in $TARGETS; do
   out="$P5_OUTPUTS/eval-$MODE-$STRAT/$t.jsonl"
@@ -35,7 +38,7 @@ for t in $TARGETS; do
     p5_log "skip: fresh $out (FORCE=1 to rebuild)"; continue
   fi
   (set -x; uv run "$P5_ROOT/71-eval.py" --mode "$MODE" --strat "$STRAT" --target "$t" --n "$N" --tp "$TP" \
-    --gpu-mem-util "${VLLM_GPU_MEM_UTIL:-0.8}" --max-num-seqs "$VLLM_MAX_NUM_SEQS")
+    --gpu-mem-util "$VLLM_GPU_MEM_UTIL" --max-num-seqs "$VLLM_MAX_NUM_SEQS")
 done
 
 echo ---- result ----
