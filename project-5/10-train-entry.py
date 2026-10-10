@@ -5,7 +5,7 @@
   (원본 TokenizeProcessor/quant 노트북과 동일 문구).
 - 토크나이저: "[PAD]"+ "<mask>" 추가 후 신규 임베딩 평균 초기화 (main.py resize()).
 - QLoRA(--peft): bnb 4bit nf4 double_quant + LoRA r16/a32/drop0.05.
-- 전략: single=플레인, ddp=torchrun DDP(자동), fsdp=full_shard auto_wrap.
+- 전략: single=플레인, ddp=torchrun DDP(자동), fsdp=True+auto_wrap.
 - 강의 기본값: lr 1e-5, cosine, warmup 0.03, micro 2, tok/tgt 512, seed 1,
   mask_rate 0 (masking off).
 - DGX 적응: gradient_checkpointing=True (원본 False), bf16, tf32 허용.
@@ -16,6 +16,7 @@
 
 import argparse
 import json
+import math
 import os
 import random
 
@@ -82,7 +83,7 @@ def parse_args():
     p.add_argument("--micro", type=int, default=2)
     p.add_argument("--max_len", type=int, default=1024, help="tok 512 + tgt 512")
     p.add_argument("--lr", type=float, default=1e-5)
-    p.add_argument("--warmup", type=float, default=0.03)
+    p.add_argument("--warmup", type=float, default=0.03, help="warmup 비율 (내부에서 warmup_steps로 환산)")
     p.add_argument("--seed", type=int, default=1)
     p.add_argument(
         "--mask_rate", type=float, default=0.0, help="원본 max_mask_rate (기본 0=off)"
@@ -202,10 +203,10 @@ def main():
             bnb_4bit_quant_type="nf4",
         )
         model = AutoModelForCausalLM.from_pretrained(
-            a.model, quantization_config=bnb, torch_dtype=dtype
+            a.model, quantization_config=bnb, dtype=dtype
         )
     else:
-        model = AutoModelForCausalLM.from_pretrained(a.model, torch_dtype=dtype)
+        model = AutoModelForCausalLM.from_pretrained(a.model, dtype=dtype)
 
     # main.py resize_at_begin: PEFT 래핑보다 먼저 수행 (래핑 후 resize 불가).
     # 신규 토큰 임베딩을 기존 평균으로 초기화.
@@ -283,9 +284,16 @@ def main():
             "labels": labels,
         }
 
-    fsdp = "full_shard auto_wrap" if a.strategy == "fsdp" else ""
+    # fsdp=True + fsdp_config (문자열 "full_shard auto_wrap"은 deprecated).
+    # full_shard는 FSDP2 기본(reshard_after_forward=True), auto_wrap은 기본 정책이라
+    # transformer_layer_cls_to_wrap만 지정하면 동등하다.
+    fsdp = a.strategy == "fsdp"
     fsdp_cfg = (
-        {"transformer_layer_cls_to_wrap": "LlamaDecoderLayer"}
+        {
+            "transformer_layer_cls_to_wrap": "LlamaDecoderLayer",
+            # gradient_checkpointing 대신 FSDP 네이티브 (backward 冗長 AllGather 회피).
+            "activation_checkpointing": True,
+        }
         if a.strategy == "fsdp"
         else {}
     )
@@ -297,6 +305,11 @@ def main():
         and _world > 1
         and os.environ.get("P5_DCP_SAVE", "1") == "1"
     )
+    # warmup_ratio deprecated → warmup_steps로 환산 (transformers 내부 공식과 동일:
+    # global_batch = micro*accum*world, total = ceil(N/global_batch)*epochs).
+    # mini(256행/64eff/1ep)=4스텝 → round(4*0.03)=0으로 기존 동작과 일치.
+    _gbs = a.micro * a.accum * _world
+    _warmup_steps = round(math.ceil(len(ds) / _gbs) * a.epochs * a.warmup)
     cfg = SFTConfig(
         output_dir=a.out,
         num_train_epochs=a.epochs,
@@ -304,7 +317,7 @@ def main():
         gradient_accumulation_steps=a.accum,
         learning_rate=a.lr,
         lr_scheduler_type="cosine",
-        warmup_ratio=a.warmup,
+        warmup_steps=_warmup_steps,
         logging_steps=200,
         save_strategy="no" if _dcp_2node else "epoch",
         save_total_limit=2,
@@ -313,7 +326,7 @@ def main():
         dataset_text_field="text",
         max_length=a.max_len,
         packing=False,
-        gradient_checkpointing=True,
+        gradient_checkpointing=not fsdp,
         gradient_checkpointing_kwargs={"use_reentrant": False} if a.peft else {},
         fsdp=fsdp,
         fsdp_config=fsdp_cfg,
