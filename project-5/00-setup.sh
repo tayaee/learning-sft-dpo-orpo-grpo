@@ -2,6 +2,7 @@
 # 00-setup.sh — 양 노드에서 1회씩 실행. 학습 없음.
 set -euo pipefail
 source "$(dirname "$0")/config/common.env"
+p5_repro_echo
 
 p5_log "repo=$REPO_ROOT infra=$INFRA python=$(python3 --version 2>&1)"
 

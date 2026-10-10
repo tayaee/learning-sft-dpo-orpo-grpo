@@ -11,6 +11,7 @@ MAXLEN=8192
 # VLLM_MAX_NUM_SEQS=8: mini/full 통일. 8k 컨텍스트 시퀀스당 KV ~1GB,
 # 8개 동시 = 8GB 수준이라 서빙급 선점(80GB)은 불필요.
 : "${VLLM_MAX_NUM_SEQS:=8}"
+p5_repro_echo
 IN="$P5_DATASETS/prompts-$MODE.parquet"
 OUT="$P5_DATASETS/generated-$MODE.csv"
 p5_require "$IN"

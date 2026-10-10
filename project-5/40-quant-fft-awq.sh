@@ -5,6 +5,7 @@ set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-mini}"
 STRAT="${STRAT:-single}"
 case "$STRAT" in single|ddp|fsdp) ;; *) echo "STRAT must be single|ddp|fsdp" >&2; exit 1;; esac
+p5_repro_echo
 CALIB="${2:-$CALIB_N}"
 : "${CALIB_FILE:=$P5_DATASETS/gsm8k-calibration-256.jsonl}"
 SRC="$P5_MODELS/synthetic-fft-$MODE-$STRAT"

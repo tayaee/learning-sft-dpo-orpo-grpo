@@ -4,6 +4,7 @@
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-mini}"
 SEED="${2:-1}"
+p5_repro_echo
 IN="$P5_DATASETS/gsm8k-train.jsonl"
 OUT="$P5_DATASETS/candidates-$MODE.parquet"
 EMBCACHE="$P5_DATASETS/alpaca-embeddings.parquet"

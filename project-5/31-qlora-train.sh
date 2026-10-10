@@ -13,6 +13,7 @@ if [ "$STRAT" != single ] && [ "$PROFILE" != "2x" ]; then
   echo "REFUSE: strat=$STRAT needs INFRA=dgx-spark-2x (현재 PROFILE=$PROFILE)" >&2
   exit 1
 fi
+p5_repro_echo
 
 OUT="$P5_MODELS/synthetic-qlora-$MODE-$STRAT"
 IN="$P5_DATASETS/synthetic-$MODE.jsonl"

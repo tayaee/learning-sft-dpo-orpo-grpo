@@ -9,6 +9,7 @@ STRAT="${STRAT:-single}"
 case "$STRAT" in single|ddp|fsdp) ;; *) echo "STRAT must be single|ddp|fsdp" >&2; exit 1;; esac
 N="${PPL_N:-32}"
 TARGETS="${2:-all}"
+p5_repro_echo
 SUMMARY="$P5_OUTPUTS/ppl-$MODE-$STRAT/summary.json"
 if [ "${FORCE:-0}" != 1 ] && [ -f "$SUMMARY" ]; then
   # 모델 디렉토리 중 SUMMARY보다新しい 것이 하나도 없으면 스킵

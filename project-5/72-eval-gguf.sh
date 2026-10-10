@@ -11,6 +11,7 @@ TARGETS="${2:-all}"
 [ "$TARGETS" = all ] && TARGETS="fft-gguf-q8_0 fft-gguf-q6_k fft-gguf-q5_k_m fft-gguf-q4_k_m fft-gguf-q3_k_m qlora-gguf-q8_0 qlora-gguf-q6_k qlora-gguf-q5_k_m qlora-gguf-q4_k_m qlora-gguf-q3_k_m"
 N="$EVAL_N"  # mini 10 / full 0=전체 (common.env)
 LLAMACPP="${LLAMACPP:-$HOME/git/llama.cpp}"
+p5_repro_echo
 if [ ! -x "$LLAMACPP/build/bin/llama-completion" ]; then
   p5_log "WARN: no llama-completion, GGUF eval SKIP (build llama.cpp llama-completion target)"
   (set -x; ls -l "$P5_OUTPUTS/eval-$MODE-$STRAT/" 2>/dev/null || true)

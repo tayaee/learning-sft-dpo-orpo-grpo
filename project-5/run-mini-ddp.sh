@@ -19,6 +19,7 @@ set -euo pipefail
 source "$(dirname "$0")/run-mini-ddp.inc"
 ROOT="$(cd "$(dirname "$0")" && pwd)"; cd "$ROOT"
 source "$ROOT/config/common.env" "$MODE"
+p5_repro_echo
 
 # ---- 스텝 타이밍 (stdout + TIMING_LOG) ----
 TIMING_LOG="$ROOT/logs/timing-$MODE-$STRAT.log"
@@ -41,7 +42,7 @@ want_step() { # <스텝명> — STEPS=all(기본)이면 전부, 아니면 지정
 run_done() { # EXIT trap — 전체 소요시간 기록 (성공/실패 무관)
   p5_log "run-$MODE-$STRAT end rc=$? total=$(( $(date +%s) - RUN_T0 ))s (timing: $TIMING_LOG)"
 }
-trap run_done EXIT
+trap 'P5_RC=$?; p5_repro; run_done' EXIT
 
 is_rank0() { [ "$NODE_RANK" = "0" ]; }
 wait_file() { # <path> <timeout_s> — 공유디스크에 파일이 생길 때까지 대기

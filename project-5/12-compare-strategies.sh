@@ -13,6 +13,7 @@ source "$(dirname "$0")/config/common.env" "${1:-mini}"
 WANT="${2:-${STRAT:-all}}"
 case "$WANT" in single|ddp|fsdp|all) ;; *) echo "strategy must be single|ddp|fsdp|all" >&2; exit 1;; esac
 if [ "$WANT" = "all" ]; then LIST="single ddp fsdp"; else LIST="$WANT"; fi
+p5_repro_echo
 
 for s in $LIST; do
   d="$P5_MODELS/base-gsm8k-$MODE-$s"

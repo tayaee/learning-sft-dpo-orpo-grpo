@@ -11,5 +11,6 @@ N="${2:-3}"
 BASE_URL="${BASE_URL:-http://localhost:8000/v1}"
 ARGS=()
 [ "${DRY_RUN:-0}" = 1 ] && ARGS+=(--dry-run)
+p5_repro_echo
 p5_log "model=$MODEL base_url=$BASE_URL n=$N"
 uv run "$P5_ROOT/81-infer-examples.py" --model "$MODEL" --base-url "$BASE_URL" --n "$N" "${ARGS[@]}"

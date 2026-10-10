@@ -5,6 +5,7 @@ set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${MODE:-mini}"
 N="${1:-256}"
 SEED="${2:-42}"
+p5_repro_echo
 IN="$P5_DATASETS/gsm8k-train.jsonl"
 OUT="$P5_DATASETS/gsm8k-calibration-$N.jsonl"
 p5_require "$IN"

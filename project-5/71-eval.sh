@@ -11,6 +11,7 @@ N="$EVAL_N"  # mini 10 / full 0=전체 (common.env)
 TEST="$P5_DATASETS/gsm8k-test.jsonl"
 p5_require "$TEST"
 : "${VLLM_MAX_NUM_SEQS:=8}"
+p5_repro_echo
 # 71-eval.py resolve()의 bash 미러 — base(HF)는 로컬 타임스탬프 없음
 target_model() {
   case "$1" in

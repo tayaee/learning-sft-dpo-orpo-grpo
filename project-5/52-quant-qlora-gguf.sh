@@ -9,6 +9,7 @@ set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-mini}"
 STRAT="${STRAT:-single}"
 case "$STRAT" in single|ddp|fsdp) ;; *) echo "STRAT must be single|ddp|fsdp" >&2; exit 1;; esac
+p5_repro_echo
 shift || true
 if [ "$#" -gt 0 ]; then QTYPES="$*"; else QTYPES="${QTYPES:-Q8_0 Q6_K Q5_K_M Q4_K_M Q3_K_M}"; fi
 echo "+ FORCE=1 MODE=$MODE STRAT=$STRAT $0 $QTYPES"
@@ -25,7 +26,10 @@ mkdir -p "$DST"
 if p5_fresh "$DST/model-f16.gguf" "$SRC/config.json"; then
   p5_log "skip: fresh $DST/model-f16.gguf"
 else
-  (set -x; "$VENV_BIN/python" "$LLAMACPP/convert_hf_to_gguf.py" "$SRC" --outfile "$DST/model-f16.gguf")
+  # 원자 교체: convert 중단 시 잘린 f16이 fresh로 보여 이후 quantize가 매번 깨지는
+  # 함정 방지 (42 실측). tmp는 freshness 검사 대상이 아니라 다음 실행이 재변환한다.
+  (set -x; "$VENV_BIN/python" "$LLAMACPP/convert_hf_to_gguf.py" "$SRC" --outfile "$DST/model-f16.gguf.tmp" \
+    && mv "$DST/model-f16.gguf.tmp" "$DST/model-f16.gguf")
 fi
 for q in $QTYPES; do
   out="model-$(echo "$q" | tr '[:upper:]' '[:lower:]').gguf"

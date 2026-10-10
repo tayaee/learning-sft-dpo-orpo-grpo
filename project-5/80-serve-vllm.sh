@@ -12,6 +12,7 @@ case "$STRAT" in single|ddp|fsdp) ;; *) echo "STRAT must be single|ddp|fsdp" >&2
 TARGET="${2:-fft}"
 SOURCE="${SOURCE:-local}"
 PORT="${PORT:-8000}"
+p5_repro_echo
 
 case "$TARGET" in
   fft)   SUF="synthetic-fft-$MODE-$STRAT"; QUANT="" ;;

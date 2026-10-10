@@ -5,6 +5,7 @@ set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-mini}"
 STRAT="${STRAT:-single}"
 case "$STRAT" in single|ddp|fsdp) ;; *) echo "STRAT must be single|ddp|fsdp" >&2; exit 1;; esac
+p5_repro_echo
 EVALDIR="$P5_OUTPUTS/eval-$MODE-$STRAT"
 SCORE="$EVALDIR/score.json"
 p5_require "$EVALDIR"

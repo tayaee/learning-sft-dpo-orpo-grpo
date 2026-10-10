@@ -5,6 +5,7 @@ set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-mini}"
 STRAT="${STRAT:-single}"
 case "$STRAT" in single|ddp|fsdp) ;; *) echo "STRAT must be single|ddp|fsdp" >&2; exit 1;; esac
+p5_repro_echo
 (set -x; uv run "$P5_ROOT/74-upload-hf.py" --mode "$MODE" --strat "$STRAT" --targets "${2:-all}")
 
 echo ---- result ----

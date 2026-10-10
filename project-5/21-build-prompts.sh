@@ -5,6 +5,7 @@ set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-mini}"
 ARGS=()
 [ "${PUSH:-0}" = 1 ] && ARGS+=(--push)
+p5_repro_echo
 IN="$P5_DATASETS/candidates-$MODE.parquet"
 OUT="$P5_DATASETS/prompts-$MODE.parquet"
 p5_require "$IN"

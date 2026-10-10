@@ -54,6 +54,7 @@ if [ -z "${NODE_RANK:-}" ]; then
   echo "[all] NODE_RANK auto-detected: $NODE_RANK ($(hostname))"
 fi
 source "$ROOT/config/common.env" mini  # p5_log + 공용 env (UV_NO_SYNC 등)
+p5_repro_echo
 
 nvidia-smi -L >/dev/null 2>&1 || { p5_log "ERROR: no GPU (nvidia-smi failed)"; exit 1; }
 
@@ -78,7 +79,7 @@ want_run() { # <런 이름> — RUNS=all(기본)이면 전부, 아니면 지정�
 run_done() { # EXIT trap — 전체 소요시간 기록 (성공/실패 무관)
   p5_log "run-all-all end rc=$? total=$(( $(date +%s) - RUN_T0 ))s (timing: $TIMING_LOG)"
 }
-trap run_done EXIT
+trap 'P5_RC=$?; p5_repro; run_done' EXIT
 
 is_rank0() { [ "${NODE_RANK:-0}" = "0" ]; }
 
