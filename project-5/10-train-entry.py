@@ -88,6 +88,13 @@ def parse_args():
     p.add_argument("--peft", action="store_true", help="QLoRA 경로 (31에서 사용)")
     p.add_argument("--strategy", default="single", choices=["single", "ddp", "fsdp"])
     p.add_argument(
+        "--expect-world",
+        type=int,
+        default=0,
+        help="기대 월드 크기 (0=검사 생략). .sh가 $WORLD로 전달 — "
+        "분산 의도와 실제 런치가 다르면 시작 즉시 실패시킨다.",
+    )
+    p.add_argument(
         "--accum", type=int, default=32, help="grad accum (effective batch 64 유지용)"
     )
     p.add_argument("--micro", type=int, default=2)
@@ -162,6 +169,16 @@ def _save_fsdp_dcp(fsdp_model, model_cfg, tok, out_dir, dtype):
 
 def main():
     a = parse_args()
+    # 1차: 런치 환경 검사 (무거운 작업 전, 수 초 내 실패).
+    # 분산 의도(expect-world=2)인데 WORLD_SIZE=1이면 solo 오인 성공이므로 즉시 거부.
+    if a.expect_world:
+        _w = int(os.environ.get("WORLD_SIZE", "1"))
+        if _w != a.expect_world:
+            raise SystemExit(
+                f"REFUSE: WORLD_SIZE={_w} != expected {a.expect_world} "
+                f"(RANK={os.environ.get('RANK', '?')}, strategy={a.strategy}). "
+                f"2노드 실행이 맞나?"
+            )
     set_seed(a.seed)
     texts = load_texts(a.train)
     if a.max_rows > 0:
@@ -353,6 +370,18 @@ def main():
     # huggingface_hub>=1(CommitOperationAdd 삭제)과 충돌해 ImportError로 죽는다.
     # 모델 카드는 파이프라인 산출물이 아니므로 no-op (버전 조합과 무관하게 동작).
     trainer.create_model_card = lambda *a, **k: {}
+    # 2차: 런타임 진실 검사 (dist 초기화 후 — env 속임수까지 잡는다).
+    import torch.distributed as dist
+
+    if (
+        a.expect_world
+        and dist.is_available()
+        and dist.is_initialized()
+        and dist.get_world_size() != a.expect_world
+    ):
+        raise RuntimeError(
+            f"REFUSE: dist world={dist.get_world_size()} != expected {a.expect_world}"
+        )
     trainer.train()
     if _dcp_2node:
         _save_fsdp_dcp(trainer.model, model.config, tok, a.out, dtype)
