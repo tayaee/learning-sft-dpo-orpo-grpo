@@ -12,7 +12,6 @@ case "$STRAT" in single|ddp|fsdp) ;; *) echo "STRAT must be single|ddp|fsdp" >&2
 p5_repro_echo
 shift || true
 if [ "$#" -gt 0 ]; then QTYPES="$*"; else QTYPES="${QTYPES:-Q8_0 Q6_K Q5_K_M Q4_K_M Q3_K_M}"; fi
-echo "+ FORCE=1 MODE=$MODE STRAT=$STRAT $0 $QTYPES"
 
 SRC="$P5_MODELS/synthetic-qlora-$MODE-$STRAT-merged"
 DST="$P5_MODELS/synthetic-qlora-$MODE-$STRAT-merged-gguf"
