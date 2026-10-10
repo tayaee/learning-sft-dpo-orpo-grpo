@@ -222,7 +222,10 @@ def main():
 
             _tf.BloomPreTrainedModel = _BloomStub
         if a.strategy == "fsdp":
-            print("WARN: FSDP+QLoRA unsupported, DDP fallback (training only).")
+            print(
+                "WARN: FSDP+QLoRA unsupported, training as DDP "
+                "(same 2-proc run, rank0 saves adapter, OUT stays *-fsdp)."
+            )
         bnb = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_compute_dtype=dtype,
