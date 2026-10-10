@@ -1,6 +1,6 @@
 """50-quant-qlora-awq.py — Stage 5a. QLoRA-merged → AWQ 4bit (llmcompressor oneshot + AWQModifier).
 FFT용 40-quant-fft-awq.py와 동일 플로우, 입력만 merged.
-입력: synthetic-qlora-<mode>-single-merged → 출력: synthetic-qlora-<mode>-single-merged-awq
+입력: synthetic-qlora-<mode>-<strat>-merged → 출력: synthetic-qlora-<mode>-<strat>-merged-awq
 캘리브레이션: gsm8k-calibration-256.jsonl (05-prep-calibration.sh 생성).
 
   uv run 50-quant-qlora-awq.py --mode mini|full [--calib N] [--calib-file PATH]
@@ -15,14 +15,14 @@ from quant_common import load_calib_texts
 SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
 
 
-def main(mode: str, calib: int, calib_file: str | None):
+def main(mode: str, strat: str, calib: int, calib_file: str | None):
     from datasets import Dataset
     from llmcompressor import oneshot
     from llmcompressor.modifiers.awq import AWQModifier
     from transformers import AutoTokenizer
 
-    src = f"{SHARED}/models/synthetic-qlora-{mode}-single-merged"
-    out = f"{SHARED}/models/synthetic-qlora-{mode}-single-merged-awq"
+    src = f"{SHARED}/models/synthetic-qlora-{mode}-{strat}-merged"
+    out = f"{SHARED}/models/synthetic-qlora-{mode}-{strat}-merged-awq"
     texts = load_calib_texts(calib, calib_file)
     ds = Dataset.from_list([{"text": t} for t in texts])
     recipe = AWQModifier(ignore=["lm_head"], scheme="W4A16", targets=["Linear"])
@@ -43,6 +43,11 @@ def main(mode: str, calib: int, calib_file: str | None):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", default="mini", choices=["mini", "full"])
+    ap.add_argument(
+        "--strat",
+        default=os.environ.get("STRAT", "single"),
+        choices=["single", "ddp", "fsdp"],
+    )
     ap.add_argument("--calib", type=int, default=None)
     ap.add_argument(
         "--calib-file",
@@ -52,4 +57,4 @@ if __name__ == "__main__":
     )
     a = ap.parse_args()
     default_calib = int(os.environ.get("CALIB_N", "32" if a.mode == "mini" else "256"))
-    main(a.mode, a.calib or default_calib, a.calib_file)
+    main(a.mode, a.strat, a.calib or default_calib, a.calib_file)

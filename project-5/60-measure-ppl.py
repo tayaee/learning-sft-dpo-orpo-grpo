@@ -40,40 +40,40 @@ PROMPT_TEMPLATE = (
 GQUANTS = ["q8_0", "q6_k", "q5_k_m", "q4_k_m", "q3_k_m"]
 TARGETS = {
     "base": ("hf", BASE, None),
-    "fft": ("hf", f"{SHARED}/models/synthetic-fft-{{m}}-single", "base"),
-    "qlora": ("hf", f"{SHARED}/models/synthetic-qlora-{{m}}-single-merged", "base"),
+    "fft": ("hf", f"{SHARED}/models/synthetic-fft-{{m}}-{{s}}", "base"),
+    "qlora": ("hf", f"{SHARED}/models/synthetic-qlora-{{m}}-{{s}}-merged", "base"),
     "fft-gguf": (
         "gguf",
-        f"{SHARED}/models/synthetic-fft-{{m}}-single-gguf/model-q8_0.gguf",
+        f"{SHARED}/models/synthetic-fft-{{m}}-{{s}}-gguf/model-q8_0.gguf",
         "fft",
     ),
-    "fft-gptq": ("hf", f"{SHARED}/models/synthetic-fft-{{m}}-single-gptq", "fft"),
-    "fft-awq": ("hf", f"{SHARED}/models/synthetic-fft-{{m}}-single-awq", "fft"),
-    "fft-fp8": ("hf", f"{SHARED}/models/synthetic-fft-{{m}}-single-fp8", "fft"),
+    "fft-gptq": ("hf", f"{SHARED}/models/synthetic-fft-{{m}}-{{s}}-gptq", "fft"),
+    "fft-awq": ("hf", f"{SHARED}/models/synthetic-fft-{{m}}-{{s}}-awq", "fft"),
+    "fft-fp8": ("hf", f"{SHARED}/models/synthetic-fft-{{m}}-{{s}}-fp8", "fft"),
     "qlora-gguf": (
         "gguf",
-        f"{SHARED}/models/synthetic-qlora-{{m}}-single-merged-gguf/model-q8_0.gguf",
+        f"{SHARED}/models/synthetic-qlora-{{m}}-{{s}}-merged-gguf/model-q8_0.gguf",
         "qlora",
     ),
     "qlora-gptq": (
         "hf",
-        f"{SHARED}/models/synthetic-qlora-{{m}}-single-merged-gptq",
+        f"{SHARED}/models/synthetic-qlora-{{m}}-{{s}}-merged-gptq",
         "qlora",
     ),
     "qlora-awq": (
         "hf",
-        f"{SHARED}/models/synthetic-qlora-{{m}}-single-merged-awq",
+        f"{SHARED}/models/synthetic-qlora-{{m}}-{{s}}-merged-awq",
         "qlora",
     ),
     "qlora-fp8": (
         "hf",
-        f"{SHARED}/models/synthetic-qlora-{{m}}-single-merged-fp8",
+        f"{SHARED}/models/synthetic-qlora-{{m}}-{{s}}-merged-fp8",
         "qlora",
     ),
 }
 for _base, _local, _parent in (
-    ("fft-gguf", "synthetic-fft-{m}-single-gguf", "fft"),
-    ("qlora-gguf", "synthetic-qlora-{m}-single-merged-gguf", "qlora"),
+    ("fft-gguf", "synthetic-fft-{m}-{s}-gguf", "fft"),
+    ("qlora-gguf", "synthetic-qlora-{m}-{s}-merged-gguf", "qlora"),
 ):
     for _q in GQUANTS:
         TARGETS.setdefault(
@@ -207,14 +207,14 @@ def ppl_of_gguf(model_path: str, texts) -> float:
     return float(m.group(1))
 
 
-def main(mode: str, n: int, targets: str):
+def main(mode: str, strat: str, n: int, targets: str):
     sel = ORDER if targets == "all" else targets.split(",")
     texts = load_texts(mode, n)
-    print(f"[ppl][{mode}] texts={len(texts)}")
+    print(f"[ppl][{mode}][{strat}] texts={len(texts)}")
     results = {}
     for t in sel:
         kind, tmpl, parent = TARGETS[t]
-        path = tmpl.format(m=mode) if "{m}" in tmpl else tmpl
+        path = tmpl.format(m=mode, s=strat) if "{m}" in tmpl else tmpl
         if kind == "gguf":
             if not os.path.exists(path):
                 results[t] = {
@@ -289,7 +289,7 @@ def main(mode: str, n: int, targets: str):
         d = f"{r[dkey]:+.3f}" if (dkey and r[dkey] is not None) else "-"
         print(f"{t:12} {p:>8} {d:>8} {r.get('verdict', '-'):>11}")
 
-    outdir = f"{SHARED}/outputs/ppl-{mode}"
+    outdir = f"{SHARED}/outputs/ppl-{mode}-{strat}"
     os.makedirs(outdir, exist_ok=True)
     for t in sel:
         tmp = tmp_path(f"{outdir}/{t}.json")
@@ -307,7 +307,12 @@ def main(mode: str, n: int, targets: str):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", default="mini", choices=["mini", "full"])
+    ap.add_argument(
+        "--strat",
+        default=os.environ.get("STRAT", "single"),
+        choices=["single", "ddp", "fsdp"],
+    )
     ap.add_argument("--n", type=int, default=32)
     ap.add_argument("--targets", default="all")
     a = ap.parse_args()
-    main(a.mode, a.n, a.targets)
+    main(a.mode, a.strat, a.n, a.targets)

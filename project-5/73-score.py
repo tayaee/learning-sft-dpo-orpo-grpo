@@ -39,10 +39,10 @@ def extract(t: str) -> str:
     return INVALID
 
 
-def main(mode: str):
+def main(mode: str, strat: str):
     print(f"{'target':8} {'n':>5} {'acc':>7} {'invalid':>8}")
     summary = {}
-    for path in sorted(glob.glob(f"{SHARED}/outputs/eval-{mode}/*.jsonl")):
+    for path in sorted(glob.glob(f"{SHARED}/outputs/eval-{mode}-{strat}/*.jsonl")):
         name = os.path.splitext(os.path.basename(path))[0]
         correct = invalid = n = 0
         with open(path, encoding="utf-8") as f:
@@ -68,7 +68,7 @@ def main(mode: str):
         print(
             f"{name:8} {n:>5} {summary[name]['acc']:>7.3f} {summary[name]['invalid']:>8.3f}"
         )
-    out = f"{SHARED}/outputs/eval-{mode}/score.json"
+    out = f"{SHARED}/outputs/eval-{mode}-{strat}/score.json"
     tmp = tmp_path(out)
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(summary, f, ensure_ascii=False, indent=2)
@@ -79,4 +79,10 @@ def main(mode: str):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", default="mini", choices=["mini", "full"])
-    main(ap.parse_args().mode)
+    ap.add_argument(
+        "--strat",
+        default=os.environ.get("STRAT", "single"),
+        choices=["single", "ddp", "fsdp"],
+    )
+    a = ap.parse_args()
+    main(a.mode, a.strat)

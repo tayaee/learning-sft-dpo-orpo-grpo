@@ -8,8 +8,8 @@
 # NOTE: FSDP+QLoRA는 강의에서 비권장 → 31-qlora는 DDP 동작으로 학습용 수행.
 # 2x 저장: DCP sharded save + rank0 consolidation (10-train-entry.py).
 #   giant NCCL gather를 fabric에 던지지 않음 (mini-2x 검증됨: 양 노드 rc=0).
-# 하류(merge→평가)는 -single 산출물이 있어야 진행한다:
-#   없으면 FSDP 학습 + 12-compare까지만 수행하고 종료 (먼저 ./run-full-single.sh 실행).
+# 하류(merge→평가)는 같은 전략 산출물이 있어야 진행한다:
+#   없으면 FSDP 학습 + 12-compare까지만 수행하고 종료 (학습 스텝 먼저 실행).
 # 사용: SKIP_SETUP=1 ./run-full-fsdp.sh                # 00-setup 생략
 #   STEPS=setup,baseline ./run-full-fsdp.sh            # 최소 파이프라인 (분산 동작 확인용)
 # 자동 검출: MASTER_ADDR는 CX7(spark1-p1-r0→p1-r1→LAN 순,
@@ -85,8 +85,8 @@ export TP=1
 
 want_step compare && p5_step "12-compare" ./12-compare-strategies.sh "$MODE"
 
-if [ ! -d "$P5_MODELS/synthetic-fft-$MODE-single" ] || [ ! -d "$P5_MODELS/synthetic-qlora-$MODE-single" ]; then
-  p5_log "downstream SKIP: no -single output, run ./run-$MODE-single.sh first"
+if [ ! -d "$P5_MODELS/synthetic-fft-$MODE-$STRAT" ] || [ ! -d "$P5_MODELS/synthetic-qlora-$MODE-$STRAT" ]; then
+  p5_log "downstream SKIP: no -$STRAT output (run train steps first)"
   exit 0
 fi
 

@@ -14,14 +14,14 @@ from quant_common import load_calib_texts
 SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
 
 
-def main(mode: str, calib: int, calib_file: str | None):
+def main(mode: str, strat: str, calib: int, calib_file: str | None):
     from datasets import Dataset
     from llmcompressor import oneshot
     from llmcompressor.modifiers.quantization import QuantizationModifier
     from transformers import AutoTokenizer
 
-    src = f"{SHARED}/models/synthetic-fft-{mode}-single"
-    out = f"{SHARED}/models/synthetic-fft-{mode}-single-fp8"
+    src = f"{SHARED}/models/synthetic-fft-{mode}-{strat}"
+    out = f"{SHARED}/models/synthetic-fft-{mode}-{strat}-fp8"
     texts = load_calib_texts(calib, calib_file)
     ds = Dataset.from_list([{"text": t} for t in texts])
     recipe = QuantizationModifier(ignore=["lm_head"], scheme="FP8", targets=["Linear"])
@@ -42,6 +42,11 @@ def main(mode: str, calib: int, calib_file: str | None):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", default="mini", choices=["mini", "full"])
+    ap.add_argument(
+        "--strat",
+        default=os.environ.get("STRAT", "single"),
+        choices=["single", "ddp", "fsdp"],
+    )
     ap.add_argument("--calib", type=int, default=None)
     ap.add_argument(
         "--calib-file",
@@ -51,4 +56,4 @@ if __name__ == "__main__":
     )
     a = ap.parse_args()
     default_calib = int(os.environ.get("CALIB_N", "32" if a.mode == "mini" else "256"))
-    main(a.mode, a.calib or default_calib, a.calib_file)
+    main(a.mode, a.strat, a.calib or default_calib, a.calib_file)

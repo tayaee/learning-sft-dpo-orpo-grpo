@@ -17,7 +17,7 @@ MASK_TOKEN = "<mask>"
 PAD_TOKEN = "[PAD]"
 
 
-def main(mode: str, base: str):
+def main(mode: str, base: str, strat: str):
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -42,8 +42,8 @@ def main(mode: str, base: str):
         pass
     from peft import PeftModel
 
-    adapter = f"{SHARED}/models/synthetic-qlora-{mode}-single"
-    out = f"{SHARED}/models/synthetic-qlora-{mode}-single-merged"
+    adapter = f"{SHARED}/models/synthetic-qlora-{mode}-{strat}"
+    out = f"{SHARED}/models/synthetic-qlora-{mode}-{strat}-merged"
     tok = AutoTokenizer.from_pretrained(adapter)
     n0 = len(tok)
     added = []
@@ -71,6 +71,11 @@ def main(mode: str, base: str):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", default="mini", choices=["mini", "full"])
+    ap.add_argument(
+        "--strat",
+        default=os.environ.get("STRAT", "single"),
+        choices=["single", "ddp", "fsdp"],
+    )
     ap.add_argument("--base", default=BASE)
     a = ap.parse_args()
-    main(a.mode, a.base)
+    main(a.mode, a.base, a.strat)

@@ -1,6 +1,6 @@
 """71-eval.py — Stage 7b. vLLM greedy GSM8K 추론 (원본 gen_math_greedy.py).
 prompt_no_input 포맷, temp 0, max 512. 타깃별 quant flag 적용.
-출력: $P5_SHARED/outputs/eval-<mode>/<target>.jsonl (kd_data 포함).
+출력: $P5_SHARED/outputs/eval-<mode>-<strat>/<target>.jsonl (kd_data 포함).
 GGUF 10종(fft/qlora-gguf-*)은 vLLM 미지원 → 72-eval-gguf.py(llama-completion)로 별도 평가, 여기선 SKIP.
 
   uv run 71-eval.py --mode mini|full --target base|fft|qlora|fft-gptq|fft-awq|fft-fp8|qlora-gptq|qlora-awq|qlora-fp8 [--n N] [--tp 1]
@@ -34,24 +34,24 @@ QUANT = {
 }
 
 
-def resolve(target: str, mode: str) -> str:
+def resolve(target: str, mode: str, strat: str) -> str:
     if target == "base":
         return BASE
     if target == "fft":
-        return f"{SHARED}/models/synthetic-fft-{mode}-single"
+        return f"{SHARED}/models/synthetic-fft-{mode}-{strat}"
     if target == "qlora":
-        return f"{SHARED}/models/synthetic-qlora-{mode}-single-merged"
+        return f"{SHARED}/models/synthetic-qlora-{mode}-{strat}-merged"
     if target in ("gptq", "awq", "fp8"):  # 구이름 → fft-* 별칭
-        return f"{SHARED}/models/synthetic-fft-{mode}-single-{target}"
+        return f"{SHARED}/models/synthetic-fft-{mode}-{strat}-{target}"
     if target.startswith("fft-"):
-        return f"{SHARED}/models/synthetic-fft-{mode}-single-{target[4:]}"
+        return f"{SHARED}/models/synthetic-fft-{mode}-{strat}-{target[4:]}"
     if target.startswith("qlora-"):
-        return f"{SHARED}/models/synthetic-qlora-{mode}-single-merged-{target[6:]}"
+        return f"{SHARED}/models/synthetic-qlora-{mode}-{strat}-merged-{target[6:]}"
     raise SystemExit(f"unknown target: {target} (gguf는 vLLM 미지원, llama.cpp로 평가)")
 
 
 def main(
-    mode: str, target: str, n: int, tp: int, gpu_mem_util: float, max_num_seqs: int
+    mode: str, strat: str, target: str, n: int, tp: int, gpu_mem_util: float, max_num_seqs: int
 ):
     from vllm import LLM, SamplingParams
 
@@ -63,7 +63,7 @@ def main(
                 rows.append(json.loads(line))
     if n > 0:
         rows = rows[:n]
-    model = resolve(target, mode)
+    model = resolve(target, mode, strat)
     kw = dict(
         model=model,
         tensor_parallel_size=tp,
@@ -84,7 +84,7 @@ def main(
 
     prompts = [PROMPT_NO_INPUT.format(instruction=q_of(r)) for r in rows]
     outs = llm.generate(prompts, sp)
-    outdir = f"{SHARED}/outputs/eval-{mode}"
+    outdir = f"{SHARED}/outputs/eval-{mode}-{strat}"
     os.makedirs(outdir, exist_ok=True)
     outp = f"{outdir}/{target}.jsonl"
     tmp = tmp_path(outp)
@@ -100,6 +100,11 @@ def main(
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", default="mini", choices=["mini", "full"])
+    ap.add_argument(
+        "--strat",
+        default=os.environ.get("STRAT", "single"),
+        choices=["single", "ddp", "fsdp"],
+    )
     ap.add_argument(
         "--target",
         required=True,
@@ -144,4 +149,4 @@ if __name__ == "__main__":
         if a.max_num_seqs is not None
         else int(os.environ.get("VLLM_MAX_NUM_SEQS", "8"))
     )
-    main(a.mode, a.target, n, a.tp, a.gpu_mem_util, max_num_seqs)
+    main(a.mode, a.strat, a.target, n, a.tp, a.gpu_mem_util, max_num_seqs)

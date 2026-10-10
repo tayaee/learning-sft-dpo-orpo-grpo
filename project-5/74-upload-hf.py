@@ -15,75 +15,78 @@ HF_ID = os.environ.get("HF_ID", "tayaee")
 # 예: unsloth/Llama-3.2-1B → tayaee/p5-Llama-3.2-1B-math-fft-mini
 SLUG = os.environ.get("BASE_MODEL", "unsloth/Llama-3.2-1B").split("/")[-1]
 
-# target → (로컬 디렉토리 템플릿, HF repo 템플릿, 업로드 방식)
+# target → (로컬 디렉토리 템플릿, 업로드 방식). {m}=mode, {s}=strat.
 # 양자화 총 16종: HF 폴더 6종(gptq/awq/fp8 × fft/qlora) + GGUF 10종(fft/qlora × 5).
-# 구이름(gptq/awq/fp8/gguf)은 fft-* 별칭. fft-gguf/qlora-gguf/gguf 키는 q8_0 호환용으로 유지.
+# 구이름(gptq/awq/fp8/gguf)은 fft-* 별칭. fft-gguf/qlora-gguf 키는 q8_0 호환용으로 유지.
 TARGETS = {
-    "fft": ("synthetic-fft-{m}-single", "{slug}-math-fft-{m}", "folder"),
-    "qlora": ("synthetic-qlora-{m}-single-merged", "{slug}-math-qlora-{m}", "folder"),
-    "fft-gptq": ("synthetic-fft-{m}-single-gptq", "{slug}-math-fft-gptq-{m}", "folder"),
-    "fft-awq": ("synthetic-fft-{m}-single-awq", "{slug}-math-fft-awq-{m}", "folder"),
-    "fft-fp8": ("synthetic-fft-{m}-single-fp8", "{slug}-math-fft-fp8-{m}", "folder"),
+    "fft": ("synthetic-fft-{m}-{s}", "folder"),
+    "qlora": ("synthetic-qlora-{m}-{s}-merged", "folder"),
+    "fft-gptq": ("synthetic-fft-{m}-{s}-gptq", "folder"),
+    "fft-awq": ("synthetic-fft-{m}-{s}-awq", "folder"),
+    "fft-fp8": ("synthetic-fft-{m}-{s}-fp8", "folder"),
     "fft-gguf": (
-        "synthetic-fft-{m}-single-gguf/model-q8_0.gguf",
-        "{slug}-math-fft-gguf-{m}",
+        "synthetic-fft-{m}-{s}-gguf/model-q8_0.gguf",
         "gguf",
     ),
     "qlora-gptq": (
-        "synthetic-qlora-{m}-single-merged-gptq",
-        "{slug}-math-qlora-gptq-{m}",
+        "synthetic-qlora-{m}-{s}-merged-gptq",
         "folder",
     ),
     "qlora-awq": (
-        "synthetic-qlora-{m}-single-merged-awq",
-        "{slug}-math-qlora-awq-{m}",
+        "synthetic-qlora-{m}-{s}-merged-awq",
         "folder",
     ),
     "qlora-fp8": (
-        "synthetic-qlora-{m}-single-merged-fp8",
-        "{slug}-math-qlora-fp8-{m}",
+        "synthetic-qlora-{m}-{s}-merged-fp8",
         "folder",
     ),
     "qlora-gguf": (
-        "synthetic-qlora-{m}-single-merged-gguf/model-q8_0.gguf",
-        "{slug}-math-qlora-gguf-{m}",
-        "gguf",
-    ),
-    "gptq": ("synthetic-fft-{m}-single-gptq", "{slug}-math-fft-gptq-{m}", "folder"),
-    "awq": ("synthetic-fft-{m}-single-awq", "{slug}-math-fft-awq-{m}", "folder"),
-    "fp8": ("synthetic-fft-{m}-single-fp8", "{slug}-math-fft-fp8-{m}", "folder"),
-    "gguf": (
-        "synthetic-fft-{m}-single-gguf/model-q8_0.gguf",
-        "{slug}-math-fft-gguf-{m}",
+        "synthetic-qlora-{m}-{s}-merged-gguf/model-q8_0.gguf",
         "gguf",
     ),
 }
+
+
+# HF repo명 규칙 (models-tree.txt 설계 결정 3):
+# single 동결 ({slug}-math-{target}-{m}, full이면 -{m} 생략),
+# ddp/fsdp는 -{s} 삽입, full은 무표기.
+def repo_name(target: str, strat: str, mode: str) -> str:
+    r = f"{SLUG}-math-{target}"
+    if strat != "single":
+        r += f"-{strat}"
+    if mode != "full":
+        r += f"-{mode}"
+    return f"{HF_ID}/{r}"
+
+
+# 구이름 별칭 → 정식 키 (같은 repo에 업로드, 기존 동작 유지).
+ALIAS = {"gptq": "fft-gptq", "awq": "fft-awq", "fp8": "fft-fp8", "gguf": "fft-gguf"}
 
 # GGUF 5종 변종 (42/52 산출물): fft/qlora × {q8_0,q6_k,q5_k_m,q4_k_m,q3_k_m}.
 # gguf 단일파일 업로드 분기 그대로 사용 (path_in_repo=파일명).
 GQUANTS = ["q8_0", "q6_k", "q5_k_m", "q4_k_m", "q3_k_m"]
 for _base, _local in (
-    ("fft", "synthetic-fft-{m}-single"),
-    ("qlora", "synthetic-qlora-{m}-single-merged"),
+    ("fft", "synthetic-fft-{m}-{s}"),
+    ("qlora", "synthetic-qlora-{m}-{s}-merged"),
 ):
     for _q in GQUANTS:
         TARGETS[f"{_base}-gguf-{_q}"] = (
             f"{_local}-gguf/model-{_q}.gguf",
-            "{slug}-math-" + f"{_base}-gguf-{_q}" + "-{m}",
             "gguf",
         )
 
 
-def main(mode: str, targets: str, dry_run: bool):
+def main(mode: str, strat: str, targets: str, dry_run: bool):
     sel = list(TARGETS) if targets == "all" else targets.split(",")
     plan = []
     for t in sel:
-        local_t, repo_t, kind = TARGETS[t]
+        key = ALIAS.get(t, t)
+        local_t, kind = TARGETS[key]
         plan.append(
             (
                 t,
-                f"{SHARED}/models/" + local_t.format(m=mode),
-                f"{HF_ID}/" + repo_t.format(m=mode, slug=SLUG),
+                f"{SHARED}/models/" + local_t.format(m=mode, s=strat),
+                repo_name(key, strat, mode),
                 kind,
             )
         )
@@ -112,7 +115,12 @@ def main(mode: str, targets: str, dry_run: bool):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", default="mini", choices=["mini", "full"])
+    ap.add_argument(
+        "--strat",
+        default=os.environ.get("STRAT", "single"),
+        choices=["single", "ddp", "fsdp"],
+    )
     ap.add_argument("--targets", default="all")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
-    main(a.mode, a.targets, a.dry_run)
+    main(a.mode, a.strat, a.targets, a.dry_run)

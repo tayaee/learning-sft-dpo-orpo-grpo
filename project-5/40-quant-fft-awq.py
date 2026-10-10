@@ -1,6 +1,6 @@
 """40-quant-fft-awq.py — Stage 4a. FFT → AWQ 4bit (llmcompressor oneshot + AWQModifier).
 원본: quantizaton_math.ipynb 후반 (autoawq) → llmcompressor로 교체.
-입력: synthetic-fft-<mode>-single. 출력에 tokenizer 동봉 필수.
+입력: synthetic-fft-<mode>-<strat>. 출력에 tokenizer 동봉 필수.
 캘리브레이션: gsm8k-calibration-256.jsonl (05-prep-calibration.sh 생성,
 gsm8k-train에서 seed 고정 추출). AWQ 예제 정석 256.
 
@@ -16,14 +16,14 @@ from quant_common import load_calib_texts
 SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
 
 
-def main(mode: str, calib: int, calib_file: str | None):
+def main(mode: str, strat: str, calib: int, calib_file: str | None):
     from datasets import Dataset
     from llmcompressor import oneshot
     from llmcompressor.modifiers.awq import AWQModifier
     from transformers import AutoTokenizer
 
-    src = f"{SHARED}/models/synthetic-fft-{mode}-single"
-    out = f"{SHARED}/models/synthetic-fft-{mode}-single-awq"
+    src = f"{SHARED}/models/synthetic-fft-{mode}-{strat}"
+    out = f"{SHARED}/models/synthetic-fft-{mode}-{strat}-awq"
     texts = load_calib_texts(calib, calib_file)
     ds = Dataset.from_list([{"text": t} for t in texts])
     recipe = AWQModifier(ignore=["lm_head"], scheme="W4A16", targets=["Linear"])
@@ -44,6 +44,11 @@ def main(mode: str, calib: int, calib_file: str | None):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", default="mini", choices=["mini", "full"])
+    ap.add_argument(
+        "--strat",
+        default=os.environ.get("STRAT", "single"),
+        choices=["single", "ddp", "fsdp"],
+    )
     ap.add_argument("--calib", type=int, default=None)
     ap.add_argument(
         "--calib-file",
@@ -53,4 +58,4 @@ if __name__ == "__main__":
     )
     a = ap.parse_args()
     default_calib = int(os.environ.get("CALIB_N", "32" if a.mode == "mini" else "256"))
-    main(a.mode, a.calib or default_calib, a.calib_file)
+    main(a.mode, a.strat, a.calib or default_calib, a.calib_file)

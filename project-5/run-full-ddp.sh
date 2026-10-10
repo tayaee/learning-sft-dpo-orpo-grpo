@@ -6,8 +6,8 @@
 # 합성데이터·전략비교·merge·PTQ·PPL·평가는 rank0만 수행 (TP=1, cheatsheet 관례).
 # rank1은 rank0의 synthetic-full.jsonl 생성을 기다렸다가 학습에 합류한다
 # (22-teacher 10k 생성에 약 5~6시간, 대기 상한 9시간).
-# 하류(merge→평가)는 -single 산출물이 있어야 진행한다:
-#   없으면 DDP 학습 + 12-compare까지만 수행하고 종료 (먼저 ./run-full-single.sh 실행).
+# 하류(merge→평가)는 같은 전략 산출물이 있어야 진행한다:
+#   없으면 DDP 학습 + 12-compare까지만 수행하고 종료 (학습 스텝 먼저 실행).
 # 사용: SKIP_SETUP=1 ./run-full-ddp.sh                 # 00-setup 생략
 #   MASTER_ADDR=spark1-p1-r0 NODE_RANK=1 ./run-full-ddp.sh  # 수동 지정도 가능
 #   STEPS=setup,baseline ./run-full-ddp.sh             # 최소 파이프라인 (분산 동작 확인용)
@@ -81,8 +81,8 @@ export TP=1
 
 want_step compare && p5_step "12-compare" ./12-compare-strategies.sh "$MODE"
 
-if [ ! -d "$P5_MODELS/synthetic-fft-$MODE-single" ] || [ ! -d "$P5_MODELS/synthetic-qlora-$MODE-single" ]; then
-  p5_log "downstream SKIP: no -single output, run ./run-$MODE-single.sh first"
+if [ ! -d "$P5_MODELS/synthetic-fft-$MODE-$STRAT" ] || [ ! -d "$P5_MODELS/synthetic-qlora-$MODE-$STRAT" ]; then
+  p5_log "downstream SKIP: no -$STRAT output (run train steps first)"
   exit 0
 fi
 

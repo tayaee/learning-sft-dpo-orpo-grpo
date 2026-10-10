@@ -1,7 +1,7 @@
 """72-eval-gguf.py — Stage 7b-gguf. llama-completion greedy GSM8K 추론 (GGUF 10종).
 71-eval.py(vLLM)는 GGUF 미지원 → llama.cpp로 별도 평가한다.
 조건 동일 강제: PROMPT_NO_INPUT 포맷, greedy(temp 0), max 512, gsm8k-test 앞 N개.
-출력: $P5_SHARED/outputs/eval-<mode>/<target>.jsonl (원본행 + kd_data, 73-score 호환).
+출력: $P5_SHARED/outputs/eval-<mode>-<strat>/<target>.jsonl (원본행 + kd_data, 73-score 호환).
 
   uv run 72-eval-gguf.py --mode mini|full --target fft-gguf-q4_k_m [--n N]
   타깃: fft-gguf-{q8_0,q6_k,q5_k_m,q4_k_m,q3_k_m}, qlora-gguf-{...}
@@ -28,14 +28,14 @@ GQUANTS = ["q8_0", "q6_k", "q5_k_m", "q4_k_m", "q3_k_m"]
 TARGETS = [f"fft-gguf-{q}" for q in GQUANTS] + [f"qlora-gguf-{q}" for q in GQUANTS]
 
 
-def resolve(target: str, mode: str) -> str:
+def resolve(target: str, mode: str, strat: str) -> str:
     if target.startswith("fft-gguf-"):
         q = target[len("fft-gguf-") :]
-        return f"{SHARED}/models/synthetic-fft-{mode}-single-gguf/model-{q}.gguf"
+        return f"{SHARED}/models/synthetic-fft-{mode}-{strat}-gguf/model-{q}.gguf"
     if target.startswith("qlora-gguf-"):
         q = target[len("qlora-gguf-") :]
         return (
-            f"{SHARED}/models/synthetic-qlora-{mode}-single-merged-gguf/model-{q}.gguf"
+            f"{SHARED}/models/synthetic-qlora-{mode}-{strat}-merged-gguf/model-{q}.gguf"
         )
     raise SystemExit(f"unknown target: {target} (gguf 변종 10종만 지원)")
 
@@ -72,7 +72,7 @@ def gen_one(cli: str, model: str, prompt: str, n_predict: int, ctx: str) -> str:
     return out.strip()
 
 
-def main(mode: str, target: str, n: int):
+def main(mode: str, strat: str, target: str, n: int):
     cli = os.environ.get("LLAMACPP_CLI", f"{LLAMACPP}/build/bin/llama-completion")
     if not (os.path.isfile(cli) and os.access(cli, os.X_OK)):
         raise FileNotFoundError(
@@ -86,7 +86,7 @@ def main(mode: str, target: str, n: int):
                 rows.append(json.loads(line))
     if n > 0:
         rows = rows[:n]
-    model = resolve(target, mode)
+    model = resolve(target, mode, strat)
     if not os.path.exists(model):
         raise FileNotFoundError(f"산출물 없음: {model} (42/52 먼저 실행)")
     ctx = os.environ.get("LLAMACPP_CTX", "2048")
@@ -95,7 +95,7 @@ def main(mode: str, target: str, n: int):
         s = r["source"]
         return s[0] if isinstance(s, list) else s
 
-    outdir = f"{SHARED}/outputs/eval-{mode}"
+    outdir = f"{SHARED}/outputs/eval-{mode}-{strat}"
     os.makedirs(outdir, exist_ok=True)
     outp = f"{outdir}/{target}.jsonl"
     tmp = tmp_path(outp)
@@ -115,6 +115,11 @@ def main(mode: str, target: str, n: int):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", default="mini", choices=["mini", "full"])
+    ap.add_argument(
+        "--strat",
+        default=os.environ.get("STRAT", "single"),
+        choices=["single", "ddp", "fsdp"],
+    )
     ap.add_argument("--target", required=True, choices=TARGETS)
     ap.add_argument("--n", type=int, default=None)
     a = ap.parse_args()
@@ -123,4 +128,4 @@ if __name__ == "__main__":
         if a.n is not None
         else int(os.environ.get("EVAL_N", "10" if a.mode == "mini" else "0"))
     )
-    main(a.mode, a.target, n)
+    main(a.mode, a.strat, a.target, n)

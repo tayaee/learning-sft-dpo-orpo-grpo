@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
-# 73-score.sh [mini|full] — Stage 7c wrapper. eval-<mode>/*.jsonl 채점표 출력.
+# 73-score.sh [mini|full] (STRAT env, 기본 single) — Stage 7c wrapper. eval-<mode>-<strat>/*.jsonl 채점표 출력.
 # (73-score.py 자체가 결과표를 stdout에 찍고 score.json 아티팩트를 남긴다.)
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-mini}"
-EVALDIR="$P5_OUTPUTS/eval-$MODE"
+STRAT="${STRAT:-single}"
+case "$STRAT" in single|ddp|fsdp) ;; *) echo "STRAT must be single|ddp|fsdp" >&2; exit 1;; esac
+EVALDIR="$P5_OUTPUTS/eval-$MODE-$STRAT"
 SCORE="$EVALDIR/score.json"
 p5_require "$EVALDIR"
 _inputs=()
@@ -15,7 +17,7 @@ if [ -f "$SCORE" ] && [ "${#_inputs[@]}" -gt 0 ] && p5_fresh "$SCORE" "${_inputs
   exit 0
 fi
 p5_log "evaldir=$EVALDIR"
-uv run "$P5_ROOT/73-score.py" --mode "$MODE"
+uv run "$P5_ROOT/73-score.py" --mode "$MODE" --strat "$STRAT"
 
 echo ---- result ----
-(set -x; ls -l "$P5_OUTPUTS/eval-$MODE/")
+(set -x; ls -l "$P5_OUTPUTS/eval-$MODE-$STRAT/")
