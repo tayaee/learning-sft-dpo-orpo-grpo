@@ -27,8 +27,7 @@ export NCCL_SOCKET_IFNAME="${NCCL_SOCKET_IFNAME:-enp1s0f1np1}"  # CX7 p1-r0
 export NCCL_IB_HCA="${NCCL_IB_HCA:-rocep1s0f1}"  # enp1s0f1np1 대응 HCA
 export INFRA=dgx-spark-2x  # run-all-all은 2노드 오케스트레이터로 고정
 export TP="${TP:-1}"  # 1노드=1GPU 하드웨어라 TP=2는 불가. vLLM 생성·평가는 항상 단독 실행
-# (single 스크립트는 내부에서 1x 강제, ddp도 2x 고정. fsdp만 이 값을 보고 분산 판단.
-#  1x-FSDP 동작학습은 run-mini/fsdp.sh 직접 실행으로만 가능)
+# (single 스크립트는 내부에서 1x 강제, ddp/fsdp는 2x 고정)
 # MASTER_ADDR 자동 검출 (미지정 시): CX7 fabric 우선, /etc/hosts·getent 기준, ping 확인
 if [ -z "${MASTER_ADDR:-}" ]; then
   for _h in spark1-p1-r0 spark1-p1-r1 spark1.local; do

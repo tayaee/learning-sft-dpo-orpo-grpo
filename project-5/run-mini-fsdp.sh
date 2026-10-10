@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
-# run-mini-fsdp.sh — mini FSDP 원샷 (1x 동작학습 기본, 2x 실분산 겸용).
-# 1노드 학습용 (기본, 메모리 이득 없음·동작 학습):
-#   ./run-mini-fsdp.sh                     # MASTER_ADDR·NODE_RANK 불필요
-# 2노드 실분산 (spark1+spark2에서 같은 명령, rank0 먼저):
-#   ./run-mini-fsdp.sh  # INFRA=dgx-spark-2x export 시, 양 노드에서 실행
+# run-mini-fsdp.sh — mini FSDP 2노드 원샷 (spark1+spark2에서 같은 명령, rank0 먼저).
+#   ./run-mini-fsdp.sh                     # MASTER_ADDR·NODE_RANK 자동 검출
 # 분산 대상: 학습만 (10-baseline, 30-fft, 31-qlora).
 # 2x에서는 합성데이터·전략비교·merge·PTQ·PPL·평가는 rank0만 수행 (TP=1).
 # NOTE: FSDP+QLoRA는 강의에서 비권장 → 31-qlora는 DDP 동작으로 학습용 수행.
@@ -13,7 +10,7 @@
 #   없으면 FSDP 학습 + 12-compare까지만 수행하고 종료 (먼저 ./run-mini-single.sh 실행).
 # 사용: SKIP_SETUP=1 ./run-mini-fsdp.sh                # 00-setup 생략
 #   STEPS=setup,baseline ./run-mini-fsdp.sh            # 최소 파이프라인 (분산 동작 확인용)
-# 자동 검출(2x일 때만): MASTER_ADDR는 CX7(spark1-p1-r0→p1-r1→LAN 순,
+# 자동 검출: MASTER_ADDR는 CX7(spark1-p1-r0→p1-r1→LAN 순,
 # /etc/hosts+ping 확인), NODE_RANK는 호스트명(spark1→0, spark2→1, …) 기준.
 # 스텝명: setup baseline syndata fft qlora compare merge quant ppl eval (기본 STEPS=all)
 # 스텝별 소요시간: stdout + logs/timing-mini-fsdp.log

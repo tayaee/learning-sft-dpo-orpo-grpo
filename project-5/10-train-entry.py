@@ -19,6 +19,16 @@ import json
 import math
 import os
 import random
+import warnings
+
+# torch 2.13 내부(FSDP/accelerate 경로)가 아직 구 별칭
+# all_gather_into_tensor를 호출해 FutureWarning을 띄운다. 우리 코드 직접 호출은
+# 없으므로(리포지토리 내 all_gather 호출 없음) 해당 경고만 필터한다.
+warnings.filterwarnings(
+    "ignore",
+    message=".*all_gather_into_tensor.*",
+    category=FutureWarning,
+)
 
 from io_common import clean_tmp, commit_dir, tmp_path
 
@@ -371,7 +381,13 @@ def main():
         else:
             print(f"rank {_rank} done (model saved by rank 0)")
         if dist.is_available() and dist.is_initialized():
-            dist.barrier()
+            import torch
+
+            # device_ids 명시 (없으면 "using the device under current context" 경고).
+            if torch.cuda.is_available():
+                dist.barrier(device_ids=[torch.cuda.current_device()])
+            else:
+                dist.barrier()
 
 
 if __name__ == "__main__":

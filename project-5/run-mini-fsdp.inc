@@ -1,11 +1,12 @@
 # run-mini-fsdp.inc — mini fsdp 프리셋 (run-mini-fsdp.sh와 공유).
-# 수동 사용: source ./run-mini-fsdp.inc  → 이후 단계 스크립트가
-# 인자 없이도 MODE/STRAT/INFRA를 따라간다. run 스크립트도 이 파일을 source 한다.
-# INFRA가 dgx-spark-2x일 때만 분산 검출을 수행한다 (DIST, run 스크립트와 공유).
-# 1x에서는 동작학습 (메모리 이득 없음), 2x에서는 2proc 실분산.
+# 수동 사용: 각 노드에서 source ./run-mini-fsdp.inc  → 이후 단계 스크립트가
+# 인자 없이도 MODE/STRAT/INFRA/MASTER_ADDR/NODE_RANK를 따라간다.
+# run 스크립트도 이 파일을 source 한다.
+# fsdp는 항상 2노드 (외부 INFRA export가 있어도 무시, ddp와 동일).
+# 1노드=1GPU라 단일노드 FSDP는 무의미하다.
 export MODE=mini STRAT=fsdp
-export INFRA="${INFRA:-dgx-spark-1x}"
-DIST=0; [ "$INFRA" = "dgx-spark-2x" ] && DIST=1
+export INFRA=dgx-spark-2x
+DIST=1  # 항상 분산 (run 스크립트 하단 분기에서 사용)
 if [ "$DIST" = "1" ]; then
   # MASTER_ADDR 자동 검출 (미지정 시): CX7 fabric 우선, /etc/hosts·getent 기준, ping 확인
   if [ -z "${MASTER_ADDR:-}" ]; then
