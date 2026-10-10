@@ -314,21 +314,24 @@ def main():
     # fsdp=True + fsdp_config (문자열 "full_shard auto_wrap"은 deprecated).
     # full_shard는 FSDP2 기본(reshard_after_forward=True), auto_wrap은 기본 정책이라
     # transformer_layer_cls_to_wrap만 지정하면 동등하다.
-    fsdp = a.strategy == "fsdp"
+    # FSDP+QLoRA는 미지원 → DDP로 동작 (peft면 FSDP 래핑·DCP 둘 다 끈다).
+    # DCP consolidate는 full-model 전제라 어댑터 샤드에 깨진다
+    # (Missing key lm_head.weight 실측).
+    fsdp = a.strategy == "fsdp" and not a.peft
     fsdp_cfg = (
         {
             "transformer_layer_cls_to_wrap": "LlamaDecoderLayer",
             # gradient_checkpointing 대신 FSDP 네이티브 (backward 冗長 AllGather 회피).
             "activation_checkpointing": True,
         }
-        if a.strategy == "fsdp"
+        if fsdp
         else {}
     )
     # 2노드 FSDP는 중간 체크포인트(full gather)를 건너뛰고 최종 DCP 저장만 수행.
     # _dcp_2node에서도 P5_DCP_SAVE=0이면 기존 경로(trainer.save_model) 사용.
     _world = int(os.environ.get("WORLD_SIZE", "1"))
     _dcp_2node = (
-        a.strategy == "fsdp"
+        fsdp
         and _world > 1
         and os.environ.get("P5_DCP_SAVE", "1") == "1"
     )
