@@ -12,7 +12,9 @@ GGUF는 transformers 대신 llama-perplexity로 측정 (미빌드 시 해당 타
 감싸서 in-domain PPL 측정 (WikiText가 아니라 수학 특화 유지 여부용).
 
   uv run 60-measure-ppl.py --mode mini|full [--n 32] [--targets all|base,fft,...]
-  출력: stdout 표 + $P5_SHARED/outputs/ppl-<mode>/ (summary.json + 타깃별 json)
+  출력: stdout 표 + $P5_SHARED/outputs/ppl-<mode>-<strat>/ (summary.json + 타깃별 json)
+  summary.json은 중첩 트리 {meta, tree}. 각 노드는 method/parent/delta/delta_vs/
+  verdict를 가지며, delta는 같은 method끼리만 (gguf는 q8_0 형제 대비).
 """
 
 import argparse
@@ -103,6 +105,92 @@ def verdict(delta):
     if delta < 1.0:
         return "Conditional"
     return "Discard"
+
+
+GGUF_REF = {"fft-gguf", "fft-gguf-q8_0", "qlora-gguf", "qlora-gguf-q8_0"}
+
+
+def sibling_of(t):
+    if t.startswith("fft-gguf-"):
+        return "fft-gguf"
+    if t.startswith("qlora-gguf-"):
+        return "qlora-gguf"
+    return None
+
+
+def score_results(results, sel):
+    """Δ 및 판정. 같은 method끼리만 비교한다 (transformers vs llama.cpp 혼합 금지).
+    gguf 변종은 q8_0 형제 대비로 판정, q8_0 자체는 분기 기준점(ref).
+    더미 부모 노드 불필요 — method 태그가 비교 가능성을 선언적으로 표현한다."""
+    for t in sel:
+        r = results[t]
+        kind = TARGETS[t][0]
+        r["method"] = "llama.cpp" if kind == "gguf" else "transformers"
+        r["parent"] = TARGETS[t][2]
+        if r.get("ppl") is None:
+            r.update(delta=None, delta_vs=None, verdict="SKIP")
+            continue
+        if t == "base":
+            r.update(delta=None, delta_vs=None, verdict="ref")
+        elif t in ("fft", "qlora"):
+            # SFT 자체의 도메인 이동이라 판정 대상 아님 (ref), delta는 참고용.
+            b = results.get("base", {})
+            r["delta_vs"] = "base"
+            r["delta"] = (
+                round(r["ppl"] - b["ppl"], 3) if b.get("ppl") is not None else None
+            )
+            r["verdict"] = "ref"
+        elif kind == "gguf":
+            if t in GGUF_REF:
+                r.update(delta=None, delta_vs=None, verdict="ref")
+            else:
+                sib = sibling_of(t)
+                s = results.get(sib, {})
+                r["ref_sibling"] = sib
+                if s.get("ppl") is not None:
+                    d = r["ppl"] - s["ppl"]
+                    r.update(delta=round(d, 3), delta_vs=sib, verdict=verdict(d))
+                else:
+                    r.update(delta=None, delta_vs=sib, verdict="SKIP")
+        else:
+            p = TARGETS[t][2]
+            pp = results.get(p, {})
+            if pp.get("ppl") is not None:
+                d = r["ppl"] - pp["ppl"]
+                r.update(delta=round(d, 3), delta_vs=p, verdict=verdict(d))
+            else:
+                r.update(delta=None, delta_vs=p, verdict="SKIP")
+
+
+def print_table(results, sel):
+    print(f"\n{'target':12} {'ppl':>8} {'delta':>8} {'vs':12} {'method':12} {'verdict':>11}")
+    for t in sel:
+        r = results[t]
+        p = f"{r['ppl']:.3f}" if r.get("ppl") is not None else "-"
+        d = f"{r['delta']:+.3f}" if r.get("delta") is not None else "-"
+        print(
+            f"{t:12} {p:>8} {d:>8} {(r.get('delta_vs') or '-'):12} "
+            f"{r.get('method', '-'):12} {r.get('verdict', '-')}"
+        )
+
+
+def build_tree(results, sel):
+    """중첩 트리 조립 (유도 계보 기준 — gguf도 fft/qlora 아래에 둔다).
+    미측정 중간 노드의 자식은 루트로 올림(detached_from 표기)."""
+    nodes = {}
+    for t in sel:
+        nodes[t] = dict(results[t], name=t, children={})
+    tree = {}
+    for t in sel:
+        p = nodes[t].get("parent")
+        if p and p in nodes:
+            nodes[p]["children"][t] = nodes[t]
+        else:
+            if p:
+                nodes[t]["detached_from"] = p
+                nodes[t]["parent"] = None
+            tree[t] = nodes[t]
+    return tree
 
 
 def first(v):
@@ -230,7 +318,6 @@ def main(mode: str, strat: str, n: int, targets: str):
                 results[t] = {
                     "ppl": round(p, 3),
                     "path": path,
-                    "note": "llama.cpp perplexity (부모 fft/qlora는 transformers 측정과 엔진 상이)",
                 }
                 print(f"{t:12} ppl={p:.3f} (llamacpp)")
             except Exception as e:  # noqa: BLE001 — 미빌드/파싱 실패도 표에 남김
@@ -264,30 +351,19 @@ def main(mode: str, strat: str, n: int, targets: str):
             }
             print(f"{t:12} SKIP ({e})")
 
-    # Δ 및 판정 (부모가 측정됐을 때만)
-    for t in sel:
-        r = results[t]
-        if r.get("ppl") is None:
-            continue
-        _, _, parent = TARGETS[t]
-        if parent and results.get(parent, {}).get("ppl") is not None:
-            d = r["ppl"] - results[parent]["ppl"]
-            r["delta_vs_" + parent] = round(d, 3)
-            r["verdict"] = verdict(d)
-        elif t in ("fft", "qlora") and results.get("base", {}).get("ppl") is not None:
-            d = r["ppl"] - results["base"]["ppl"]
-            r["delta_vs_base"] = round(d, 3)
-            r["verdict"] = "ref"  # SFT 자체의 도메인 이동이라 판정 대상 아님
-        elif t == "base":
-            r["verdict"] = "ref"
+    score_results(results, sel)
+    print_table(results, sel)
 
-    print(f"\n{'target':12} {'ppl':>8} {'delta':>8} {'verdict':>11}")
-    for t in sel:
-        r = results[t]
-        p = f"{r['ppl']:.3f}" if r.get("ppl") is not None else "-"
-        dkey = next((k for k in r if k.startswith("delta")), None)
-        d = f"{r[dkey]:+.3f}" if (dkey and r[dkey] is not None) else "-"
-        print(f"{t:12} {p:>8} {d:>8} {r.get('verdict', '-'):>11}")
+    summary = {
+        "meta": {
+            "mode": mode,
+            "strat": strat,
+            "n": n,
+            "rule": "같은 method끼리만 delta/verdict (transformers vs llama.cpp 혼합 금지)",
+            "thresholds": {"accept_lt": 0.3, "conditional_lt": 1.0},
+        },
+        "tree": build_tree(results, sel),
+    }
 
     outdir = f"{SHARED}/outputs/ppl-{mode}-{strat}"
     os.makedirs(outdir, exist_ok=True)
@@ -299,7 +375,7 @@ def main(mode: str, strat: str, n: int, targets: str):
     outp = f"{outdir}/summary.json"
     tmp = tmp_path(outp)
     with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(results, f, ensure_ascii=False, indent=2)
+        json.dump(summary, f, ensure_ascii=False, indent=2)
     commit_file(tmp, outp)
     print(f"-> {outdir}/ (summary.json + {len(sel)} targets)")
 

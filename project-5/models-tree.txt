@@ -14,6 +14,13 @@
 #    로컬 디렉토리명은 -full- 유지 (디스크 공존용, 변경 없음).
 # 4. base-gsm8k (12 대조용) / qlora 미병합 어댑터는 업로드 안 함 (현행 유지).
 # 5. slug = Llama-3.2-1B (BASE_MODEL=unsloth/Llama-3.2-1B 기준, 74 SLUG 규칙).
+#
+# 학습 대상이 아닌 외부 모델 (트리 본문 앞에 명시):
+# - teacher: meta-llama/Llama-3.1-8B-Instruct (TEACHER_MODEL)
+#   22-teacher가 vLLM으로 합성 풀이 생성 (증류). 학습·평가·채점에 직접 쓰이지 않음.
+# - embedding: sentence-transformers/all-mpnet-base-v2 (EMB_MODEL)
+#   20-select-candidates가 Alpaca+GSM8K 임베딩 후 유사도 선별. 가중치는 학습 안 함.
+# - judge 모델은 없음. 73-score는 정규식 숫자 추출 룰베이스 (모델 호출 없음).
 # 6. 합계: 로컬 디렉토리 72개(콤보당 12) / HF repo 120개(콤보당 20, single 40개는 기존).
 # 7. 개조 완료: 32 SRC/OUT, 40~43·50~53 SRC/OUT(DST),
 #    60-measure-ppl.py + 71-eval.py + 72 gguf_file() + 74-upload-hf.py TARGETS/GQUANTS +
