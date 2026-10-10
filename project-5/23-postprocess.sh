@@ -3,11 +3,7 @@
 # 입력: generated-<mode>.csv → 출력: synthetic-<mode>.jsonl
 set -euo pipefail
 source "$(dirname "$0")/config/common.env" "${1:-mini}"
-echo "+ FORCE=1 MODE=$MODE $0"
-IN="$P5_DATASETS/generated-$MODE.csv"
-OUT="$P5_DATASETS/synthetic-$MODE.jsonl"
 p5_require "$IN"
-if p5_fresh "$OUT" "$IN"; then
   p5_log "skip: fresh $OUT (FORCE=1 to rebuild)"
   echo ---- result ----
   (set -x; ls -lh "$OUT")
