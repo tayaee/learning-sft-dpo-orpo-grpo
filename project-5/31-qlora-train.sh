@@ -33,6 +33,9 @@ TRAIN_LOG="$P5_ROOT/logs/train-$MODE-$STRAT-rank${NODE_RANK:-0}.log"
 echo "== $(date -u +%FT%TZ) $(hostname) rank=${NODE_RANK:-0} world=$WORLD strat=$STRAT ==" > "$TRAIN_LOG"
 p5_log "log: $TRAIN_LOG"
 
+# WORLD==1 solo 학습은 중복 실행 금지 (같은 OUT 저장 레이스 — 실측).
+# 분산(WORLD=2)은 양쪽이 다 돌아야 해서 락 없음.
+[ "$WORLD" = "1" ] && p5_lock "$OUT" nowait
 (set -x; "${LAUNCH[@]}" "$P5_ROOT/10-train-entry.py" --peft \
   --model "$BASE_MODEL" --train "$P5_DATASETS/synthetic-$MODE.jsonl" \
   --out "$OUT" --epochs "$EPOCHS" --mode "$MODE" \

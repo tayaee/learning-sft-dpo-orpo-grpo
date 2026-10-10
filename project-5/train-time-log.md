@@ -5,9 +5,9 @@
 | 스크립트 | 범위 | 실행 위치 | 실행시간 |
 |---|---|---|---|
 | run-all-all.sh | 아래 6종 고정 순서로 순차 실행 | 양 노드 (같은 명령) | 약 32h 00m (추정, 미실측) |
-| run-mini-single.sh | mini 전 파이프라인 (Stage 0→7) | spark1 단독 | 0h 43m (실측) |
-| run-mini-ddp.sh | mini 2노드 DDP (학습만 분산, 나머지는 rank0) | 양 노드 | 약 0h 45m (추정, baseline만 실측) |
-| run-mini-fsdp.sh | mini FSDP (기본 1x 동작학습, INFRA=2x면 실분산) | 1x spark1 / 2x 양 노드 | 약 0h 45m (추정, baseline만 실측) |
+| run-mini-single.sh | mini 전 파이프라인 (Stage 0→7) | spark1 단독 | 약 0h 55m (실측 합계) |
+| run-mini-ddp.sh | mini 2노드 DDP (학습만 분산, 나머지는 rank0) | 양 노드 | 약 0h 35m (실측, 30/31 수동분 제외) |
+| run-mini-fsdp.sh | mini FSDP 2노드 (ddp와 동일 구조) | 양 노드 | 약 0h 38m (실측, 32 수동분 제외) |
 | run-full-single.sh | full 전 파이프라인 (Stage 0→7) | spark1 단독 | 약 10h 00m (추정, 미실측) |
 | run-full-ddp.sh | full 2노드 DDP | 양 노드 | 약 10h 00m (추정, 미실측) |
 | run-full-fsdp.sh | full FSDP (동일) | 1x spark1 / 2x 양 노드 | 약 10h 00m (추정, 미실측) |
@@ -15,7 +15,7 @@
 - 공통: 스텝 타이밍(stdout + `logs/timing-*.log`), `STEPS=` 부분 실행,
   `MASTER_ADDR`·`NODE_RANK` 자동 검출, `SKIP_SETUP=1` 생략.
   run-all-all 전용: `RUNS=` 일부만 실행, single 2종 rank0 전용 게이팅.
-- 하류(merge→평가)는 `-single` 산출물이 있어야 진행 (없으면 학습+비교 후 종료).
+- 하류(merge→평가)는 같은 전략 산출물 기준으로 진행 (콤보별 독립).
 
 - 시간 표기: 분 단위 (1분 미만은 `<1m`). 대표 성공런 기준.
 - full 계열은 아직 완주 없음 (아래 pending).

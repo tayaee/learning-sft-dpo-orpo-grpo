@@ -31,6 +31,9 @@ TRAIN_LOG="$P5_ROOT/logs/train-$MODE-$STRAT-rank${NODE_RANK:-0}.log"
 echo "== $(date -u +%FT%TZ) $(hostname) rank=${NODE_RANK:-0} world=$WORLD strat=$STRAT ==" > "$TRAIN_LOG"
 p5_log "log: $TRAIN_LOG"
 
+# WORLD==1 solo 학습은 중복 실행 금지 (같은 OUT 저장 레이스 — 실측).
+# 분산(WORLD=2)은 양쪽이 다 돌아야 해서 락 없음.
+[ "$WORLD" = "1" ] && p5_lock "$OUT" nowait
 # STUB: 원본 main.py+trainer436 자리에 modern SFT (TRL SFTTrainer) 진입 예정.
 # 동일 하이퍼파라미터: lr 1e-5, cosine, warmup 0.03, micro_batch 2,
 # accum=$ACCUM (effective 64 유지), tok/tgt 512, bf16.

@@ -70,7 +70,10 @@ p5_step() { # <이름> <명령...> — 시작/종료/소요초를 stdout과 TIMI
   "$@" || _rc=$?
   _dt=$(($(date +%s) - _t0))
   p5_log "step done: $_name elapsed=${_dt}s rc=$_rc"
-  printf '%s\t%s\t%s\t%ss\trc=%d\n' "$(date -u +%FT%TZ)" "all-all" "$_name" "$_dt" "$_rc" >>"$TIMING_LOG"
+  # 0s 성공(스킵)은 미기록 — 로그가 스킵으로 뒤덮여 실측을 찾기 힘듦. 실패는 항상 기록.
+  if [ "$_rc" -ne 0 ] || [ "$_dt" -gt 0 ]; then
+    printf '%s\t%s\t%s\t%ss\trc=%d\n' "$(date -u +%FT%TZ)" "all-all" "$_name" "$_dt" "$_rc" >>"$TIMING_LOG"
+  fi
   return $_rc
 }
 want_run() { # <런 이름> — RUNS=all(기본)이면 전부, 아니면 지정된 것만 실행
