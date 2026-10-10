@@ -9,6 +9,7 @@ p5_repro_echo
 BASE="${2:-$BASE_MODEL}"
 SRC="$P5_MODELS/synthetic-qlora-$MODE-$STRAT"
 OUT="$P5_MODELS/synthetic-qlora-$MODE-$STRAT-merged"
+p5_lock "$OUT"
 p5_require "$SRC/adapter_config.json"
 if [ -f "$OUT/config.json" ] && p5_fresh "$OUT/config.json" "$SRC/adapter_config.json"; then
   p5_log "skip: fresh $OUT (FORCE=1 to rebuild)"

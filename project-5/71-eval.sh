@@ -25,6 +25,7 @@ target_model() {
   esac
 }
 p5_log "tp=$TP targets=$TARGETS n=$N gpu_mem_util=${VLLM_GPU_MEM_UTIL:-0.8} max_num_seqs=$VLLM_MAX_NUM_SEQS"
+p5_lock "$P5_OUTPUTS/eval-$MODE-$STRAT"
 for t in $TARGETS; do
   out="$P5_OUTPUTS/eval-$MODE-$STRAT/$t.jsonl"
   m="$(target_model "$t")"

@@ -10,6 +10,7 @@ CALIB="${2:-$CALIB_N}"
 : "${CALIB_FILE:=$P5_DATASETS/gsm8k-calibration-256.jsonl}"
 SRC="$P5_MODELS/synthetic-qlora-$MODE-$STRAT-merged"
 OUT="$P5_MODELS/synthetic-qlora-$MODE-$STRAT-merged-awq"
+p5_lock "$OUT"
 p5_require "$SRC/config.json" "$CALIB_FILE"
 if [ -f "$OUT/config.json" ] && p5_fresh "$OUT/config.json" "$SRC/config.json" "$CALIB_FILE"; then
   p5_log "skip: fresh $OUT (FORCE=1 to rebuild)"

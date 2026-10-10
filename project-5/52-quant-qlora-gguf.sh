@@ -16,9 +16,9 @@ if [ "$#" -gt 0 ]; then QTYPES="$*"; else QTYPES="${QTYPES:-Q8_0 Q6_K Q5_K_M Q4_
 SRC="$P5_MODELS/synthetic-qlora-$MODE-$STRAT-merged"
 DST="$P5_MODELS/synthetic-qlora-$MODE-$STRAT-merged-gguf"
 LLAMACPP="${LLAMACPP:-$HOME/git/llama.cpp}"
+p5_lock "$DST"
 p5_require "$SRC/config.json"
 p5_log "src=$SRC dst=$DST llamacpp=$LLAMACPP qtypes=$QTYPES"
-mkdir -p "$DST"
 
 [ -x "$LLAMACPP/build/bin/llama-quantize" ] || { p5_log "llama-quantize build required (see cheatsheet/PROCEDURE)"; exit 1; }
 [ -f "$LLAMACPP/convert_hf_to_gguf.py" ] || { p5_log "convert_hf_to_gguf.py missing"; exit 1; }

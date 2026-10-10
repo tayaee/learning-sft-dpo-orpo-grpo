@@ -11,6 +11,7 @@ N="${PPL_N:-32}"
 TARGETS="${2:-all}"
 p5_repro_echo
 SUMMARY="$P5_OUTPUTS/ppl-$MODE-$STRAT/summary.json"
+p5_lock "${SUMMARY%/*}"
 if [ "${FORCE:-0}" != 1 ] && [ -f "$SUMMARY" ]; then
   # 모델 디렉토리 중 SUMMARY보다新しい 것이 하나도 없으면 스킵
   if [ -z "$(find "$P5_MODELS" -maxdepth 1 -newer "$SUMMARY" 2>/dev/null | head -1)" ]; then

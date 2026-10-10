@@ -27,6 +27,7 @@ gguf_file() {
   esac
 }
 p5_log "targets=$TARGETS n=$N"
+p5_lock "$P5_OUTPUTS/eval-$MODE-$STRAT"
 for t in $TARGETS; do
   out="$P5_OUTPUTS/eval-$MODE-$STRAT/$t.jsonl"
   g="$(gguf_file "$t")"

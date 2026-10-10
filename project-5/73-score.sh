@@ -9,6 +9,7 @@ p5_repro_echo
 EVALDIR="$P5_OUTPUTS/eval-$MODE-$STRAT"
 SCORE="$EVALDIR/score.json"
 p5_require "$EVALDIR"
+p5_lock "$EVALDIR"
 _inputs=()
 for _f in "$EVALDIR"/*.jsonl; do [ -e "$_f" ] && _inputs+=("$_f"); done
 if [ -f "$SCORE" ] && [ "${#_inputs[@]}" -gt 0 ] && p5_fresh "$SCORE" "${_inputs[@]}"; then
