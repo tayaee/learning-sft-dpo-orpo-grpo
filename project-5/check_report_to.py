@@ -46,7 +46,11 @@ KNOWN = {
         "pip": "trackio>=0.21.1",
         "import": "trackio",
         "env": [],
-        "out": lambda out: "./trackio/ (project=trackio-project-5)",
+        "out": lambda out: os.path.join(
+            os.getenv("HF_HOME") or os.path.expanduser("~/.cache/huggingface"),
+            "trackio/",
+            "trackio-project-5.db",
+        ),
         "note": "로그인 불필요(로컬). rank0만 기록.",
     },
     "dvclive": {

@@ -17,15 +17,21 @@ P5_REPORT_TO=trackio ./31-qlora-train.sh full ddp
 ```
 
 외부 Space 공유를 쓰지 않는 한 로그인·키 불필요. 프로젝트명=`trackio-project-5`
-(`10-train-entry.py`의 `SFTConfig(project=...)`), 로컬 디렉토리에만 기록.
+(`10-train-entry.py`의 `SFTConfig(project=...)`).
+
+저장 위치: `$HF_HOME/trackio/trackio-project-5.db` (SQLite).
+`common.env`가 `HF_HOME=$P5_SHARED/hf-cache`로 지정하므로 실측 경로는
+`/rosenas/data/AIML/project-5-shared/hf-cache/trackio/`. `./trackio/`가 아님에 유의.
 
 ## 3. 보고서 확인
 
 ```bash
-trackio show --project trackio-project-5
-# 또는
-python -m trackio show --project trackio-project-5
+uv run --no-sync trackio show --project trackio-project-5 --host <IP>
 ```
+
+> 경고: `--no-sync` 없이 `uv run trackio show`를 실행하면 `uv sync`가 돌아가며
+> `uv.lock` 기준 trackio==0.19.0으로 **되돌아가** 학습이 깨진다 (2026-10-11 실측).
+> 대시보드는 반드시 `--no-sync`으로 띄울 것.
 
 로컬 `./trackio/` 아래 run 기록. Hub Space로 실시간 공유하려면 `SFTConfig(trackio_space_id=...)` 추가가 필요 — 현재 `10-train-entry.py`는 미지원, 로컬 비교용으로 사용.
 

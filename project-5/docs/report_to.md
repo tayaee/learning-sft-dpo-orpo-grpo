@@ -58,7 +58,7 @@ OUT은 기존과 동일 (`$P5_MODELS/synthetic-qlora-full-ddp`). 이어 highly? 
 |---|---|---|
 | tensorboard | `$OUT/runs/` | `tensorboard --logdir $OUT --port 6006` |
 | mlflow | `$MLFLOW_TRACKING_URI` | `mlflow ui --backend-store-uri "$MLFLOW_TRACKING_URI" --port 5000` |
-| trackio | `./trackio/` | `trackio show --project trackio-project-5` |
+| trackio | `$HF_HOME/trackio/` | `trackio show --project trackio-project-5` |
 | dvclive | `./dvclive/` | `cat dvclive/metrics.tsv` |
 | wandb | cloud/offline `wandb/` | wandb.ai 대시보드 또는 `wandb sync --sync-all` |
 

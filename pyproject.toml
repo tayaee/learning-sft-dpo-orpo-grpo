@@ -24,3 +24,10 @@ dependencies = [
 required-environments = [
     "sys_platform == 'linux' and platform_machine == 'aarch64'",
 ]
+# axolotl이 trackio==0.19.0을 exact pin으로 요구하지만, 0.19.0은 huggingface_hub>=1과
+# 파손(CommitOperationAdd ImportError → Trainer 생성 시 분산잡 전체 사망, 2026-10-11 실측)
+# + transformers 최소 요구치(0.21.1) 미달. override로 0.42.0(양 노드 검증됨)에 고정.
+# → plain `uv run`/`uv sync`가 0.19.0으로 되돌리지 못하게 함.
+override-dependencies = [
+    "trackio==0.42.0",
+]
