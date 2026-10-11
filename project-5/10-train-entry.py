@@ -109,6 +109,12 @@ def parse_args():
         "--max_rows", type=int, default=0, help="학습 행 상한 (0=전체, mini 경량화용)"
     )
     p.add_argument("--dry_run", action="store_true", help="데이터 포맷만 확인 후 종료")
+    p.add_argument(
+        "--report_to",
+        default="none",
+        help='리포팅 연동 CSV (예: "tensorboard", "tensorboard,wandb"). '
+        '"none"=미사용, "all"=설치된 연동 전체.',
+    )
     return p.parse_args()
 
 
@@ -343,6 +349,14 @@ def main():
     # mini(256행/64eff/1ep)=4스텝 → round(4*0.03)=0으로 기존 동작과 일치.
     _gbs = a.micro * a.accum * _world
     _warmup_steps = round(math.ceil(len(ds) / _gbs) * a.epochs * a.warmup)
+    # report_to CSV 파싱: "a,b" → ["a", "b"]. 빈값/"none"만이면 "none".
+    _report = [s.strip() for s in a.report_to.split(",") if s.strip()]
+    if not _report or _report == ["none"]:
+        _report_to = "none"
+    elif len(_report) == 1:
+        _report_to = _report[0]
+    else:
+        _report_to = [s for s in _report if s != "none"]
     cfg = SFTConfig(
         output_dir=a.out,
         num_train_epochs=a.epochs,
@@ -363,7 +377,7 @@ def main():
         gradient_checkpointing_kwargs={"use_reentrant": False} if a.peft else {},
         fsdp=fsdp,
         fsdp_config=fsdp_cfg,
-        report_to="none",
+        report_to=_report_to,
     )
     trainer = SFTTrainer(
         model=model,
