@@ -52,7 +52,7 @@ output_path() {
       elif [ -n "$OUT_DIR" ]; then echo "$OUT_DIR/runs";
       else echo '$OUT/runs'; fi ;;
     mlflow) echo "${MLFLOW_TRACKING_URI:-./mlruns}" ;;
-    trackio) echo "./trackio/ (project=huggingface)" ;;
+    trackio) echo "./trackio/ (project=project-5)" ;;
     dvclive) echo "./dvclive/" ;;
     wandb) echo "cloud wandb.ai/${WANDB_PROJECT:-huggingface} + ./wandb/" ;;
     *) echo "(벤더 문서 참조)" ;;

@@ -46,7 +46,7 @@ KNOWN = {
         "pip": "trackio>=0.21.1",
         "import": "trackio",
         "env": [],
-        "out": lambda out: "./trackio/ (project=huggingface)",
+        "out": lambda out: "./trackio/ (project=project-5)",
         "note": "로그인 불필요(로컬). rank0만 기록.",
     },
     "dvclive": {

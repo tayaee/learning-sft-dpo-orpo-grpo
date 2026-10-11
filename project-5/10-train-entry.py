@@ -378,6 +378,7 @@ def main():
         fsdp=fsdp,
         fsdp_config=fsdp_cfg,
         report_to=_report_to,
+        project="project-5",  # trackio 프로젝트명 (TrainingArguments 기본값 huggingface 대신)
     )
     trainer = SFTTrainer(
         model=model,
