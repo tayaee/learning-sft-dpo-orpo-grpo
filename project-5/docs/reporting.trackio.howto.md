@@ -6,6 +6,10 @@
 uv pip install "trackio>=0.21.1"
 ```
 
+> 주의 (실측): trackio 0.19.0 + huggingface_hub>=1 조합은 `import trackio` 자체가
+> `CommitOperationAdd` ImportError로 깨지며, Trainer 생성 시점에 분산잡 전체가 죽는다.
+> 반드시 `check_report_to.py`로 `[OK]` 확인 후 투입. 깨지면 report_to에서 trackio 제외.
+
 ## 2. 학습에 전달
 
 ```bash

@@ -20,6 +20,7 @@ import argparse
 import importlib.metadata
 import importlib.util
 import os
+import subprocess
 import sys
 
 
@@ -128,6 +129,15 @@ KNOWN = {
 }
 
 
+# transformers가 요구하는 최소 버전 (integration_utils 상수에서 발췌).
+MIN_VERSIONS = {
+    "trackio": "0.21.1",  # TrackioCallback.MIN_TRACKIO_VERSION_FOR_FREEZE
+}
+
+# 심층 import 검증 타임아웃(초). mlflow/wandb는 import가 느리다.
+DEEP_CHECK_TIMEOUT = 120
+
+
 def parse_report_to(s):
     """10-train-entry.py와 동일한 파싱. SFTConfig에 넘어가는 값을 반환."""
     items = [x.strip() for x in (s or "").split(",") if x.strip()]
@@ -146,6 +156,40 @@ def is_available(name):
         return importlib.util.find_spec(meta["import"]) is not None
     except (ImportError, ModuleNotFoundError, ValueError):
         return False
+
+
+def deep_check(name):
+    """백엔드 실제 import를 서브프로세스로 검증.
+
+    find_spec 통과해도 import 시점에 깨지는 경우 실측
+    (예: trackio 0.19.0 + huggingface_hub>=1 → CommitOperationAdd ImportError로
+    Trainer 생성 자체가 죽고 분산잡 전체가 따라 죽음).
+    반환: (ok: bool, detail: str).
+    """
+    meta = KNOWN[name]
+    mod = meta["import"].split(".")[0]
+    try:
+        r = subprocess.run(
+            [sys.executable, "-c", f"import {mod}"],
+            capture_output=True, text=True, timeout=DEEP_CHECK_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired:
+        return False, f"import {mod} 타임아웃({DEEP_CHECK_TIMEOUT}s)"
+    if r.returncode != 0:
+        tail = (r.stderr.strip().splitlines() or ["(stderr 없음)"])[-3:]
+        return False, "import 실패: " + " / ".join(t.strip() for t in tail)
+    if name in MIN_VERSIONS:
+        try:
+            from packaging.version import Version
+        except ImportError:
+            Version = None
+        try:
+            ver = importlib.metadata.version(mod)
+        except importlib.metadata.PackageNotFoundError:
+            ver = None
+        if ver and Version and Version(ver) < Version(MIN_VERSIONS[name]):
+            return False, f"버전 미달: {ver} < 최소 {MIN_VERSIONS[name]}"
+    return True, "import OK"
 
 
 def main():
@@ -193,27 +237,33 @@ def main():
             problems += 1
             continue
         meta = KNOWN[n]
-        if n in available:
-            try:
-                out = meta["out"](a.out)
-            except Exception:
-                out = "(경로 확인 실패)"
-            env_show = ""
-            if meta.get("env"):
-                env_show = " | " + ", ".join(
-                    f"{k}={os.getenv(k) or '(미설정)'}" for k in meta["env"]
-                )
-            print(f"  [OK] {n}: 출력 -> {out}{env_show}")
-            if meta.get("note"):
-                print(f"       {meta['note']}")
-            if n == "wandb" and not os.getenv("WANDB_API_KEY"):
-                print("       HINT: WANDB_API_KEY 미설정 — 'wandb login' 상태 확인 필요 (실패 시 잡 중단 가능).")
-        else:
+        if n not in available:
             print(f"  [MISSING] {n}: pip install {meta['pip']}")
             problems += 1
+            continue
+        ok, detail = deep_check(n)
+        if not ok:
+            print(f"  [BROKEN] {n}: {detail}")
+            print(f"           처방: pip install -U {meta['pip']} 후 재확인, 또는 report_to에서 제외")
+            problems += 1
+            continue
+        try:
+            out = meta["out"](a.out)
+        except Exception:
+            out = "(경로 확인 실패)"
+        env_show = ""
+        if meta.get("env"):
+            env_show = " | " + ", ".join(
+                f"{k}={os.getenv(k) or '(미설정)'}" for k in meta["env"]
+            )
+        print(f"  [OK] {n}: {detail} | 출력 -> {out}{env_show}")
+        if meta.get("note"):
+            print(f"       {meta['note']}")
+        if n == "wandb" and not os.getenv("WANDB_API_KEY"):
+            print("       HINT: WANDB_API_KEY 미설정 — 'wandb login' 상태 확인 필요 (실패 시 잡 중단 가능).")
 
     if problems:
-        print(f"RESULT: FAIL — {problems}건 문제 (위 MISSING/UNKNOWN 해결 후 재실행).")
+        print(f"RESULT: FAIL — {problems}건 문제 (위 MISSING/BROKEN/UNKNOWN 해결 후 재실행).")
         return 1
     print("RESULT: OK — 요청 전체 활성. 학습 시 위 위치에 보고서 생성.")
     return 0

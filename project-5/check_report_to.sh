@@ -65,16 +65,22 @@ one_pass() {
   rc=$?
   echo "$raw" | grep -v "pytree"
   echo "---- install ----"
-  declare -A INST_OK=()
+  declare -A INST_OK=() INST_WHY=()
   for n in "${NAMES[@]}"; do
     if echo "$raw" | grep -q "^\s*\[OK\] $n:"; then inst="$(ok)"; INST_OK[$n]=1;
-    else inst="$(bad)"; INST_OK[$n]=0; overall=1; fi
+    else
+      inst="$(bad)"; INST_OK[$n]=0; overall=1
+      if echo "$raw" | grep -q "^\s*\[BROKEN\] $n:"; then
+        INST_WHY[$n]=$(echo "$raw" | grep "^\s*\[BROKEN\] $n:" | head -1 | sed 's/^[^]]*] [^:]*: //')
+      elif echo "$raw" | grep -q "^\s*\[UNKNOWN\] $n:"; then INST_WHY[$n]="이름 오류(오타?)";
+      else INST_WHY[$n]="패키지 미설치"; fi
+    fi
     printf '%-12s install : %b\n' "$n" "$inst"
   done
   echo "---- config ----"
   for n in "${NAMES[@]}"; do
     if [ "${INST_OK[$n]}" = "1" ] && reason=$(config_check "$n"); then conf="$(ok)";
-    else conf="$(bad)"; overall=1; [ "${INST_OK[$n]}" = "1" ] || reason="패키지 미설치"; fi
+    else conf="$(bad)"; overall=1; [ "${INST_OK[$n]}" = "1" ] || reason="${INST_WHY[$n]}"; fi
     printf '%-12s config  : %b  (%s)\n' "$n" "$conf" "$reason"
   done
   echo "P5_REPORT_TO=${P5_REPORT_TO:-(미설정, 기본 none)}"

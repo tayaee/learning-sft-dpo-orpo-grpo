@@ -61,6 +61,7 @@ OUT은 기존과 동일 (`$P5_MODELS/synthetic-qlora-full-ddp`). 이어 highly? 
 ## 6. 트러블슈팅
 
 * 설치 안 된 연동은 조용히 스킵됨 (`get_available_reporting_integrations()`에 없음). 5개 다 안 나오면 양 노드 설치 상태 확인.
+* **설치됐는데 import가 깨지는 연동(trackio 실측)은 Trainer 생성 시점에 잡 전체를 죽임.** `check_report_to.py`가 실제 import까지 검증해 `[BROKEN]`으로 표시. 예: trackio<0.21.1 + huggingface_hub>=1 (`CommitOperationAdd` ImportError). 처방: 해당 연동을 report_to에서 제외하고 재실행, 패키지 업그레이드는 별도 검증 후.
 * wandb 미로그인 상태에서 online 모드면 잡 실패 가능 — 먼저 `wandb login` 또는 `WANDB_MODE=offline`.
 * dvclive+mlflow는 cwd 기준 기록이라 실행 디렉토리 고정 권장.
 * 패키지 추가 후에도 `--report_to` 미지정(`none`)이면 아무 파일도 안 생김. 정상.
