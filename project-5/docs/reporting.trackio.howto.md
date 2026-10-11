@@ -16,15 +16,15 @@ uv pip install "trackio>=0.21.1"
 P5_REPORT_TO=trackio ./31-qlora-train.sh full ddp
 ```
 
-외부 Space 공유를 쓰지 않는 한 로그인·키 불필요. 프로젝트명=`project-5`
+외부 Space 공유를 쓰지 않는 한 로그인·키 불필요. 프로젝트명=`trackio-project-5`
 (`10-train-entry.py`의 `SFTConfig(project=...)`), 로컬 디렉토리에만 기록.
 
 ## 3. 보고서 확인
 
 ```bash
-trackio show --project project-5
+trackio show --project trackio-project-5
 # 또는
-python -m trackio show --project project-5
+python -m trackio show --project trackio-project-5
 ```
 
 로컬 `./trackio/` 아래 run 기록. Hub Space로 실시간 공유하려면 `SFTConfig(trackio_space_id=...)` 추가가 필요 — 현재 `10-train-entry.py`는 미지원, 로컬 비교용으로 사용.

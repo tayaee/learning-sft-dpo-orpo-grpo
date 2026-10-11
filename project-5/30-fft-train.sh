@@ -12,6 +12,10 @@ if [ "$STRAT" != single ] && [ "$PROFILE" != "2x" ]; then
   exit 1
 fi
 p5_repro_echo
+# 리포팅 구분명 기본값 (미설정 시만 적용 — 직접 export한 값 우선).
+: "${WANDB_PROJECT:=wandb-project-5}"
+: "${MLFLOW_EXPERIMENT_NAME:=mlflow-project-5}"
+export WANDB_PROJECT MLFLOW_EXPERIMENT_NAME
 
 OUT="$P5_MODELS/synthetic-fft-$MODE-$STRAT"
 IN="$P5_DATASETS/synthetic-$MODE.jsonl"

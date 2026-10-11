@@ -46,7 +46,7 @@ KNOWN = {
         "pip": "trackio>=0.21.1",
         "import": "trackio",
         "env": [],
-        "out": lambda out: "./trackio/ (project=project-5)",
+        "out": lambda out: "./trackio/ (project=trackio-project-5)",
         "note": "로그인 불필요(로컬). rank0만 기록.",
     },
     "dvclive": {
@@ -60,7 +60,7 @@ KNOWN = {
         "pip": "wandb",
         "import": "wandb",
         "env": ["WANDB_PROJECT", "WANDB_MODE", "WANDB_API_KEY"],
-        "out": lambda out: f"cloud wandb.ai/{os.getenv('WANDB_PROJECT', 'huggingface')} + ./wandb/",
+        "out": lambda out: f"cloud wandb.ai/{os.getenv('WANDB_PROJECT', 'wandb-project-5')} + ./wandb/",
         "note": "유일하게 인증 필요(wandb login). offline이면 WANDB_MODE=offline.",
     },
     "comet_ml": {

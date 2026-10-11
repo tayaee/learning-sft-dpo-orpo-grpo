@@ -31,10 +31,14 @@ uv pip install tensorboard mlflow "trackio>=0.21.1" dvclive wandb
 ```bash
 export P5_REPORT_TO="tensorboard,mlflow,trackio,dvclive,wandb"
 export MLFLOW_TRACKING_URI="file:/rosenas/data/AIML/project-5-shared/outputs/mlruns"
-export MLFLOW_EXPERIMENT_NAME="p5-sft"
-export WANDB_PROJECT="p5-sft"
+export MLFLOW_EXPERIMENT_NAME="mlflow-project-5"   # 미설정 시 학습 스크립트가 기본값 적용
+export WANDB_PROJECT="wandb-project-5"             # 미설정 시 학습 스크립트가 기본값 적용
 wandb login   # wandb만 유일하게 인증 필요. offline 비교면 WANDB_MODE=offline
 ```
+
+구분명 정리: trackio=`trackio-project-5`(SFTConfig project), wandb=`WANDB_PROJECT`,
+mlflow=`MLFLOW_EXPERIMENT_NAME`. tensorboard/dvclive는 프로젝트 개념이 없어 경로로 구분
+(`$OUT/runs`, `./dvclive/`).
 
 ## 4. 기존 full-ddp 중단 후 재실행
 
@@ -54,7 +58,7 @@ OUT은 기존과 동일 (`$P5_MODELS/synthetic-qlora-full-ddp`). 이어 highly? 
 |---|---|---|
 | tensorboard | `$OUT/runs/` | `tensorboard --logdir $OUT --port 6006` |
 | mlflow | `$MLFLOW_TRACKING_URI` | `mlflow ui --backend-store-uri "$MLFLOW_TRACKING_URI" --port 5000` |
-| trackio | `./trackio/` | `trackio show --project project-5` |
+| trackio | `./trackio/` | `trackio show --project trackio-project-5` |
 | dvclive | `./dvclive/` | `cat dvclive/metrics.tsv` |
 | wandb | cloud/offline `wandb/` | wandb.ai 대시보드 또는 `wandb sync --sync-all` |
 

@@ -14,10 +14,10 @@ wandb login            # API 키 입력 (https://wandb.ai/authorize)
 wandb login "$WANDB_API_KEY"
 ```
 
-프로젝트 지정 (미지정 시 `huggingface`):
+프로젝트 지정 (미지정 시 학습 스크립트가 `wandb-project-5` 적용):
 
 ```bash
-export WANDB_PROJECT="p5-sft"
+export WANDB_PROJECT="wandb-project-5"
 ```
 
 외부망 차단 환경에서 먼저 기록만 하려면:
