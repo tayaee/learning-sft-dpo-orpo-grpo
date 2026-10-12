@@ -7,11 +7,11 @@
 (transformers 본체는 import하지 않는다 — Trainer와 동일한 is_*_available()
 기준과 동등하면서도 무거운 의존성 체인을 타지 않기 위함.)
 
+지원 연동: trackio, wandb 2종 (그 외는 UNKNOWN으로 거부).
+
 사용 (project-5 디렉토리에서):
-    uv run --no-sync check_report_to.py --report_to all
-    uv run --no-sync check_report_to.py --report_to tensorboard,mlflow,trackio,dvclive,wandb
-    uv run --no-sync check_report_to.py --report_to none
-    uv run --no-sync check_report_to.py --report_to all --out /path/to/model-out
+    uv run --no-sync check_report_to.py --report_to trackio,wandb
+    uv run --no-sync check_report_to.py --report_to trackio,wandb --out /path/to/model-out
 
 종료 코드: 0=학습 시 로그 남음(요청 전체 활성), 1=로그 안 남거나 문제 있음.
 """
@@ -24,24 +24,9 @@ import subprocess
 import sys
 
 
-# transformers INTEGRATION_TO_CALLBACK 키(5.x)와 1:1 대응.
+# transformers INTEGRATION_TO_CALLBACK 중 project-5가 쓰는 2종만 지원.
 # pip: 설치 명령용. import: is_*_available()가 감지하는 모듈명.
 KNOWN = {
-    "tensorboard": {
-        "pip": "tensorboard",
-        "import": "tensorboard",
-        "env": ["TENSORBOARD_LOGGING_DIR"],
-        "out": lambda out: os.getenv("TENSORBOARD_LOGGING_DIR")
-        or (os.path.join(out, "runs") if out else "$OUT/runs"),
-        "note": "로컬 이벤트 파일. rank0만 기록.",
-    },
-    "mlflow": {
-        "pip": "mlflow",
-        "import": "mlflow",
-        "env": ["MLFLOW_TRACKING_URI", "MLFLOW_EXPERIMENT_NAME"],
-        "out": lambda out: os.getenv("MLFLOW_TRACKING_URI") or "./mlruns",
-        "note": "미지정 시 실행 cwd의 ./mlruns. 비교용은 절대경로 권장.",
-    },
     "trackio": {
         "pip": "trackio>=0.21.1",
         "import": "trackio",
@@ -53,82 +38,12 @@ KNOWN = {
         ),
         "note": "로그인 불필요(로컬). rank0만 기록.",
     },
-    "dvclive": {
-        "pip": "dvclive",
-        "import": "dvclive",
-        "env": ["HF_DVCLIVE_LOG_MODEL"],
-        "out": lambda out: "./dvclive/ (metrics.tsv, params.yaml)",
-        "note": "cwd 기준. rank0만 기록.",
-    },
     "wandb": {
         "pip": "wandb",
         "import": "wandb",
         "env": ["WANDB_PROJECT", "WANDB_MODE", "WANDB_API_KEY"],
         "out": lambda out: f"cloud wandb.ai/{os.getenv('WANDB_PROJECT', 'wandb-project-5')} + ./wandb/",
         "note": "유일하게 인증 필요(wandb login). offline이면 WANDB_MODE=offline.",
-    },
-    "comet_ml": {
-        "pip": "comet-ml",
-        "import": "comet_ml",
-        "env": ["COMET_API_KEY", "COMET_PROJECT_NAME"],
-        "out": lambda out: "comet.com 클라우드",
-        "note": "SaaS. API 키 필요.",
-    },
-    "swanlab": {
-        "pip": "swanlab",
-        "import": "swanlab",
-        "env": ["SWANLAB_API_KEY"],
-        "out": lambda out: "swanlab 클라우드 + ./swanlog/",
-        "note": "SaaS.",
-    },
-    "clearml": {
-        "pip": "clearml",
-        "import": "clearml",
-        "env": [],
-        "out": lambda out: "ClearML 서버(셀프호스팅/클라우드)",
-        "note": "MLOps 확장형. 무거움.",
-    },
-    "dagshub": {
-        "pip": "dagshub",
-        "import": "dagshub",
-        "env": ["MLFLOW_TRACKING_URI"],
-        "out": lambda out: "DagsHub 원격 (MLFLOW_TRACKING_URI로 지정)",
-        "note": "DagsHub 계정 필요.",
-    },
-    "neptune": {
-        "pip": "neptune",
-        "import": "neptune",
-        "env": ["NEPTUNE_API_TOKEN", "NEPTUNE_PROJECT"],
-        "out": lambda out: "neptune.ai 클라우드",
-        "note": "SaaS. API 토큰 필요.",
-    },
-    "codecarbon": {
-        "pip": "codecarbon",
-        "import": "codecarbon",
-        "env": [],
-        "out": lambda out: "./codecarbon / emissions.csv",
-        "note": "실험추적 아님(탄소 측정). loss용 아님.",
-    },
-    "azure_ml": {
-        "pip": "azureml-sdk",
-        "import": "azureml.core",
-        "env": [],
-        "out": lambda out: "Azure ML workspace run history",
-        "note": "Azure 환경 종속.",
-    },
-    "flyte": {
-        "pip": "flytekit",
-        "import": "flytekit",
-        "env": [],
-        "out": lambda out: "Flyte deck / K8s 파이프라인",
-        "note": "단일 학습 로그용 아님.",
-    },
-    "kubeflow": {
-        "pip": "kfp",
-        "import": "kfp",
-        "env": [],
-        "out": lambda out: "Kubeflow Pipelines UI (자동 추가)",
-        "note": "설치돼 있으면 transformers가 자동 추가.",
     },
 }
 
@@ -154,8 +69,6 @@ def parse_report_to(s):
 
 def is_available(name):
     meta = KNOWN[name]
-    if name == "mlflow" and os.getenv("DISABLE_MLFLOW_INTEGRATION", "FALSE").upper() == "TRUE":
-        return False
     try:
         return importlib.util.find_spec(meta["import"]) is not None
     except (ImportError, ModuleNotFoundError, ValueError):
@@ -198,8 +111,8 @@ def deep_check(name):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--report_to", required=True, help='예: "all", "none", "tensorboard,wandb"')
-    p.add_argument("--out", default=None, help="모델 출력 디렉토리 (tensorboard 경로 표시에 사용)")
+    p.add_argument("--report_to", required=True, help='예: "trackio,wandb", "none"')
+    p.add_argument("--out", default=None, help="모델 출력 디렉토리 (경로 표시에 사용)")
     a = p.parse_args()
 
     try:
@@ -212,7 +125,7 @@ def main():
     effective = parse_report_to(a.report_to)
     print(f"input: {a.report_to!r}  ->  Trainer report_to: {effective!r} (transformers {tf_ver})")
     print(f"인지: {len(known_names)}종, 설치됨: {len(available)}종")
-    print(f"installed: {', '.join(sorted(available)) if available else '(없음 — all이어도 로그 안 남음)'}")
+    print(f"installed: {', '.join(sorted(available)) if available else '(없음 — 로그 안 남음)'}")
 
     if effective == "none":
         print("-> 로깅 없음. Trainer 콜백 추가 안 됨.")
@@ -237,7 +150,7 @@ def main():
 
     for n in targets:
         if n not in KNOWN:
-            print(f"  [UNKNOWN] {n}: 오타? 유효값: {', '.join(known_names)}, all, none")
+            print(f"  [UNKNOWN] {n}: 오타? 유효값: {', '.join(known_names)}, none")
             problems += 1
             continue
         meta = KNOWN[n]

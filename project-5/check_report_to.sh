@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# check_report_to.sh — 5종 리포팅 연동 INSTALL + CONFIG 상태 green/red 표시.
-#   ./check_report_to.sh                  # 1회 확인 (기본 5종)
+# check_report_to.sh — 2종 리포팅 연동(trackio, wandb) INSTALL + CONFIG 상태 green/red 표시.
+#   ./check_report_to.sh                  # 1회 확인 (기본 2종)
 #   ./check_report_to.sh --watch [초]      # 모두 green 될 때까지 반복 (기본 30초)
-# 종료 코드: 0=5종 INSTALL·CONFIG 모두 READY, 1=미준비 있음.
+# 종료 코드: 0=2종 INSTALL·CONFIG 모두 READY, 1=미준비 있음.
 set -uo pipefail
 cd "$(dirname "$0")"
 
-FIVE="tensorboard,mlflow,trackio,dvclive,wandb"
-WATCH=0; INTERVAL=30; REPORT_TO="$FIVE"; OUT_ARG=(); OUT_DIR=""
+TWO="trackio,wandb"
+WATCH=0; INTERVAL=30; REPORT_TO="$TWO"; OUT_ARG=(); OUT_DIR=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --watch) WATCH=1; [ "${2:-}" != "" ] && [[ "$2" =~ ^[0-9]+$ ]] && { INTERVAL="$2"; shift; }; shift ;;
@@ -25,17 +25,7 @@ bad() { printf '%b● NOT READY%b' "$RED" "$RST"; }
 # config 점검: 전역 $raw (체커 출력) 사용. echo "이유"; return 0=READY.
 config_check() {
   case "$1" in
-    tensorboard|trackio|dvclive) echo "추가 설정 불필요"; return 0 ;;  # 추가 설정 불필요
-    mlflow)
-      local uri="${MLFLOW_TRACKING_URI:-./mlruns}" path
-      case "$uri" in
-        http://*|https://*) echo "원격 $uri (연결 미확인)"; return 0 ;;
-        file:*) path="${uri#file:}" ;;
-        *) path="$uri" ;;
-      esac
-      if [ -e "$path" ] && [ ! -w "$path" ]; then echo "저장소 쓰기 불가: $path"; return 1; fi
-      if [ ! -e "$path" ] && [ ! -w "$(dirname "$path")" ]; then echo "부모디렉토리 쓰기 불가: $(dirname "$path")"; return 1; fi
-      echo "저장소: $uri"; return 0 ;;
+    trackio) echo "추가 설정 불필요"; return 0 ;;  # 추가 설정 불필요
     wandb)
       if [ -n "${WANDB_API_KEY:-}" ]; then echo "API키: env 설정됨"; return 0; fi
       if [ -f ~/.netrc ] && grep -q "machine api.wandb.ai" ~/.netrc; then echo "API키: ~/.netrc 로그인됨"; return 0; fi
@@ -47,13 +37,7 @@ config_check() {
 # 보고서 저장 위치 (정보 표시용 — 체커는 아무 파일도 쓰지 않음).
 output_path() {
   case "$1" in
-    tensorboard)
-      if [ -n "${TENSORBOARD_LOGGING_DIR:-}" ]; then echo "$TENSORBOARD_LOGGING_DIR";
-      elif [ -n "$OUT_DIR" ]; then echo "$OUT_DIR/runs";
-      else echo '$OUT/runs'; fi ;;
-    mlflow) echo "${MLFLOW_TRACKING_URI:-./mlruns}" ;;
     trackio) echo "${HF_HOME:-~/.cache/huggingface}/trackio/trackio-project-5.db" ;;
-    dvclive) echo "./dvclive/" ;;
     wandb) echo "cloud wandb.ai/${WANDB_PROJECT:-wandb-project-5} + ./wandb/" ;;
     *) echo "(벤더 문서 참조)" ;;
   esac
