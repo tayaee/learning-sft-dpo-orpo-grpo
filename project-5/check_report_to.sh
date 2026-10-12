@@ -67,7 +67,7 @@ one_pass() {
     else conf="$(bad)"; overall=1; [ "${INST_OK[$n]}" = "1" ] || reason="${INST_WHY[$n]}"; fi
     printf '%-12s config  : %b  (%s)\n' "$n" "$conf" "$reason"
   done
-  echo "P5_REPORT_TO=${P5_REPORT_TO:-(미설정, 기본 none)}"
+  echo "P5_REPORT_TO=${P5_REPORT_TO:-(미설정, 기본 trackio)}"
   echo "---- output ----"
   for n in "${NAMES[@]}"; do
     printf '%-12s output  : %s\n' "$n" "$(output_path "$n")"

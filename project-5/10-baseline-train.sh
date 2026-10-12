@@ -46,7 +46,7 @@ p5_log "log: $TRAIN_LOG"
   --model "$BASE_MODEL" --train "$P5_DATASETS/gsm8k-train.jsonl" \
   --out "$OUT" --epochs "$EPOCHS" --mode "$MODE" \
   --strategy "$STRAT" --accum "$ACCUM" --expect-world "$WORLD" \
-  --max_rows "$GSM_ROWS" --report_to "${P5_REPORT_TO:-none}") 2>&1 | sed -u "s/^/[rank${NODE_RANK:-0}]: /" | tee -a "$TRAIN_LOG"
+  --max_rows "$GSM_ROWS" --report_to "${P5_REPORT_TO:-trackio}") 2>&1 | sed -u "s/^/[rank${NODE_RANK:-0}]: /" | tee -a "$TRAIN_LOG"
 
 echo ---- result ----
 (set -x; ls -l "$OUT")

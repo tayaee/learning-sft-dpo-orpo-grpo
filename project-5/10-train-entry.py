@@ -112,8 +112,8 @@ def parse_args():
     p.add_argument("--dry_run", action="store_true", help="데이터 포맷만 확인 후 종료")
     p.add_argument(
         "--report_to",
-        default="none",
-        help='리포팅 연동 CSV (예: "tensorboard", "tensorboard,wandb"). '
+        default="trackio",
+        help='리포팅 연동 CSV (예: "trackio", "wandb,trackio"). '
         '"none"=미사용, "all"=설치된 연동 전체.',
     )
     return p.parse_args()

@@ -37,7 +37,7 @@ uv pip install "trackio==0.42.0" wandb   # 버전은 requirements-p5.txt에 고�
 ## 3. 환경변수 (양 노드 동일)
 
 ```bash
-export P5_REPORT_TO="wandb,trackio"
+export P5_REPORT_TO="wandb,trackio"   # 미설정 시 common.env 기본값 trackio. wandb 추가용.
 export WANDB_PROJECT="wandb-project-5"   # 미설정 시 학습 스크립트가 기본값 적용
 wandb login   # wandb만 유일하게 인증 필요. offline 비교면 WANDB_MODE=offline
 ```
