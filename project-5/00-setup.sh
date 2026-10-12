@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # 00-setup.sh — 양 노드에서 1회씩 실행. 학습 없음.
 set -euo pipefail
+cd "$(dirname "$0")"  # uv가 project-5/pyproject.toml을 프로젝트로 인식하도록 고정
 source "$(dirname "$0")/config/common.env"
 p5_repro_echo
 
