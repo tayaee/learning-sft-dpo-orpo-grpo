@@ -31,6 +31,7 @@ warnings.filterwarnings(
 )
 
 from io_common import clean_tmp, commit_dir, tmp_path
+from report_check import gate_report_to, parse_report_to
 
 PROMPT_TEMPLATE = (
     "Below is an instruction that describes a task, paired with an input "
@@ -195,6 +196,9 @@ def main():
     print("----------------")
     if a.dry_run:
         return
+    # 리포팅 기동 게이트: 데이터 적재·토크나이즈 전에 실패 확정.
+    # (dry_run은 torch 없는 환경용이라 게이트를 타지 않는다.)
+    gate_report_to(a.report_to)
 
     import torch
 
@@ -349,14 +353,10 @@ def main():
     # mini(256행/64eff/1ep)=4스텝 → round(4*0.03)=0으로 기존 동작과 일치.
     _gbs = a.micro * a.accum * _world
     _warmup_steps = round(math.ceil(len(ds) / _gbs) * a.epochs * a.warmup)
-    # report_to CSV 파싱: "a,b" → ["a", "b"]. 빈값/"none"만이면 "none".
-    _report = [s.strip() for s in a.report_to.split(",") if s.strip()]
-    if not _report or _report == ["none"]:
-        _report_to = "none"
-    elif len(_report) == 1:
-        _report_to = _report[0]
-    else:
-        _report_to = [s for s in _report if s != "none"]
+    # report_to CSV 파싱 + 기동 게이트 (report_check.py와 단일 규칙 공유).
+    # 게이트는 Trainer와 동일한 해석+인스턴스화 경로로 검증하므로,
+    # check_report_to.py OK면 여기도 통과한다. 무거운 작업 전 즉시 실패.
+    _report_to = parse_report_to(a.report_to)
     cfg = SFTConfig(
         output_dir=a.out,
         num_train_epochs=a.epochs,

@@ -1,117 +1,26 @@
 #!/usr/bin/env python3
 """check_report_to.py — train job에 report_to를 주기 전 미리 체크.
 
-10-train-entry.py와 동일한 CSV 파싱을 적용하고, 각 연동 백엔드 패키지의
-실제 설치 여부(find_spec, import 없이 감지)를 기준으로 Trainer가 인식하게
-될 report_to, 활성/비활성, 미설치 시 필요한 패키지, 보고서 저장 위치를 보여준다.
-(transformers 본체는 import하지 않는다 — Trainer와 동일한 is_*_available()
-기준과 동등하면서도 무거운 의존성 체인을 타지 않기 위함.)
-
-지원 연동: trackio, wandb 2종 (그 외는 UNKNOWN으로 거부).
+실제 검증 로직은 report_check.py(10-train-entry.py 기동 게이트와 공유)에 있다.
+Trainer와 동일한 해석+인스턴스화 경로로 검증하므로, 여기서 OK면 잡도 통과한다.
 
 사용 (project-5 디렉토리에서):
-    uv run --no-sync check_report_to.py --report_to trackio,wandb
-    uv run --no-sync check_report_to.py --report_to trackio,wandb --out /path/to/model-out
+    uv run --no-sync check_report_to.py --report_to wandb,trackio
+    uv run --no-sync check_report_to.py --report_to all --out /path/to/model-out
 
 종료 코드: 0=학습 시 로그 남음(요청 전체 활성), 1=로그 안 남거나 문제 있음.
 """
 
 import argparse
 import importlib.metadata
-import importlib.util
-import os
-import subprocess
 import sys
 
-
-# transformers INTEGRATION_TO_CALLBACK 중 project-5가 쓰는 2종만 지원.
-# pip: 설치 명령용. import: is_*_available()가 감지하는 모듈명.
-KNOWN = {
-    "trackio": {
-        "pip": "trackio>=0.21.1",
-        "import": "trackio",
-        "env": [],
-        "out": lambda out: os.path.join(
-            os.getenv("HF_HOME") or os.path.expanduser("~/.cache/huggingface"),
-            "trackio/",
-            "trackio-project-5.db",
-        ),
-        "note": "로그인 불필요(로컬). rank0만 기록.",
-    },
-    "wandb": {
-        "pip": "wandb",
-        "import": "wandb",
-        "env": ["WANDB_PROJECT", "WANDB_MODE", "WANDB_API_KEY"],
-        "out": lambda out: f"cloud wandb.ai/{os.getenv('WANDB_PROJECT', 'wandb-project-5')} + ./wandb/",
-        "note": "유일하게 인증 필요(wandb login). offline이면 WANDB_MODE=offline.",
-    },
-}
-
-
-# transformers가 요구하는 최소 버전 (integration_utils 상수에서 발췌).
-MIN_VERSIONS = {
-    "trackio": "0.21.1",  # TrackioCallback.MIN_TRACKIO_VERSION_FOR_FREEZE
-}
-
-# 심층 import 검증 타임아웃(초). mlflow/wandb는 import가 느리다.
-DEEP_CHECK_TIMEOUT = 120
-
-
-def parse_report_to(s):
-    """10-train-entry.py와 동일한 파싱. SFTConfig에 넘어가는 값을 반환."""
-    items = [x.strip() for x in (s or "").split(",") if x.strip()]
-    if not items or items == ["none"]:
-        return "none"
-    if len(items) == 1:
-        return items[0]
-    return [x for x in items if x != "none"]
-
-
-def is_available(name):
-    meta = KNOWN[name]
-    try:
-        return importlib.util.find_spec(meta["import"]) is not None
-    except (ImportError, ModuleNotFoundError, ValueError):
-        return False
-
-
-def deep_check(name):
-    """백엔드 실제 import를 서브프로세스로 검증.
-
-    find_spec 통과해도 import 시점에 깨지는 경우 실측
-    (예: trackio 0.19.0 + huggingface_hub>=1 → CommitOperationAdd ImportError로
-    Trainer 생성 자체가 죽고 분산잡 전체가 따라 죽음).
-    반환: (ok: bool, detail: str).
-    """
-    meta = KNOWN[name]
-    mod = meta["import"].split(".")[0]
-    try:
-        r = subprocess.run(
-            [sys.executable, "-c", f"import {mod}"],
-            capture_output=True, text=True, timeout=DEEP_CHECK_TIMEOUT,
-        )
-    except subprocess.TimeoutExpired:
-        return False, f"import {mod} 타임아웃({DEEP_CHECK_TIMEOUT}s)"
-    if r.returncode != 0:
-        tail = (r.stderr.strip().splitlines() or ["(stderr 없음)"])[-3:]
-        return False, "import 실패: " + " / ".join(t.strip() for t in tail)
-    if name in MIN_VERSIONS:
-        try:
-            from packaging.version import Version
-        except ImportError:
-            Version = None
-        try:
-            ver = importlib.metadata.version(mod)
-        except importlib.metadata.PackageNotFoundError:
-            ver = None
-        if ver and Version and Version(ver) < Version(MIN_VERSIONS[name]):
-            return False, f"버전 미달: {ver} < 최소 {MIN_VERSIONS[name]}"
-    return True, "import OK"
+from report_check import STATIC_KEYS, summarize
 
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--report_to", required=True, help='예: "trackio,wandb", "none"')
+    p.add_argument("--report_to", required=True, help='예: "all", "none", "trackio,wandb"')
     p.add_argument("--out", default=None, help="모델 출력 디렉토리 (경로 표시에 사용)")
     a = p.parse_args()
 
@@ -119,68 +28,41 @@ def main():
         tf_ver = importlib.metadata.version("transformers")
     except importlib.metadata.PackageNotFoundError:
         tf_ver = "(미설치)"
-    known_names = sorted(KNOWN.keys())
-    available = {n for n in known_names if is_available(n)}
+    res = summarize(a.report_to, out=a.out)
+    print(f"input: {a.report_to!r}  ->  Trainer report_to: {res['effective']!r} (transformers {tf_ver})")
 
-    effective = parse_report_to(a.report_to)
-    print(f"input: {a.report_to!r}  ->  Trainer report_to: {effective!r} (transformers {tf_ver})")
-    print(f"인지: {len(known_names)}종, 설치됨: {len(available)}종")
-    print(f"installed: {', '.join(sorted(available)) if available else '(없음 — 로그 안 남음)'}")
-
-    if effective == "none":
+    if res["effective"] == "none":
         print("-> 로깅 없음. Trainer 콜백 추가 안 됨.")
         return 0
 
-    problems = 0
     if a.report_to.strip() == "all":
-        targets = sorted(available)
-        print(f"-> all 해석: {targets if targets else '(설치된 연동 없음)'}")
-        missing = sorted(set(known_names) - available)
+        got = sorted(x["name"] for x in res["rows"] if x["name"] != "all")
+        print(f"-> all 해석: {got if got else '(설치된 연동 없음)'}")
+        missing = sorted(set(STATIC_KEYS) - set(got))
         if missing:
+            from report_check import KNOWN_META
             print("not installed (all에 포함 안 됨):")
             for n in missing:
-                print(f"  [----] {n}: pip install {KNOWN[n]['pip']}")
-        if not targets:
-            print("RESULT: FAIL — all이지만 설치된 연동이 없어 로그가 남지 않음.")
-            return 1
-    else:
-        req = effective if isinstance(effective, list) else [effective]
-        print(f"-> 요청: {req}")
-        targets = req
+                print(f"  [----] {n}: pip install {KNOWN_META[n]['pip']}")
 
-    for n in targets:
-        if n not in KNOWN:
-            print(f"  [UNKNOWN] {n}: 오타? 유효값: {', '.join(known_names)}, none")
-            problems += 1
-            continue
-        meta = KNOWN[n]
-        if n not in available:
-            print(f"  [MISSING] {n}: pip install {meta['pip']}")
-            problems += 1
-            continue
-        ok, detail = deep_check(n)
-        if not ok:
-            print(f"  [BROKEN] {n}: {detail}")
-            print(f"           처방: pip install -U {meta['pip']} 후 재확인, 또는 report_to에서 제외")
-            problems += 1
-            continue
-        try:
-            out = meta["out"](a.out)
-        except Exception:
-            out = "(경로 확인 실패)"
-        env_show = ""
-        if meta.get("env"):
-            env_show = " | " + ", ".join(
-                f"{k}={os.getenv(k) or '(미설정)'}" for k in meta["env"]
-            )
-        print(f"  [OK] {n}: {detail} | 출력 -> {out}{env_show}")
-        if meta.get("note"):
-            print(f"       {meta['note']}")
-        if n == "wandb" and not os.getenv("WANDB_API_KEY"):
-            print("       HINT: WANDB_API_KEY 미설정 — 'wandb login' 상태 확인 필요 (실패 시 잡 중단 가능).")
+    for x in res["rows"]:
+        if x["status"] == "OK":
+            print(f"  [OK] {x['name']}: {x['detail']} | 출력 -> {x['output']}{x['env']}")
+            if x["note"]:
+                print(f"       {x['note']}")
+        elif x["status"] == "MISSING":
+            print(f"  [MISSING] {x['name']}: {x['detail']}")
+            print(f"           처방: pip install {x['pip']} 후 재확인, 또는 report_to에서 제외")
+        elif x["status"] in ("BROKEN", "ENV-BROKEN"):
+            print(f"  [BROKEN] {x['name']}: {x['detail']}")
+            print(f"           처방: pip install -U {x['pip']} 후 재확인, 또는 report_to에서 제외")
+        elif x["status"] == "UNKNOWN":
+            print(f"  [UNKNOWN] {x['name']}: {x['detail']}")
+        else:
+            print(f"  [{x['status']}] {x['name']}: {x['detail']}")
 
-    if problems:
-        print(f"RESULT: FAIL — {problems}건 문제 (위 MISSING/BROKEN/UNKNOWN 해결 후 재실행).")
+    if res["problems"]:
+        print(f"RESULT: FAIL — {res['problems']}건 문제 (위 MISSING/BROKEN/UNKNOWN 해결 후 재실행).")
         return 1
     print("RESULT: OK — 요청 전체 활성. 학습 시 위 위치에 보고서 생성.")
     return 0
