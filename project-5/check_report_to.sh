@@ -7,16 +7,16 @@ set -uo pipefail
 cd "$(dirname "$0")"
 
 TWO="trackio,wandb"
-WATCH=0; INTERVAL=30; REPORT_TO="$TWO"; OUT_ARG=(); OUT_DIR=""
+WATCH=0; INTERVAL=30; REQ="$TWO"; OUT_ARG=(); OUT_DIR=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --watch) WATCH=1; [ "${2:-}" != "" ] && [[ "$2" =~ ^[0-9]+$ ]] && { INTERVAL="$2"; shift; }; shift ;;
-    --report-to) REPORT_TO="$2"; shift 2 ;;
+    --report-to) REQ="$2"; shift 2 ;;
     --out) OUT_ARG=(--out "$2"); OUT_DIR="$2"; shift 2 ;;
     *) echo "usage: $0 [--watch [secs]] [--report-to csv] [--out dir]" >&2; exit 2 ;;
   esac
 done
-IFS=',' read -ra NAMES <<< "$REPORT_TO"
+IFS=',' read -ra NAMES <<< "$REQ"
 
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then GREEN=$'\e[32m'; RED=$'\e[31m'; RST=$'\e[0m'; else GREEN=''; RED=''; RST=''; fi
 ok() { printf '%b● READY%b' "$GREEN" "$RST"; }
@@ -45,7 +45,7 @@ output_path() {
 
 one_pass() {
   local raw rc n inst conf reason overall=0
-  raw=$(uv run --no-sync check_report_to.py --report_to "$REPORT_TO" "${OUT_ARG[@]}" 2>&1)
+  raw=$(uv run --no-sync check_report_to.py --report_to "$REQ" "${OUT_ARG[@]}" 2>&1)
   rc=$?
   echo "$raw" | grep -v "pytree"
   echo "---- install ----"
@@ -67,7 +67,7 @@ one_pass() {
     else conf="$(bad)"; overall=1; [ "${INST_OK[$n]}" = "1" ] || reason="${INST_WHY[$n]}"; fi
     printf '%-12s config  : %b  (%s)\n' "$n" "$conf" "$reason"
   done
-  echo "P5_REPORT_TO=${P5_REPORT_TO:-(미설정, 기본 trackio)}"
+  echo "REPORT_TO=${REPORT_TO:-(미설정, 기본 trackio)}"
   echo "---- output ----"
   for n in "${NAMES[@]}"; do
     printf '%-12s output  : %s\n' "$n" "$(output_path "$n")"

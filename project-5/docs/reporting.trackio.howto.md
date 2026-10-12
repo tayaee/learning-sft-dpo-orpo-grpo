@@ -13,7 +13,7 @@ uv pip install "trackio>=0.21.1"
 ## 2. 학습에 전달
 
 ```bash
-P5_REPORT_TO=trackio ./31-qlora-train.sh full ddp
+REPORT_TO=trackio ./31-qlora-train.sh full ddp
 ```
 
 외부 Space 공유를 쓰지 않는 한 로그인·키 불필요. 프로젝트명=`trackio-project-5`

@@ -25,7 +25,7 @@ uv run --no-sync check_report_to.py --report_to wandb,trackio --out $OUT
 * `10-train-entry.py`: `--report_to` CSV 인자 + dry_run 직후 `gate_report_to()` 기동 게이트.
   문제 있으면 데이터 적재 전에 exit=2로 즉시 실패 (NCCL 연쇄 사망 없음).
   `SFTConfig(project="trackio-project-5")`.
-* `10-baseline/30-fft/31-qlora-train.sh`: `--report_to "${P5_REPORT_TO:-none}"` 전달.
+* `10-baseline/30-fft/31-qlora-train.sh`: `--report_to "${REPORT_TO:-trackio}"` 전달.
   기본값 `none`이라 기존 동작 불변. `WANDB_PROJECT`/`MLFLOW_EXPERIMENT_NAME` 기본값 적용.
 
 ## 2. 설치 (spark1/spark2 양쪽)
@@ -37,7 +37,7 @@ uv pip install "trackio==0.42.0" wandb   # 버전은 requirements-p5.txt에 고�
 ## 3. 환경변수 (양 노드 동일)
 
 ```bash
-export P5_REPORT_TO="wandb,trackio"   # 미설정 시 common.env 기본값 trackio. wandb 추가용.
+export REPORT_TO="wandb,trackio"   # 미설정 시 common.env 기본값 trackio. wandb 추가용.
 export WANDB_PROJECT="wandb-project-5"   # 미설정 시 학습 스크립트가 기본값 적용
 wandb login   # wandb만 유일하게 인증 필요. offline 비교면 WANDB_MODE=offline
 ```
