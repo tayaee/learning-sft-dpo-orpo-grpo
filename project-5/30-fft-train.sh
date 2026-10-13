@@ -42,7 +42,7 @@ p5_log "log: $TRAIN_LOG"
   --model "$BASE_MODEL" --train "$P5_DATASETS/synthetic-$MODE.jsonl" \
   --out "$OUT" --epochs "$EPOCHS" --mode "$MODE" \
   --strategy "$STRAT" --accum "$ACCUM" --expect-world "$WORLD" \
-  --max_rows "$GSM_ROWS" --report_to "${REPORT_TO:-trackio}") 2>&1 | sed -u "s/^/[rank${NODE_RANK:-0}]: /" | tee -a "$TRAIN_LOG"
+  --max_rows "$GSM_ROWS" --report_to "${REPORT_TO:-trackio,wandb}") 2>&1 | sed -u "s/^/[rank${NODE_RANK:-0}]: /" | tee -a "$TRAIN_LOG"
 
 echo ---- result ----
 (set -x; ls -l "$OUT")

@@ -31,7 +31,7 @@ uv run --no-sync check_report_to.py --report_to wandb,trackio --out $OUT
 ## 2. 설치 (spark1/spark2 양쪽)
 
 ```bash
-uv pip install "trackio==0.42.0" wandb   # 버전은 requirements-p5.txt에 고정
+uv pip install "trackio==0.42.0" wandb   # 버전은 project-5/pyproject.toml에 고정 (uv sync가 설치)
 ```
 
 ## 3. 환경변수 (양 노드 동일)

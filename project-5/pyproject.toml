@@ -23,13 +23,10 @@ dependencies = [
     "scikit-learn==1.9.0",
     "hf-transfer==0.1.9",
     "openai==3.29.0",
-    # 리포팅 5종 (활성 2종: wandb+trackio, 비교용 3종 포함)
+    # 리포팅 2종 (wandb+trackio).
     # trackio는 axolotl 핀(==0.19.0, hub>=1과 파손) 회피로 ==0.42.0 고정.
     # axolotl이 이 프로젝트에 없으므로 override 불필요.
-    "tensorboard==2.21.0",
-    "mlflow==3.17.0",
     "trackio==0.42.0",
-    "dvclive==2.2.0",
     "wandb==0.28.2",
     # torchaudio는 의도적 제외 (vLLM warmup에 불필요, 00-setup에서 제거 유지)
 ]

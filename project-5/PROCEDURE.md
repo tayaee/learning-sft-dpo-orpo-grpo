@@ -43,7 +43,7 @@
 ## 1. Stage별 절차
 
 ### Stage 0. 환경 (`00-setup.sh`, 양 노드 1회)
-1. root `uv sync` + `requirements-p5.txt` 설치.
+1. `project-5/pyproject.toml` 기준 `uv sync` (00-setup.sh).
 2. `~/git/maskedthought` 없으면 `https://github.com/changyuchen347/maskedthought` 클론 (참조용).
 3. `data/gsm8k-{train,test}.jsonl` → `$P5_SHARED/datasets/` 복사 (없을 때만).
 4. `hf auth login` (Llama gated), `nvidia-smi` + torch CUDA 확인.

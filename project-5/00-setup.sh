@@ -10,26 +10,20 @@ p5_log "repo=$REPO_ROOT infra=$INFRA python=$(python3 --version 2>&1)"
 echo + uv sync
 uv sync 2>/dev/null || p5_log "WARN: root uv sync 실패 — 개별 venv로 진행"
 
-echo + uv pip install -r "$P5_ROOT/requirements-p5.txt"
-uv pip install -r "$P5_ROOT/requirements-p5.txt" || p5_log "WARN: deps install partial failure, check log"
-
-# llmcompressor는 resolver 충돌 회피를 위해 --no-deps로 별도 설치 (상세: requirements-p5.txt NOTE)
+# llmcompressor는 resolver 충돌 회피를 위해 --no-deps로 별도 설치 (상세: pyproject.toml NOTE)
 
 echo + uv pip install --no-deps "llmcompressor==0.14.0"
 uv pip install --no-deps "llmcompressor==0.14.0" 2>/dev/null || p5_log "WARN: llmcompressor install failed, skip 42/43"
 
-# compressed-tensors==0.19.0: llmcompressor==0.14.0이 요구. requirements에 함께
-# 적으면 vllm>=0.10(<0.18 요구)과 unsatisfiable이 되므로 여기서 별도 설치.
+# compressed-tensors==0.19.0: llmcompressor==0.14.0이 요구. pyproject에 함께
+# 적으면 vllm(==0.17.0 요구)과 unsatisfiable이 되므로 여기서 별도 설치.
 # (--no-deps 설치라 의존성을 안 맞춰줌. vLLM AWQ/FP8 로딩 동작은 71-eval에서 확인)
 echo + uv pip install "compressed-tensors==0.19.0"
 uv pip install "compressed-tensors==0.19.0" 2>/dev/null | tail -1 || p5_log "WARN: compressed-tensors install failed, skip 42/43"
 
-# torchvision: vLLM warmup이 `torchvision.transforms` import를 필수로 요구
-# (없으면 22-teacher EngineCore 기동 실패). 0.29.1+cu130 휠 정상 동작 확인됨.
+# torchvision은 pyproject.toml에 고정됨 (uv sync가 설치).
 # torchaudio는 여전히 불필요 → 제거 유지.
 
-echo + uv pip install torchvision
-uv pip install torchvision 2>/dev/null | tail -1 || p5_log "WARN: torchvision install failed, 22-teacher unavailable"
 echo + uv pip uninstall -y torchaudio
 uv pip uninstall -y torchaudio 2>/dev/null | tail -1 || true
 
