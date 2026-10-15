@@ -9,8 +9,8 @@
 | run-mini-ddp.sh | mini 2노드 DDP (학습만 분산, 나머지는 rank0) | 양 노드 | 약 0h 35m (실측, 30/31 수동분 제외) |
 | run-mini-fsdp.sh | mini FSDP 2노드 (ddp와 동일 구조) | 양 노드 | 약 0h 38m (실측, 32 수동분 제외) |
 | run-full-single.sh | full 전 파이프라인 (Stage 0→7) | spark1 단독 | 약 10h 08m (순수 성공) / 약 15h 09m (재실행 누적) / 약 24h 55m (합성생성 포함) |
-| run-full-ddp.sh | full 2노드 DDP | 양 노드 | 약 10h 00m (추정, 미실측) |
-| run-full-fsdp.sh | full FSDP (동일) | 1x spark1 / 2x 양 노드 | 약 10h 00m (추정, 미실측) |
+| run-full-ddp.sh | full 2노드 DDP | 양 노드 | 약 13h 56m (순수 성공, 캐시 적중) / 약 23h 40m (합성생성 포함) / 약 23h 42m (재실행 누적) |
+| run-full-fsdp.sh | full FSDP (동일) | 1x spark1 / 2x 양 노드 | 약 14h 12m (순수 성공, 캐시 적중) / 약 15h 16m (재실행 누적) |
 
 - 공통: 스텝 타이밍(stdout + `logs/timing-*.log`), `STEPS=` 부분 실행,
   `MASTER_ADDR`·`NODE_RANK` 자동 검출, `SKIP_SETUP=1` 생략.
@@ -18,7 +18,8 @@
 - 하류(merge→평가)는 같은 전략 산출물 기준으로 진행 (콤보별 독립).
 
 - 시간 표기: 분 단위 (1분 미만은 `<1m`). 대표 성공런 기준.
-- full 계열: run-full-single.sh 완주 완료 (약 10h 08m 실측, 아래 상세 참조).
+- full 계열: run-full-single.sh / run-full-ddp.sh / run-full-fsdp.sh 모두 완주 완료
+  (single 약 10h 08m, ddp 약 13h 56m, fsdp 약 14h 12m — 아래 상세 참조).
 
 ## run-mini-single.sh (spark1 단독, 완주)
 
@@ -104,6 +105,74 @@ PPL 게이트 (mini): base/fft/qlora 9.867 동일, quant Δ +0.12~+0.99
   - qlora: acc 0.072 (invalid 24.1%)
   - 양자화 모델 상위: fft-gguf-q4_k_m (0.094), fft-gguf-q5_k_m (0.088), fft-gguf-q8_0 (0.087), fft-fp8 (0.086), fft-gguf-q6_k (0.086), fft-gptq (0.084)
 
+## run-full-ddp.sh (2노드 DDP, 완주 — logs/timing-full-ddp.log)
+
+| 스텝 | 시간 | 비고 |
+|---|---|---|
+| 00-setup | <1m (4s) | |
+| 10-baseline-ddp | 38m (2,286s) | 2노드 DDP |
+| 20-select-candidates | 2m (97s) | Alpaca 52k 중 10k 선별 |
+| 21-build-prompts | <1m (2s) | |
+| 22-teacher-generate | 583m (35,022s, rc=2 기록) | 10k 생성, valid 9,466행 산출 — 후속 전 단계 캐시 원본 (single·fsdp 재사용) |
+| 23-postprocess | <1m (1s) | synthetic-full.jsonl 추출 |
+| 30-fft-ddp | 62m (3,690s) | 합성 9,466행 3 epoch FFT (중단 41s rc=131 1회 후 재실행 완주) |
+| 31-qlora-ddp | 83m (4,995s, rc=2 기록) | 어댑터 저장·후속 정상 진행 (내부 train_runtime 4,863s) |
+| 32-merge-lora | 2m (116s) | 중단 18s rc=130 1회 후 재실행 완주 |
+| 40-quant-fft-awq | 4m (212s) | 실패 13s rc=1 1회 후 재실행 완주 |
+| 41-quant-fft-fp8 | <1m (53s) | |
+| 42-quant-fft-gguf | 2m (110s) | F16 변환 + 5종 |
+| 43-quant-fft-gptq | 2m (132s) | calib 256 |
+| 50-quant-qlora-awq | 4m (226s) | |
+| 51-quant-qlora-fp8 | 1m (60s) | |
+| 52-quant-qlora-gguf | 2m (129s) | F16 변환 + 5종 |
+| 53-quant-qlora-gptq | 2m (134s) | calib 256 |
+| 60-measure-ppl | 3m (190s) | 21개 타깃 (transformers: Accept 4, Conditional 1, Discard 1(qlora-awq), Ref 3 + GGUF 10종 전량 Accept) |
+| 71-eval | 61m (3,686s) | vLLM 9개 모델 × 1,319문항 |
+| 72-eval-gguf | 567m (34,005s ≈ 9h 27m) | llama-completion CPU 10개 모델 × 1,319문항 |
+| 73-score | <1m (timing 미기록) | score.json 10-12 15:36Z 생성 (직접 실행분) |
+| **순수 성공 합계 (캐시 적중 기준)** | **약 13h 56m** | **50,151s** (22-teacher 1s 캐시 적중 가정) |
+| **합성생성 포함 총 연산** | **약 23h 40m** | **85,172s** (35,022s 합성생성 합산) |
+| **재실행 누적 (timing 합계)** | **약 23h 42m** | **85,297s** (실패분 41s+18s+13s 포함) |
+
+- PPL 게이트 (full-ddp, 기준 base 9.867):
+  - fft 4.542 (ref) → fft-awq 4.608 / fft-fp8 4.565 / fft-gptq 4.559 전량 Accept
+  - qlora 4.991 (ref) → qlora-awq 6.006 (Discard, Δ +1.015), qlora-fp8 5.500 (Conditional, Δ +0.509), qlora-gptq 5.084 (Accept, Δ +0.093)
+  - GGUF 10종 전량 Accept.
+- GSM8K 정확도 (full-ddp 1,319문항, score.json):
+  - fft 0.092 / qlora 0.071, 상위: fft-gguf-q5_k_m 0.093, fft-gguf-q8_0 0.086, fft-gptq 0.080, fft-fp8 0.075.
+
+## run-full-fsdp.sh (2노드 FSDP, 완주 — logs/timing-full-fsdp.log)
+
+| 스텝 | 시간 | 비고 |
+|---|---|---|
+| 00-setup | <1m (누적 40s, 재시도분 포함) | |
+| 10-baseline-fsdp | 46m (2,782s) | 중단·실패 누적 3,767s (324s rc=130 ×2, 1,364s rc=130, 1,529s rc=1 등 10회) 후 완주 |
+| 20~23 syndata | 스킵 (캐시 적중) | DDP 생성 synthetic-full.jsonl 재사용 |
+| 30-fft-fsdp | 72m (4,343s) | 합성 9,466행 3 epoch FFT |
+| 31-qlora-fsdp | 84m (5,011s) | FSDP+QLoRA 미지원 → DDP 폴백 실행 (내부 train_runtime 4,895s, 실패 10s·5s 후 완주) |
+| 32-merge-lora | 1m (85s) | |
+| 40-quant-fft-awq | 4m (215s) | |
+| 41-quant-fft-fp8 | <1m (53s) | |
+| 42-quant-fft-gguf | 2m (111s) | F16 변환 + 5종 |
+| 43-quant-fft-gptq | 2m (134s) | calib 256 |
+| 50-quant-qlora-awq | 4m (227s) | |
+| 51-quant-qlora-fp8 | 1m (62s) | |
+| 52-quant-qlora-gguf | 2m (129s) | F16 변환 + 5종 |
+| 53-quant-qlora-gptq | 2m (134s) | calib 256 |
+| 60-measure-ppl | 3m (182s) | 21개 타깃 (transformers: Accept 5, Discard 1(qlora-awq), Ref 3 + GGUF 10종 전량 Accept) |
+| 71-eval | 60m (3,574s) | vLLM 9개 모델 × 1,319문항 |
+| 72-eval-gguf | 567m (34,035s ≈ 9h 27m) | llama-completion CPU 10개 모델 × 1,319문항 |
+| 73-score | <1m (timing 미기록) | score.json 10-13 21:57Z 생성 (직접 실행분) |
+| **순수 성공 합계 (rc=0 합)** | **약 14h 13m** | **51,165s** (재시도 setup 포함) / 대표 성공런 약 14h 12m (51,104s) |
+| **재실행 누적 (timing 합계)** | **약 15h 16m** | **54,932s** (baseline 실패 3,767s 포함) |
+
+- PPL 게이트 (full-fsdp, 기준 base 9.867):
+  - fft 4.555 (ref) → fft-awq 4.472 / fft-fp8 4.583 / fft-gptq 4.551 전량 Accept
+  - qlora 4.980 (ref) → qlora-awq 6.033 (Discard, Δ +1.053), qlora-fp8 5.278 (Accept, Δ +0.298), qlora-gptq 5.103 (Accept, Δ +0.123)
+  - GGUF 10종 전량 Accept.
+- GSM8K 정확도 (full-fsdp 1,319문항, score.json):
+  - fft 0.094 / qlora 0.062, 상위: fft-gguf-q6_k 0.094, fft-gguf-q8_0 0.093, fft-gguf-q5_k_m 0.083, fft-gptq 0.072.
+
 ## 분산 baseline (STEPS=baseline 실측)
 
 | 스크립트·스텝 | spark1 (rank0) | spark2 (rank1) |
@@ -136,6 +205,6 @@ PPL 게이트 (mini): base/fft/qlora 9.867 동일, quant Δ +0.12~+0.99
 
 ## pending
 
-- run-full-ddp.sh / run-full-fsdp.sh (미실행)
+- run-full-ddp.sh / run-full-fsdp.sh — 완주 완료 (위 상세 참조, 73-score는 timing 미기록·score.json 직접 생성)
 - run-mini-ddp.sh 전체 (baseline 이후 미진행 — 랑데부 해결 후)
 - run-mini-fsdp.sh 전체 (DCP 저장 검증됨: 양 노드 rc=0, 3m/3m)
