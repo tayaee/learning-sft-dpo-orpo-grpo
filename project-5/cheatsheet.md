@@ -26,7 +26,7 @@
 | `git clone <repo-url> ~/git/learning-sft-and-rl` | `git clone <repo-url> ~/git/learning-sft-and-rl` |
 | `cd ~/git/learning-sft-and-rl/project-5` | `cd ~/git/learning-sft-and-rl/project-5` |
 | # 0-2. 환경 셋업 (양 노드 동일) | # 0-2. 환경 셋업 (양 노드 동일) |
-| `./00-setup.sh` | `./00-setup.sh` |
+| `./10-setup.sh` | `./10-setup.sh` |
 | # 0-2b. 직접 `uv run`을 쓸 셸이면 필수 (sync 되돌림 방지) | # 0-2b. 직접 `uv run`을 쓸 셸이면 필수 (sync 되돌림 방지) |
 | `export UV_NO_SYNC=1` | `export UV_NO_SYNC=1` |
 | # 0-3. HF 로그인 (양 노드 동일, Llama gated) | # 0-3. HF 로그인 (양 노드 동일, Llama gated) |
@@ -45,19 +45,19 @@
 |---|---|
 | # A는 spark1 단독 (아래 전부 spark1) | # spark2: 실행 없음 |
 | # 1. 베이스라인 FFT | |
-| `./10-baseline-train.sh mini single` | |
+| `./14-baseline-train.sh mini single` | |
 | # 2a. 후보 선별 | |
-| `uv run 20-select-candidates.py --mode mini` | |
+| `uv run 18-select-candidates.py --mode mini` | |
 | # 2b. 프롬프트 생성 | |
-| `uv run 21-build-prompts.py --mode mini` | |
+| `uv run 20-build-prompts.py --mode mini` | |
 | # 2b. 합성 생성 | |
 | `./22-generate.sh mini` | |
 | # 2c. 후처리 | |
-| `uv run 23-postprocess.py --mode mini` | |
+| `uv run 24-postprocess.py --mode mini` | |
 | # 3. 합성 FFT | |
-| `./30-fft-train.sh mini single` | |
+| `./26-fft-train.sh mini single` | |
 | # 3. QLoRA | |
-| `./31-qlora-train.sh mini single` | |
+| `./28-qlora-train.sh mini single` | |
 | # 4. AWQ | |
 | `uv run 40-quant-awq.py --mode mini` | |
 | # 4. FP8 | |
@@ -85,20 +85,20 @@
 |---|---|
 | # B는 spark1 단독 (아래 전부 spark1) | # spark2: 실행 없음 |
 | # 1. 베이스라인 FFT | |
-| `./10-baseline-train.sh full single` | |
+| `./14-baseline-train.sh full single` | |
 | # 2a. 후보 선별 | |
-| `uv run 20-select-candidates.py --mode full` | |
+| `uv run 18-select-candidates.py --mode full` | |
 | # 2b. 프롬프트 생성 | |
-| `uv run 21-build-prompts.py --mode full` | |
+| `uv run 20-build-prompts.py --mode full` | |
 | # 2b. 합성 생성 (가장 오래 걸림, 밤에 권장) | |
 | `./22-generate.sh full` | |
 | # (10k ≈ 5~6시간: mini 실측 200개/8.3분 기준 외삽) | |
 | # 2c. 후처리 | |
-| `uv run 23-postprocess.py --mode full` | |
+| `uv run 24-postprocess.py --mode full` | |
 | # 3. 합성 FFT | |
-| `./30-fft-train.sh full single` | |
+| `./26-fft-train.sh full single` | |
 | # 3. QLoRA | |
-| `./31-qlora-train.sh full single` | |
+| `./28-qlora-train.sh full single` | |
 | # 4. AWQ | |
 | `uv run 40-quant-awq.py --mode full` | |
 | # 4. FP8 | |
@@ -125,19 +125,19 @@
 | spark1 | spark2 |
 |---|---|
 | # 1. 베이스라인 DDP (rank 0 먼저 기동) | # 1. 베이스라인 DDP (rank 0 기동 후 실행) |
-| `INFRA=dgx-spark-2x ./10-baseline-train.sh full ddp` | `INFRA=dgx-spark-2x ./10-baseline-train.sh full ddp` |
+| `INFRA=dgx-spark-2x ./14-baseline-train.sh full ddp` | `INFRA=dgx-spark-2x ./14-baseline-train.sh full ddp` |
 | # 2a. 후보 선별 (spark1 단독) | # spark2: 대기 |
-| `uv run 20-select-candidates.py --mode full` | |
+| `uv run 18-select-candidates.py --mode full` | |
 | # 2b. 프롬프트 생성 (spark1 단독) | # spark2: 대기 |
-| `uv run 21-build-prompts.py --mode full` | |
+| `uv run 20-build-prompts.py --mode full` | |
 | # 2b. 합성 생성 (spark1 단독, INFRA 없이 1x 기본) | # spark2: 대기 |
 | `./22-generate.sh full` | |
 | # 2c. 후처리 (spark1 단독) | # spark2: 대기 |
-| `uv run 23-postprocess.py --mode full` | |
+| `uv run 24-postprocess.py --mode full` | |
 | # 3. 합성 FFT DDP (rank 0 먼저 기동) | # 3. 합성 FFT DDP (rank 0 기동 후 실행) |
-| `INFRA=dgx-spark-2x ./30-fft-train.sh full ddp` | `INFRA=dgx-spark-2x ./30-fft-train.sh full ddp` |
+| `INFRA=dgx-spark-2x ./26-fft-train.sh full ddp` | `INFRA=dgx-spark-2x ./26-fft-train.sh full ddp` |
 | # 3. QLoRA DDP (rank 0 먼저 기동) | # 3. QLoRA DDP (rank 0 기동 후 실행) |
-| `INFRA=dgx-spark-2x ./31-qlora-train.sh full ddp` | `INFRA=dgx-spark-2x ./31-qlora-train.sh full ddp` |
+| `INFRA=dgx-spark-2x ./28-qlora-train.sh full ddp` | `INFRA=dgx-spark-2x ./28-qlora-train.sh full ddp` |
 | # 4. AWQ (spark1 단독) | # spark2: 대기 |
 | `uv run 40-quant-awq.py --mode full` | |
 | # 4. FP8 (spark1 단독) | # spark2: 대기 |
@@ -164,19 +164,19 @@
 | spark1 | spark2 |
 |---|---|
 | # 1. 베이스라인 FSDP (rank 0 먼저 기동) | # 1. 베이스라인 FSDP (rank 0 기동 후 실행) |
-| `INFRA=dgx-spark-2x ./10-baseline-train.sh full fsdp` | `INFRA=dgx-spark-2x ./10-baseline-train.sh full fsdp` |
+| `INFRA=dgx-spark-2x ./14-baseline-train.sh full fsdp` | `INFRA=dgx-spark-2x ./14-baseline-train.sh full fsdp` |
 | # 2a. 후보 선별 (spark1 단독) | # spark2: 대기 |
-| `uv run 20-select-candidates.py --mode full` | |
+| `uv run 18-select-candidates.py --mode full` | |
 | # 2b. 프롬프트 생성 (spark1 단독) | # spark2: 대기 |
-| `uv run 21-build-prompts.py --mode full` | |
+| `uv run 20-build-prompts.py --mode full` | |
 | # 2b. 합성 생성 (spark1 단독, INFRA 없이 1x 기본) | # spark2: 대기 |
 | `./22-generate.sh full` | |
 | # 2c. 후처리 (spark1 단독) | # spark2: 대기 |
-| `uv run 23-postprocess.py --mode full` | |
+| `uv run 24-postprocess.py --mode full` | |
 | # 3. 합성 FFT FSDP (rank 0 먼저 기동) | # 3. 합성 FFT FSDP (rank 0 기동 후 실행) |
-| `INFRA=dgx-spark-2x ./30-fft-train.sh full fsdp` | `INFRA=dgx-spark-2x ./30-fft-train.sh full fsdp` |
+| `INFRA=dgx-spark-2x ./26-fft-train.sh full fsdp` | `INFRA=dgx-spark-2x ./26-fft-train.sh full fsdp` |
 | # 3. QLoRA FSDP (rank 0 먼저 기동, 학습용 — 강의는 비권장) | # 3. QLoRA FSDP (rank 0 기동 후 실행, 학습용) |
-| `INFRA=dgx-spark-2x ./31-qlora-train.sh full fsdp` | `INFRA=dgx-spark-2x ./31-qlora-train.sh full fsdp` |
+| `INFRA=dgx-spark-2x ./28-qlora-train.sh full fsdp` | `INFRA=dgx-spark-2x ./28-qlora-train.sh full fsdp` |
 | # 4. AWQ (spark1 단독) | # spark2: 대기 |
 | `uv run 40-quant-awq.py --mode full` | |
 | # 4. FP8 (spark1 단독) | # spark2: 대기 |
@@ -192,15 +192,15 @@
 | # 5. 채점 (spark1 단독) | # spark2: 대기 |
 | `uv run 52-score.py --mode full` | |
 | # 참고. 1x 단독 FSDP 동작 학습 (spark1만) | # spark2: 실행 없음 |
-| `./10-baseline-train.sh mini fsdp` | |
+| `./14-baseline-train.sh mini fsdp` | |
 
 ## 전략 비교 — spark1에서 실행
 
 | spark1 | spark2 |
 |---|---|
 | # 해시 대조 (config 동일 여부 + safetensors 해시) | # spark2: 실행 없음 |
-| `./12-compare-strategies.sh mini` | |
-| `./12-compare-strategies.sh full` | |
+| `./16-compare-strategies.sh mini` | |
+| `./16-compare-strategies.sh full` | |
 
 - 3전략은 effective batch 64·seed 동일 조건에서도 bit-identical이 아닐 수 있다
   (allreduce vs reduce-scatter 합산 순서, dataloader 샤딩 차이).

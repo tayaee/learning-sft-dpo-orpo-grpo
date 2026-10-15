@@ -22,14 +22,14 @@ Notes:
 	unsloth/Llama-3.2-1B 범용 모델
 	$P5_SHARED/datasets/gsm8k-train.jsonl 7473개의 수학 문제 ({"source":[q], "target":[a]} 리스트형)
 	$P5_SHARED/datasets/alpaca-embeddings.parquet 52002개 일반 문장 (257MB, 모드 공용 캐시)
-	data/·assets/ 원본을 00-setup.sh가 $P5_SHARED/datasets/로 한번 복사, 하류는 data/가 아니라 $P5_SHARED를 읽는다
+	data/·assets/ 원본을 10-setup.sh가 $P5_SHARED/datasets/로 한번 복사, 하류는 data/가 아니라 $P5_SHARED를 읽는다
 
 10 베이스라인 학습 (순수 FFT bf16, --peft 없음, --peft는 31에서만)
 	unsloth/Llama-3.2-1B 베이스모델을
-	$P5_SHARED/datasets/gsm8k-train.jsonl 로 풀 파인튜닝 (10-train-entry.py 공통 진입점)
+	$P5_SHARED/datasets/gsm8k-train.jsonl 로 풀 파인튜닝 (train-entry.py 공통 진입점)
 	$P5_SHARED/models/base-gsm8k-mini-single/ 아래에 저장 (7개 파일 + checkpoint-4 최신, checkpoint-117 구버전 잔존)
 	lr 1e-5 cosine, warmup 0.03, micro 2 x accum 32 = effective 64, max_len 1024, seed 1, mini 256행 4스텝 / full 3 epoch
-	이 산출물은 하류(30/31/40~43/50~53)에서 로드하지 않는다. 30/31은 원본 pretrained에서 다시 학습, 71-eval --target base도 원본을 평가
+	이 산출물은 하류(30/31/40~43/50~53)에서 로드하지 않는다. 30/31은 원본 pretrained에서 다시 학습, 50-eval --target base도 원본을 평가
 
 20 ~ 23 까지는 파인튜닝 학습 데이터 생성
 
@@ -103,26 +103,26 @@ Notes:
 	$P5_SHARED/models/synthetic-qlora-mini-single-merged/ 를 입력으로 50-awq / 51-fp8 / 52-gguf / 53-gptq 동일하게 뽑음 (CALIB_N mini 2 / full 10)
 
 60 ppl 측정
-	60-measure-ppl.sh/py 로 모델별 in-domain perplexity 측정 + base 대비 Δ판정 (GGUF 10종은 llama-perplexity로 측정)
+	48-measure-ppl.sh/py 로 모델별 in-domain perplexity 측정 + base 대비 Δ판정 (GGUF 10종은 llama-perplexity로 측정)
 
 71 평가
-	71-eval.sh/py 로 vLLM greedy(temp 0, max_tokens 512) GSM8K 추론, 타깃 base/fft/qlora/fft-gptq/fft-awq/fft-fp8/qlora-gptq/qlora-awq/qlora-fp8 (기본 all, GGUF 10종은 72-eval-gguf.sh로 llama-completion 평가)
+	50-eval.sh/py 로 vLLM greedy(temp 0, max_tokens 512) GSM8K 추론, 타깃 base/fft/qlora/fft-gptq/fft-awq/fft-fp8/qlora-gptq/qlora-awq/qlora-fp8 (기본 all, GGUF 10종은 52-eval-gguf.sh로 llama-completion 평가)
 	평가 프롬프트는 prompt_no_input 고정 템플릿, gsm8k-test 앞 EVAL_N개 (mini 10 / full 0=전체), 출력 $P5_SHARED/outputs/eval-<mode>/<target>.jsonl, 양자화 타깃은 quantization flag 부여
 
 72 스코어
-	73-score.py 로 #### <숫자> 추출, 없으면 The answer is: X 보조 추출, 둘 다 없으면 [invalid] -> 타깃별 acc / invalid율 표 (mini는 3스텝 undertraining이라 전 타깃 acc 0.000 / invalid 0.98~1.00)
+	54-score.py 로 #### <숫자> 추출, 없으면 The answer is: X 보조 추출, 둘 다 없으면 [invalid] -> 타깃별 acc / invalid율 표 (mini는 3스텝 undertraining이라 전 타깃 acc 0.000 / invalid 0.98~1.00)
 
 73 HF 업로드
-	74-upload-hf.sh/py 로 TARGETS 맵대로 tayaee/<slug>-math-<target>-<mode> 업로드, 없는 산출물 SKIP, --dry-run 지원
+	58-upload-hf.sh/py 로 TARGETS 맵대로 tayaee/<slug>-math-<target>-<mode> 업로드, 없는 산출물 SKIP, --dry-run 지원
 
 80 서빙
-	80-serve-vllm.sh 로 vLLM OpenAI-호환 서버(:8000), --served-model-name tayaee/..., 타깃별 --quantization (gptq vs compressed-tensors vs gguf), SOURCE=hf면 Hub 직접 서빙, VLLM_ATTENTION_BACKEND=FLASH_ATTN + VLLM_USE_FLASHINFER_SAMPLER=0
+	60-serve-vllm.sh 로 vLLM OpenAI-호환 서버(:8000), --served-model-name tayaee/..., 타깃별 --quantization (gptq vs compressed-tensors vs gguf), SOURCE=hf면 Hub 직접 서빙, VLLM_ATTENTION_BACKEND=FLASH_ATTN + VLLM_USE_FLASHINFER_SAMPLER=0
 
 81 추론 예시
-	81-infer-examples.py 로 gsm8k-test 앞 N개 + 한국어 문제 1개를 completions API로 요청 (chat API는 chat template 없어 400)
+	62-infer-examples.py 로 gsm8k-test 앞 N개 + 한국어 문제 1개를 completions API로 요청 (chat API는 chat template 없어 400)
 
 12 전략 비교
-	12-compare-strategies.sh 로 single/ddp/fsdp 체크포인트 safetensors sha256 대조 (effective batch 64 고정해도 bit-identical 아님, allreduce vs reduce-scatter 합산 순서 + dataloader 샤딩 차이)
+	16-compare-strategies.sh 로 single/ddp/fsdp 체크포인트 safetensors sha256 대조 (effective batch 64 고정해도 bit-identical 아님, allreduce vs reduce-scatter 합산 순서 + dataloader 샤딩 차이)
 
 3개 축
 	mini|full: SYNTH_N 64/10000, EPOCHS 1/3, CALIB_N 2/10, EVAL_N 10/전체, GSM_ROWS 256/전체, 산출물 -<mode>- 로 구분

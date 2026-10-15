@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """report_check.py — report_to 검증 단일 진실 공급원.
 
-check_report_to.py(사전 점검)와 10-train-entry.py(기동 게이트)가 공유한다.
+check_report_to.py(사전 점검)와 train-entry.py(기동 게이트)가 공유한다.
 검증은 Trainer가 실제로 타는 경로와 동일한 코드로 수행한다:
   transformers.integrations.integration_utils.get_reporting_integration_callbacks
   + 콜백 인스턴스화(Trainer.__init__의 `cb() if isinstance(cb, type)` 행과 동일).
@@ -186,7 +186,7 @@ print(json.dumps(rows))
 
 
 def parse_report_to(s):
-    """10-train-entry.py와 동일한 파싱. SFTConfig에 넘어가는 값을 반환."""
+    """train-entry.py와 동일한 파싱. SFTConfig에 넘어가는 값을 반환."""
     items = [x.strip() for x in (s or "").split(",") if x.strip()]
     if not items or items == ["none"]:
         return "none"
@@ -272,7 +272,7 @@ def summarize(value, out=None):
 
 
 def gate_report_to(value):
-    """10-train-entry.py 기동 게이트. 문제 있으면 stderr 출력 후 SystemExit(2).
+    """train-entry.py 기동 게이트. 문제 있으면 stderr 출력 후 SystemExit(2).
     dry_run 뒤·무거운 작업 전에 호출할 것."""
     res = summarize(value)
     if res["problems"]:

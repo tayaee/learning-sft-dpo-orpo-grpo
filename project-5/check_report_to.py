@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """check_report_to.py — train job에 report_to를 주기 전 미리 체크.
 
-실제 검증 로직은 report_check.py(10-train-entry.py 기동 게이트와 공유)에 있다.
+실제 검증 로직은 report_check.py(train-entry.py 기동 게이트와 공유)에 있다.
 Trainer와 동일한 해석+인스턴스화 경로로 검증하므로, 여기서 OK면 잡도 통과한다.
 
 사용 (project-5 디렉토리에서):

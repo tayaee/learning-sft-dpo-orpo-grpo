@@ -19,52 +19,52 @@
 
 ```bash
 # 0) 환경 (양 노드에서 1회)
-./00-setup.sh
+./10-setup.sh
 
 # 1) 베이스라인 FFT (GSM8K, Llama-3.2-1B) — 전략 3종 비교
-./10-baseline-train.sh mini single          # 기준 (하류 입력용)
-INFRA=dgx-spark-2x ./10-baseline-train.sh mini ddp     # 2노드 DDP (MASTER_ADDR 필요)
-./10-baseline-train.sh mini fsdp            # 1GPU FSDP (학습용)
-INFRA=dgx-spark-2x ./10-baseline-train.sh mini fsdp    # 2노드 FSDP (실분산)
-./12-compare-strategies.sh mini             # 해시 대조
+./14-baseline-train.sh mini single          # 기준 (하류 입력용)
+INFRA=dgx-spark-2x ./14-baseline-train.sh mini ddp     # 2노드 DDP (MASTER_ADDR 필요)
+./14-baseline-train.sh mini fsdp            # 1GPU FSDP (학습용)
+INFRA=dgx-spark-2x ./14-baseline-train.sh mini fsdp    # 2노드 FSDP (실분산)
+./16-compare-strategies.sh mini             # 해시 대조
 # 30/31도 동일하게 [mini|full] [single|ddp|fsdp]를 받는다 (출력 ...-<mode>-<strat>)
 
 # 2) 합성데이터: 선별 → 프롬프트 → 생성 → 후처리
-uv run 20-select-candidates.py --mode mini
-uv run 21-build-prompts.py --mode mini
+uv run 18-select-candidates.py --mode mini
+uv run 20-build-prompts.py --mode mini
 ./22-teacher-to-generate-syn-data.sh mini
-uv run 23-postprocess.py --mode mini
+uv run 24-postprocess.py --mode mini
 
 # 3) 합성 SFT: FFT vs QLoRA + merge
-./30-fft-train.sh mini
-./31-qlora-train.sh mini
-uv run 32-merge-lora.py --mode mini        # → synthetic-qlora-mini-single-merged/ (bf16)
+./26-fft-train.sh mini
+./28-qlora-train.sh mini
+uv run 30-merge-lora.py --mode mini        # → synthetic-qlora-mini-single-merged/ (bf16)
 
 # 4) PTQ-FFT (택1~전체): AWQ-4bit / FP8 / GGUF Q8_0 / GPTQ-4bit
-uv run 40-quant-fft-awq.py --mode mini
-uv run 41-quant-fft-fp8.py --mode mini
-./42-quant-fft-gguf.sh mini
-uv run 43-quant-fft-gptq.py --mode mini
+uv run 32-quant-fft-awq.py --mode mini
+uv run 34-quant-fft-fp8.py --mode mini
+./36-quant-fft-gguf.sh mini
+uv run 38-quant-fft-gptq.py --mode mini
 
 # 5) PTQ-QLoRA (택1~전체, 입력=merged): 동일 5종 → HF 6종 + GGUF 10종, 양자화 총 16종
-uv run 50-quant-qlora-awq.py --mode mini
-uv run 51-quant-qlora-fp8.py --mode mini
-./52-quant-qlora-gguf.sh mini
-uv run 53-quant-qlora-gptq.py --mode mini
+uv run 40-quant-qlora-awq.py --mode mini
+uv run 42-quant-qlora-fp8.py --mode mini
+./44-quant-qlora-gguf.sh mini
+uv run 46-quant-qlora-gptq.py --mode mini
 
 # 6) PPL 게이트 (base + FP 2종 + 양자화 16종, Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard)
-./60-measure-ppl.sh mini                 # → outputs/ppl-mini/ (GGUF 10종은 llama-perplexity)
+./48-measure-ppl.sh mini                 # → outputs/ppl-mini/ (GGUF 10종은 llama-perplexity)
 
 # 7) 평가 (HF 9종 + GGUF 10종)
-./71-eval.sh mini
-./72-eval-gguf.sh mini   # llama-completion 필요, 미빌드 시 SKIP
-uv run 73-score.py --mode mini
+./50-eval.sh mini
+./52-eval-gguf.sh mini   # llama-completion 필요, 미빌드 시 SKIP
+uv run 54-score.py --mode mini
 
 # 8) HF 업로드 → vLLM 서빙 → 추론 예제
-./74-upload-hf.sh mini            # → tayaee/Llama-3.2-1B-math-*-mini (targets 지정 가능)
-./80-serve-vllm.sh mini fft      # 터미널1: OpenAI-호환 서버 (:8000)
-uv run 81-infer-examples.py --model tayaee/Llama-3.2-1B-math-fft-mini  # 터미널2
-# SOURCE=hf ./80-serve-vllm.sh mini fft-gptq  # Hub repo 직접 서빙 예시
+./58-upload-hf.sh mini            # → tayaee/Llama-3.2-1B-math-*-mini (targets 지정 가능)
+./60-serve-vllm.sh mini fft      # 터미널1: OpenAI-호환 서버 (:8000)
+uv run 62-infer-examples.py --model tayaee/Llama-3.2-1B-math-fft-mini  # 터미널2
+# SOURCE=hf ./60-serve-vllm.sh mini fft-gptq  # Hub repo 직접 서빙 예시
 ```
 
 ## 분산 학습 (ray/k3s)
@@ -86,7 +86,7 @@ uv run 81-infer-examples.py --model tayaee/Llama-3.2-1B-math-fft-mini  # 터미�
 - **결과가 똑같은가?** effective batch·seed가 같으면 정확도는 거의 같지만
   bit-identical은 아니다. DDP allreduce와 FSDP reduce-scatter+allgather의
   부동소수점 합산 순서가 다르고, dataloader 샤딩으로 배치 구성도 달라진다.
-  `./12-compare-strategies.sh`로 해시를 직접 대조해 확인할 것.
+  `./16-compare-strategies.sh`로 해시를 직접 대조해 확인할 것.
   ddp/fsdp 산출물은 비교용으로 보관하고 하류에서는 single만 쓴다.
 
 ## 파일-원본 대응
@@ -95,18 +95,18 @@ uv run 81-infer-examples.py --model tayaee/Llama-3.2-1B-math-fft-mini  # 터미�
 |---|---|
 | `data/gsm8k-train.jsonl` (7,473행) | 강의 제공 학습 데이터 (벤더링) |
 | `data/gsm8k-test.jsonl` (1,319행) | 강의 제공 평가 데이터 (벤더링) |
-| `10-baseline-train.sh` | `train_basic.sh` + `main.py` |
-| `20-select-candidates.py` | `datagen.ipynb` 전반 |
-| `21-build-prompts.py` + `assets/template.txt` | `template.txt` + notebook 후반 |
+| `14-baseline-train.sh` | `train_basic.sh` + `main.py` |
+| `18-select-candidates.py` | `datagen.ipynb` 전반 |
+| `20-build-prompts.py` + `assets/template.txt` | `template.txt` + notebook 후반 |
 | `22-teacher-to-generate-syn-data.sh/py` | `data_gen_vllm.py` |
-| `23-postprocess.py` | `data_check.ipynb` |
-| `30-fft-train.sh` | `train_FFT.sh` |
-| `31-qlora-train.sh` | `train_QLoRA.sh` |
-| `32-merge-lora.py` | `save_new_vocab_model.ipynb` 계열 |
+| `24-postprocess.py` | `data_check.ipynb` |
+| `26-fft-train.sh` | `train_FFT.sh` |
+| `28-qlora-train.sh` | `train_QLoRA.sh` |
+| `30-merge-lora.py` | `save_new_vocab_model.ipynb` 계열 |
 | `40~43-quant-fft-*` | `quantizaton_math.ipynb` (+FP8) — FFT 입력 4종 |
 | `50~53-quant-qlora-*` | 신규: 동일 5종, QLoRA-merged 입력 (HF 6종 + GGUF 10종, 양자화 총 16종) |
-| `60-measure-ppl.sh/py` | 신규: PPL 게이트 (Accept/Conditional/Discard) |
-| `71-eval.sh` / `73-score.py` | `evaluation/` 3종 |
-| `74-upload-hf.sh/py` | 신규: Hub 업로드 (`tayaee/*`) |
-| `80-serve-vllm.sh` | 신규: vLLM OpenAI-호환 서빙 |
-| `81-infer-examples.py` | 신규: 서빙 추론 예제 (GSM8K N개 + 한국어 1개) |
+| `48-measure-ppl.sh/py` | 신규: PPL 게이트 (Accept/Conditional/Discard) |
+| `50-eval.sh` / `54-score.py` | `evaluation/` 3종 |
+| `58-upload-hf.sh/py` | 신규: Hub 업로드 (`tayaee/*`) |
+| `60-serve-vllm.sh` | 신규: vLLM OpenAI-호환 서빙 |
+| `62-infer-examples.py` | 신규: 서빙 추론 예제 (GSM8K N개 + 한국어 1개) |

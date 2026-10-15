@@ -29,7 +29,7 @@ export WANDB_MODE=offline   # 나중에 wandb sync --sync-all 로 업로드
 ## 3. 학습에 전달
 
 ```bash
-REPORT_TO=wandb,trackio ./31-qlora-train.sh full ddp
+REPORT_TO=wandb,trackio ./28-qlora-train.sh full ddp
 ```
 
 ## 4. 보고서 확인

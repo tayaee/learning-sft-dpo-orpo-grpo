@@ -28,12 +28,12 @@ def load_calib_texts(
     calib: int, calib_file: str | None = None, template: str = PROMPT_TEMPLATE
 ) -> list[str]:
     """캘리브레이션 jsonl 앞 `calib`줄을 템플릿 적용 텍스트로 반환.
-    파일 부재·행 부족 시 명시 종료 (05-prep-calibration.sh로 생성).
+    파일 부재·행 부족 시 명시 종료 (12-prep-calibration.sh로 생성).
     """
     calib_file = calib_file or os.environ.get("CALIB_FILE", DEFAULT_CALIB_FILE)
     if not os.path.exists(calib_file):
         raise SystemExit(
-            f"missing calibration file: {calib_file} (run 05-prep-calibration.sh first)"
+            f"missing calibration file: {calib_file} (run 12-prep-calibration.sh first)"
         )
     texts = []
     with open(calib_file, encoding="utf-8") as f:

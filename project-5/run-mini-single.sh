@@ -3,10 +3,10 @@
 # Stage 0→7: setup → baseline FFT → 합성데이터(선별→프롬프트→생성→후처리)
 # → 합성 FFT + QLoRA + merge → PTQ 8종(FFT 4 + QLoRA-merged 4)
 # → PPL 게이트 → vLLM eval + score.
-# 제외: 74-upload-hf (Hub 업로드), 80-serve-vllm (상주 서버), 81-infer-examples
+# 제외: 58-upload-hf (Hub 업로드), 60-serve-vllm (상주 서버), 62-infer-examples
 #   → 필요시 맨 아래 주석 명령으로 개별 실행.
 # 사용: ./run-mini-single.sh
-#   SKIP_SETUP=1 ./run-mini-single.sh   # 00-setup 생략 (양 노드 1회 수행済み)
+#   SKIP_SETUP=1 ./run-mini-single.sh   # 10-setup 생략 (양 노드 1회 수행済み)
 #   STEPS=setup,baseline ./run-mini-single.sh  # 일부 스텝만 실행 (아래 목록)
 # 스텝명: setup baseline syndata fft qlora merge quant ppl eval (기본 STEPS=all)
 # 스텝별 소요시간: stdout + logs/timing-mini-single.log
@@ -46,46 +46,46 @@ trap 'P5_RC=$?; p5_repro; run_done' EXIT
 p5_log "run-$MODE-$STRAT start (steps=${STEPS:-all})"
 
 if [ "${SKIP_SETUP:-0}" != 1 ] && want_step setup; then
-  p5_step "00-setup" ./00-setup.sh
+  p5_step "10-setup" ./10-setup.sh
 fi
 
-want_step baseline && p5_step "10-baseline-$STRAT" ./10-baseline-train.sh "$MODE" "$STRAT"
+want_step baseline && p5_step "10-baseline-$STRAT" ./14-baseline-train.sh "$MODE" "$STRAT"
 
 if want_step syndata; then
-  p5_step "20-select-candidates" ./20-select-candidates.sh "$MODE"
-  p5_step "21-build-prompts" ./21-build-prompts.sh "$MODE"
+  p5_step "18-select-candidates" ./18-select-candidates.sh "$MODE"
+  p5_step "20-build-prompts" ./20-build-prompts.sh "$MODE"
   p5_step "22-teacher-generate" ./22-teacher-to-generate-syn-data.sh "$MODE"
-  p5_step "23-postprocess" ./23-postprocess.sh "$MODE"
+  p5_step "24-postprocess" ./24-postprocess.sh "$MODE"
 fi
 
-want_step fft && p5_step "30-fft-$STRAT" ./30-fft-train.sh "$MODE" "$STRAT"
-want_step qlora && p5_step "31-qlora-$STRAT" ./31-qlora-train.sh "$MODE" "$STRAT"
-want_step merge && p5_step "32-merge-lora" ./32-merge-lora.sh "$MODE"
+want_step fft && p5_step "30-fft-$STRAT" ./26-fft-train.sh "$MODE" "$STRAT"
+want_step qlora && p5_step "31-qlora-$STRAT" ./28-qlora-train.sh "$MODE" "$STRAT"
+want_step merge && p5_step "30-merge-lora" ./30-merge-lora.sh "$MODE"
 
 if want_step quant; then
-  p5_step "40-quant-fft-awq" ./40-quant-fft-awq.sh "$MODE"
-  p5_step "41-quant-fft-fp8" ./41-quant-fft-fp8.sh "$MODE"
-  p5_step "43-quant-fft-gptq" ./43-quant-fft-gptq.sh "$MODE"
-  p5_step "50-quant-qlora-awq" ./50-quant-qlora-awq.sh "$MODE"
-  p5_step "51-quant-qlora-fp8" ./51-quant-qlora-fp8.sh "$MODE"
-  p5_step "53-quant-qlora-gptq" ./53-quant-qlora-gptq.sh "$MODE"
+  p5_step "32-quant-fft-awq" ./32-quant-fft-awq.sh "$MODE"
+  p5_step "34-quant-fft-fp8" ./34-quant-fft-fp8.sh "$MODE"
+  p5_step "38-quant-fft-gptq" ./38-quant-fft-gptq.sh "$MODE"
+  p5_step "40-quant-qlora-awq" ./40-quant-qlora-awq.sh "$MODE"
+  p5_step "42-quant-qlora-fp8" ./42-quant-qlora-fp8.sh "$MODE"
+  p5_step "46-quant-qlora-gptq" ./46-quant-qlora-gptq.sh "$MODE"
   if [ -x "${LLAMACPP:-$HOME/git/llama.cpp}/build/bin/llama-quantize" ]; then
-    p5_step "42-quant-fft-gguf" ./42-quant-fft-gguf.sh "$MODE"
-    p5_step "52-quant-qlora-gguf" ./52-quant-qlora-gguf.sh "$MODE"
+    p5_step "36-quant-fft-gguf" ./36-quant-fft-gguf.sh "$MODE"
+    p5_step "44-quant-qlora-gguf" ./44-quant-qlora-gguf.sh "$MODE"
   else
     p5_log "WARN: no llama-quantize, GGUF SKIP (run 42/52 after build)"
   fi
 fi
 
-want_step ppl && p5_step "60-measure-ppl" ./60-measure-ppl.sh "$MODE"
+want_step ppl && p5_step "48-measure-ppl" ./48-measure-ppl.sh "$MODE"
 if want_step eval; then
-  p5_step "71-eval" ./71-eval.sh "$MODE"
-  p5_step "72-eval-gguf" ./72-eval-gguf.sh "$MODE"
-  p5_step "73-score" ./73-score.sh "$MODE"
+  p5_step "50-eval" ./50-eval.sh "$MODE"
+  p5_step "52-eval-gguf" ./52-eval-gguf.sh "$MODE"
+  p5_step "54-score" ./54-score.sh "$MODE"
 fi
 
 p5_log "run-$MODE-$STRAT done"
 # --- 선택 (수동) ---
-# ./74-upload-hf.sh mini
-# ./80-serve-vllm.sh mini fft            # 터미널1 (상주)
-# ./81-infer-examples.sh tayaee/Llama-3.2-1B-math-fft-mini  # 터미널2
+# ./58-upload-hf.sh mini
+# ./60-serve-vllm.sh mini fft            # 터미널1 (상주)
+# ./62-infer-examples.sh tayaee/Llama-3.2-1B-math-fft-mini  # 터미널2

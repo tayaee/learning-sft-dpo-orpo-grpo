@@ -8,7 +8,7 @@
 # (22-teacher 10k 생성에 약 5~6시간, 대기 상한 9시간).
 # 하류(merge→평가)는 같은 전략 산출물이 있어야 진행한다:
 #   없으면 DDP 학습 + 12-compare까지만 수행하고 종료 (학습 스텝 먼저 실행).
-# 사용: SKIP_SETUP=1 ./run-full-ddp.sh                 # 00-setup 생략
+# 사용: SKIP_SETUP=1 ./run-full-ddp.sh                 # 10-setup 생략
 #   MASTER_ADDR=spark1-p1-r0 NODE_RANK=1 ./run-full-ddp.sh  # 수동 지정도 가능
 #   STEPS=setup,baseline ./run-full-ddp.sh             # 최소 파이프라인 (분산 동작 확인용)
 # 자동 검출: MASTER_ADDR는 CX7(spark1-p1-r0→p1-r1→LAN 순, /etc/hosts+ping 확인),
@@ -60,62 +60,62 @@ wait_file() { # <path> <timeout_s> — 공유디스크에 파일이 생길 때�
 p5_log "run-$MODE-$STRAT start (rank=$NODE_RANK master=$MASTER_ADDR steps=${STEPS:-all})"
 
 if [ "${SKIP_SETUP:-0}" != 1 ] && want_step setup; then
-  p5_step "00-setup" ./00-setup.sh
+  p5_step "10-setup" ./10-setup.sh
 fi
 
-want_step baseline && p5_step "10-baseline-$STRAT" ./10-baseline-train.sh "$MODE" "$STRAT"
+want_step baseline && p5_step "10-baseline-$STRAT" ./14-baseline-train.sh "$MODE" "$STRAT"
 
 if is_rank0; then
   export TP=1  # 추론계(vLLM 생성·평가)는 노드 단독 1GPU로 실행
   if want_step syndata; then
-    p5_step "20-select-candidates" ./20-select-candidates.sh "$MODE"
-    p5_step "21-build-prompts" ./21-build-prompts.sh "$MODE"
+    p5_step "18-select-candidates" ./18-select-candidates.sh "$MODE"
+    p5_step "20-build-prompts" ./20-build-prompts.sh "$MODE"
     p5_step "22-teacher-generate" ./22-teacher-to-generate-syn-data.sh "$MODE"
-    p5_step "23-postprocess" ./23-postprocess.sh "$MODE"
+    p5_step "24-postprocess" ./24-postprocess.sh "$MODE"
   fi
 else
   wait_file "$P5_DATASETS/synthetic-$MODE.jsonl" 32400
 fi
 
-want_step fft && p5_step "30-fft-$STRAT" ./30-fft-train.sh "$MODE" "$STRAT"
-want_step qlora && p5_step "31-qlora-$STRAT" ./31-qlora-train.sh "$MODE" "$STRAT"
+want_step fft && p5_step "30-fft-$STRAT" ./26-fft-train.sh "$MODE" "$STRAT"
+want_step qlora && p5_step "31-qlora-$STRAT" ./28-qlora-train.sh "$MODE" "$STRAT"
 
 is_rank0 || { p5_log "run-$MODE-$STRAT done (rank=$NODE_RANK, train-only)"; exit 0; }
 export TP=1
 
-want_step compare && p5_step "12-compare" ./12-compare-strategies.sh "$MODE"
+want_step compare && p5_step "12-compare" ./16-compare-strategies.sh "$MODE"
 
 if [ ! -d "$P5_MODELS/synthetic-fft-$MODE-$STRAT" ] || [ ! -d "$P5_MODELS/synthetic-qlora-$MODE-$STRAT" ]; then
   p5_log "downstream SKIP: no -$STRAT output (run train steps first)"
   exit 0
 fi
 
-want_step merge && p5_step "32-merge-lora" ./32-merge-lora.sh "$MODE"
+want_step merge && p5_step "30-merge-lora" ./30-merge-lora.sh "$MODE"
 
 if want_step quant; then
-  p5_step "40-quant-fft-awq" ./40-quant-fft-awq.sh "$MODE"
-  p5_step "41-quant-fft-fp8" ./41-quant-fft-fp8.sh "$MODE"
-  p5_step "43-quant-fft-gptq" ./43-quant-fft-gptq.sh "$MODE"
-  p5_step "50-quant-qlora-awq" ./50-quant-qlora-awq.sh "$MODE"
-  p5_step "51-quant-qlora-fp8" ./51-quant-qlora-fp8.sh "$MODE"
-  p5_step "53-quant-qlora-gptq" ./53-quant-qlora-gptq.sh "$MODE"
+  p5_step "32-quant-fft-awq" ./32-quant-fft-awq.sh "$MODE"
+  p5_step "34-quant-fft-fp8" ./34-quant-fft-fp8.sh "$MODE"
+  p5_step "38-quant-fft-gptq" ./38-quant-fft-gptq.sh "$MODE"
+  p5_step "40-quant-qlora-awq" ./40-quant-qlora-awq.sh "$MODE"
+  p5_step "42-quant-qlora-fp8" ./42-quant-qlora-fp8.sh "$MODE"
+  p5_step "46-quant-qlora-gptq" ./46-quant-qlora-gptq.sh "$MODE"
   if [ -x "${LLAMACPP:-$HOME/git/llama.cpp}/build/bin/llama-quantize" ]; then
-    p5_step "42-quant-fft-gguf" ./42-quant-fft-gguf.sh "$MODE"
-    p5_step "52-quant-qlora-gguf" ./52-quant-qlora-gguf.sh "$MODE"
+    p5_step "36-quant-fft-gguf" ./36-quant-fft-gguf.sh "$MODE"
+    p5_step "44-quant-qlora-gguf" ./44-quant-qlora-gguf.sh "$MODE"
   else
     p5_log "WARN: no llama-quantize, GGUF SKIP (run 42/52 after build)"
   fi
 fi
 
-want_step ppl && p5_step "60-measure-ppl" ./60-measure-ppl.sh "$MODE"
+want_step ppl && p5_step "48-measure-ppl" ./48-measure-ppl.sh "$MODE"
 if want_step eval; then
-  p5_step "71-eval" ./71-eval.sh "$MODE"
-  p5_step "72-eval-gguf" ./72-eval-gguf.sh "$MODE"
-  p5_step "73-score" ./73-score.sh "$MODE"
+  p5_step "50-eval" ./50-eval.sh "$MODE"
+  p5_step "52-eval-gguf" ./52-eval-gguf.sh "$MODE"
+  p5_step "54-score" ./54-score.sh "$MODE"
 fi
 
 p5_log "run-$MODE-$STRAT done"
 # --- 선택 (수동, rank0) ---
-# ./74-upload-hf.sh full
-# ./80-serve-vllm.sh full fft            # 터미널1 (상주)
-# ./81-infer-examples.sh tayaee/Llama-3.2-1B-math-fft-full  # 터미널2
+# ./58-upload-hf.sh full
+# ./60-serve-vllm.sh full fft            # 터미널1 (상주)
+# ./62-infer-examples.sh tayaee/Llama-3.2-1B-math-fft-full  # 터미널2

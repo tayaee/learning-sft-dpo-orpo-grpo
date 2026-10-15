@@ -1,5 +1,5 @@
 # run-full-single.inc — full single 프리셋 (run-full-single.sh와 공유).
-# 수동 사용: source ./run-full-single.inc  → 이후 단계 스크립트(./10-baseline-train.sh 등)가
+# 수동 사용: source ./run-full-single.inc  → 이후 단계 스크립트(./14-baseline-train.sh 등)가
 # 인자 없이도 MODE/STRAT/INFRA를 따라간다. run 스크립트도 이 파일을 source 한다.
 # single은 항상 1x (외부 INFRA export가 있어도 무시).
 export MODE=full STRAT=single

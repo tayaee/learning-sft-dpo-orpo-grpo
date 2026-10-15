@@ -22,10 +22,10 @@ uv run --no-sync check_report_to.py --report_to wandb,trackio --out $OUT
 * `report_check.py`: 검증 단일 진실 공급원. `parse_report_to` + `summarize`/`gate_report_to`.
   Trainer와 동일한 함수(`get_reporting_integration_callbacks` + 콜백 인스턴스화)로 검증하므로
   체커 OK ⇔ 잡 통과가 보장된다. mlflow file-store는 임시 디렉토리로 setup 모사 검증.
-* `10-train-entry.py`: `--report_to` CSV 인자 + dry_run 직후 `gate_report_to()` 기동 게이트.
+* `train-entry.py`: `--report_to` CSV 인자 + dry_run 직후 `gate_report_to()` 기동 게이트.
   문제 있으면 데이터 적재 전에 exit=2로 즉시 실패 (NCCL 연쇄 사망 없음).
   `SFTConfig(project="trackio-project-5")`.
-* `10-baseline/30-fft/31-qlora-train.sh`: `--report_to "${REPORT_TO:-trackio}"` 전달.
+* `10-baseline/30-fft/28-qlora-train.sh`: `--report_to "${REPORT_TO:-trackio}"` 전달.
   기본값 `none`이라 기존 동작 불변. `WANDB_PROJECT`/`MLFLOW_EXPERIMENT_NAME` 기본값 적용.
 
 ## 2. 설치 (spark1/spark2 양쪽)

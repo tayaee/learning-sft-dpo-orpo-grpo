@@ -1,14 +1,14 @@
 {
-  //   10-baseline-train.sh → torchrun 10-train-entry.py
-  //   30-fft-train.sh      → torchrun 10-train-entry.py (synthetic 입력)
-  //   31-qlora-train.sh    → torchrun 10-train-entry.py --peft
+  //   14-baseline-train.sh → torchrun train-entry.py
+  //   26-fft-train.sh      → torchrun train-entry.py (synthetic 입력)
+  //   28-qlora-train.sh    → torchrun train-entry.py --peft
   //   22-generate.sh       → uv run 22-generate.py
   //   51-eval.sh           → uv run 51-eval.py (target 루프)
   //   53-upload-hf.sh      → uv run 53-upload-hf.py
   //   42-quant-gguf.sh     → $VENV_BIN/python $LLAMACPP/convert_hf_to_gguf.py (외부 파일)
   //   60-serve-vllm.sh     → $VLLM_BIN serve (vllm.entrypoints.openai.api_server 모듈)
-  //   00-setup.sh          → python -c 인라인 한 줄 (파일 없음, 제외)
-  //   12-compare-strategies.sh → python 없음 (cmp/sha256sum만, 제외)
+  //   10-setup.sh          → python -c 인라인 한 줄 (파일 없음, 제외)
+  //   16-compare-strategies.sh → python 없음 (cmp/sha256sum만, 제외)
   "version": "0.2.0",
   "inputs": [
     {
@@ -31,7 +31,7 @@
       "request": "launch",
       "preLaunchTask": "uv-sync",
       "python": ".venv/bin/python",
-      "program": "10-train-entry.py",
+      "program": "train-entry.py",
       "cwd": "${workspaceFolder}/project-5",
       "justMyCode": true,
       "env": {
@@ -71,7 +71,7 @@
       },
       "args": [
         "--nproc_per_node=1",
-        "${workspaceFolder}/10-train-entry.py",
+        "${workspaceFolder}/train-entry.py",
         "--model",
         "unsloth/Llama-3.2-1B",
         "--train",
@@ -104,7 +104,7 @@
       },
       "args": [
         "--nproc_per_node=1",
-        "${workspaceFolder}/10-train-entry.py",
+        "${workspaceFolder}/train-entry.py",
         "--model",
         "unsloth/Llama-3.2-1B",
         "--train",
@@ -137,7 +137,7 @@
       },
       "args": [
         "--nproc_per_node=1",
-        "${workspaceFolder}/10-train-entry.py",
+        "${workspaceFolder}/train-entry.py",
         "--peft",
         "--model",
         "unsloth/Llama-3.2-1B",
@@ -276,11 +276,11 @@
       ]
     },
     {
-      "name": "20-select-candidates (uv run 직접실행)",
+      "name": "18-select-candidates (uv run 직접실행)",
       "type": "debugpy",
       "request": "launch",
       "python": "${workspaceFolder}/.venv/bin/python",
-      "program": "${workspaceFolder}/20-select-candidates.py",
+      "program": "${workspaceFolder}/18-select-candidates.py",
       "cwd": "${workspaceFolder}",
       "env": {
         "UV_NO_SYNC": "1"
@@ -293,12 +293,12 @@
       ]
     },
     {
-      "name": "21-build-prompts (uv run 직접실행)",
+      "name": "20-build-prompts (uv run 직접실행)",
       "type": "debugpy",
       "request": "launch",
       "preLaunchTask": "uv-sync",
       "python": ".venv/bin/python",
-      "program": "21-build-prompts.py",
+      "program": "20-build-prompts.py",
       "cwd": "${workspaceFolder}",
       "env": {
         "UV_NO_SYNC": "1"
@@ -309,12 +309,12 @@
       ]
     },
     {
-      "name": "23-postprocess (uv run 직접실행)",
+      "name": "24-postprocess (uv run 직접실행)",
       "type": "debugpy",
       "request": "launch",
       "preLaunchTask": "uv-sync",
       "python": ".venv/bin/python",
-      "program": "23-postprocess.py",
+      "program": "24-postprocess.py",
       "cwd": "${workspaceFolder}/project-5",
       "env": {
         "UV_NO_SYNC": "1"

@@ -13,37 +13,37 @@
       "problemMatcher": []
     },
     {
-      "label": "p5: 00-setup.sh",
+      "label": "p5: 10-setup.sh",
       "type": "shell",
-      "command": "./00-setup.sh",
+      "command": "./10-setup.sh",
       "options": { "cwd": "${workspaceFolder}" },
       "presentation": { "reveal": "always", "panel": "new" }
     },
     {
-      "label": "p5: 10-baseline-train.sh mini single",
+      "label": "p5: 14-baseline-train.sh mini single",
       "type": "shell",
-      "command": "./10-baseline-train.sh mini single",
+      "command": "./14-baseline-train.sh mini single",
       "options": { "cwd": "${workspaceFolder}" },
       "presentation": { "reveal": "always", "panel": "new" }
     },
     {
-      "label": "p5: 12-compare-strategies.sh (python 없음)",
+      "label": "p5: 16-compare-strategies.sh (python 없음)",
       "type": "shell",
-      "command": "./12-compare-strategies.sh mini",
+      "command": "./16-compare-strategies.sh mini",
       "options": { "cwd": "${workspaceFolder}" },
       "presentation": { "reveal": "always", "panel": "new" }
     },
     {
-      "label": "p5: 20-select-candidates.py",
+      "label": "p5: 18-select-candidates.py",
       "type": "shell",
-      "command": "export UV_NO_SYNC=1 && uv run 20-select-candidates.py --mode mini",
+      "command": "export UV_NO_SYNC=1 && uv run 18-select-candidates.py --mode mini",
       "options": { "cwd": "${workspaceFolder}" },
       "presentation": { "reveal": "always", "panel": "new" }
     },
     {
-      "label": "p5: 21-build-prompts.py",
+      "label": "p5: 20-build-prompts.py",
       "type": "shell",
-      "command": "export UV_NO_SYNC=1 && uv run 21-build-prompts.py --mode mini",
+      "command": "export UV_NO_SYNC=1 && uv run 20-build-prompts.py --mode mini",
       "options": { "cwd": "${workspaceFolder}" },
       "presentation": { "reveal": "always", "panel": "new" }
     },
@@ -55,23 +55,23 @@
       "presentation": { "reveal": "always", "panel": "new" }
     },
     {
-      "label": "p5: 23-postprocess.py",
+      "label": "p5: 24-postprocess.py",
       "type": "shell",
-      "command": "export UV_NO_SYNC=1 && uv run 23-postprocess.py --mode mini",
+      "command": "export UV_NO_SYNC=1 && uv run 24-postprocess.py --mode mini",
       "options": { "cwd": "${workspaceFolder}" },
       "presentation": { "reveal": "always", "panel": "new" }
     },
     {
-      "label": "p5: 30-fft-train.sh mini single",
+      "label": "p5: 26-fft-train.sh mini single",
       "type": "shell",
-      "command": "./30-fft-train.sh mini single",
+      "command": "./26-fft-train.sh mini single",
       "options": { "cwd": "${workspaceFolder}" },
       "presentation": { "reveal": "always", "panel": "new" }
     },
     {
-      "label": "p5: 31-qlora-train.sh mini single",
+      "label": "p5: 28-qlora-train.sh mini single",
       "type": "shell",
-      "command": "./31-qlora-train.sh mini single",
+      "command": "./28-qlora-train.sh mini single",
       "options": { "cwd": "${workspaceFolder}" },
       "presentation": { "reveal": "always", "panel": "new" }
     },

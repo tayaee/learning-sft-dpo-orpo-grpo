@@ -13,7 +13,7 @@
 #     새는 것 방지. 1x 실행에는 무해)
 #   - NODE_RANK 자동 검출 (호스트명 기준, 미확인 호스트는 0)
 #   - MASTER_ADDR는 하위 스크립트가 자동 검출 (/etc/hosts+ping)
-# 환경변수: SKIP_SETUP=1 (00-setup 생략), STEPS=... (하위 스크립트에 그대로 전달),
+# 환경변수: SKIP_SETUP=1 (10-setup 생략), STEPS=... (하위 스크립트에 그대로 전달),
 #   RUNS=... (이 6개 중 일부만 실행, 콤마 구분. 예: RUNS=mini-ddp,mini-fsdp),
 #   BASE_MODEL / NCCL_SOCKET_IFNAME / NCCL_IB_HCA (기본값 재정의 가능)
 # NOTE: full 포함 전체는 수십 시간. STEPS/RUNS로 부분 실행 가능.
