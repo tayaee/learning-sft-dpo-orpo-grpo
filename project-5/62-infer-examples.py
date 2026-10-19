@@ -7,11 +7,14 @@
   # 터미널1: ./60-serve-vllm.sh mini fft
   # 터미널2:
   uv run 62-infer-examples.py --model tayaee/Llama-3.2-1B-math-fft-mini [--n 3] [--dry-run]
+  # 모델 목록만 보기 (서버의 /v1/models):
+  uv run 62-infer-examples.py [--base-url http://localhost:8000/v1]
 """
 
 import argparse
 import json
 import os
+import urllib.request
 
 P5_ROOT = os.path.dirname(os.path.abspath(__file__))
 PROMPT_NO_INPUT = (
@@ -46,7 +49,26 @@ def load_questions(n: int):
     raise SystemExit("gsm8k-test.jsonl 없음 — 10-setup.sh 먼저 실행")
 
 
-def main(model: str, base_url: str, n: int, dry_run: bool):
+def list_models(base_url: str):
+    """서빙 서버의 /v1/models 목록을 출력 (인자 없이 실행 시)."""
+    url = base_url.rstrip("/") + "/models"
+    try:
+        with urllib.request.urlopen(url, timeout=5) as r:
+            data = json.loads(r.read().decode("utf-8"))
+    except Exception as e:
+        raise SystemExit(
+            f"서빙 서버 접속 실패: {url} ({e})\n"
+            "먼저 터미널1에서 ./60-serve-vllm.sh mini fft 로 기동하라."
+        )
+    ids = [d.get("id", "?") for d in data.get("data", [])] or [data]
+    for i in ids:
+        print(i if isinstance(i, str) else json.dumps(i, ensure_ascii=False))
+
+
+def main(model: str | None, base_url: str, n: int, dry_run: bool):
+    if not model:
+        list_models(base_url)
+        return
     questions = load_questions(n) + [KO_SAMPLE]
     prompts = [PROMPT_NO_INPUT.format(instruction=q) for q in questions]
     if dry_run:
@@ -67,8 +89,8 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument(
         "--model",
-        required=True,
-        help="서빙 모델명 (예: tayaee/Llama-3.2-1B-math-fft-mini)",
+        default=None,
+        help="서빙 모델명 (예: tayaee/Llama-3.2-1B-math-fft-mini). 생략 시 /v1/models 목록 출력",
     )
     ap.add_argument("--base-url", default="http://localhost:8000/v1")
     ap.add_argument("--n", type=int, default=3)

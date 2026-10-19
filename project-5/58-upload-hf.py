@@ -6,10 +6,12 @@ HF 산출물은 Stage 8b 서빙의 입력이 된다 (local 경로로도 서빙 �
 """
 
 import argparse
+import io
 import os
 
 SHARED = os.environ.get("P5_SHARED", "/rosenas/data/AIML/project-5-shared")
 HF_ID = os.environ.get("HF_ID", "tayaee")
+BASE_MODEL = os.environ.get("BASE_MODEL", "unsloth/Llama-3.2-1B")
 # repo명에 베이스 모델명을 포함한다. BASE_MODEL 뒷부분만 사용하므로
 # 미러(unsloth/…)와 원본(meta-llama/…)이 같은 repo명으로 수렴한다.
 # 예: unsloth/Llama-3.2-1B → tayaee/p5-Llama-3.2-1B-math-fft-mini
@@ -59,6 +61,71 @@ def repo_name(target: str, strat: str, mode: str) -> str:
     return f"{HF_ID}/{r}"
 
 
+def readme_for(target: str, repo: str, mode: str, strat: str, kind: str) -> str:
+    """업로드용 README.md. 없으면 pipeline_tag=None이라 Hub 위젯·검색에 안 걸린다.
+
+    이 모델들은 chat_template이 없어 chat API(hf inference run 같은 Providers
+    chat)는 400/미지원이다. completions/transformers/vLLM 경로만 문서화한다.
+    """
+    base = "fft" if target.startswith("fft") else "qlora" if target.startswith("qlora") else target
+    tags = ["llama", "sft", "math", "project-5", base]
+    if "gptq" in target:
+        tags += ["gptq", "4-bit"]
+    elif "awq" in target:
+        tags += ["awq", "compressed-tensors"]
+    elif "fp8" in target:
+        tags += ["fp8", "compressed-tensors"]
+    elif "gguf" in target:
+        tags += ["gguf", "endpoints_compatible"]
+        for q in ("q8_0", "q6_k", "q5_k_m", "q4_k_m", "q3_k_m"):
+            if q in target:
+                tags += [q]
+                break
+    tags_yaml = "\n".join(f"- {t}" for t in tags)
+    lib_line = "library_name: transformers\n" if kind == "folder" else ""
+    prompt = (
+        "Below is an instruction that describes a task. "
+        "Write a response that appropriately completes the request.\n\n"
+        "### Instruction:\n{instruction}\n\n### Response:"
+    )
+    return f"""---
+pipeline_tag: text-generation
+{lib_line}base_model: {BASE_MODEL}
+tags:
+{tags_yaml}
+---
+
+# {repo}
+
+project-5 SFT math model (`mode={mode} strat={strat} target={target}`, base `{BASE_MODEL}`).
+GSM8K 합성데이터 FFT/QLoRA → 양자화 산출물. 학습 프롬프트는 `### Instruction/### Response` completions 포맷이다.
+
+chat_template이 없으므로 chat API는 미지원이다. `hf inference run`(Providers chat)은
+커스텀 파인튜닝에 프로바이더가 없어 동작하지 않는다. 아래 경로로 테스트하라.
+
+## Prompt format
+
+```
+{prompt}
+```
+
+## Use (transformers, local)
+
+```python
+from transformers import pipeline
+p = pipeline("text-generation", model="{repo}", max_new_tokens=256)
+print(p("### Instruction:\\n2+3은?\\n\\n### Response:")[0]["generated_text"])
+```
+
+## Use (vLLM serve + completions)
+
+```bash
+SOURCE=hf ./60-serve-vllm.sh {mode} {target}
+./62-infer-examples.sh {repo} 3
+```
+"""
+
+
 # 구이름 별칭 → 정식 키 (같은 repo에 업로드, 기존 동작 유지).
 ALIAS = {"gptq": "fft-gptq", "awq": "fft-awq", "fp8": "fft-fp8", "gguf": "fft-gguf"}
 
@@ -92,7 +159,12 @@ def main(mode: str, strat: str, targets: str, dry_run: bool):
         )
     for t, local, repo, kind in plan:
         print(f"[{t}] {local} -> {repo} ({kind})")
+        key = ALIAS.get(t, t)
+        text = readme_for(key, repo, mode, strat, kind)
         if dry_run:
+            print(f"  README preview ({len(text)} chars, first 5 lines):")
+            for line in text.splitlines()[:5]:
+                print(f"    {line}")
             continue
         if not os.path.exists(local):
             print("  SKIP: no local output (run that stage first)")
@@ -102,6 +174,9 @@ def main(mode: str, strat: str, targets: str, dry_run: bool):
         api = HfApi()
         api.create_repo(repo, exist_ok=True)
         if kind == "folder":
+            with open(os.path.join(local, "README.md"), "w", encoding="utf-8") as f:
+                f.write(text)
+            print("  README: wrote local README.md")
             api.upload_folder(repo_id=repo, folder_path=local)
         else:  # gguf 단일 파일 (tokenizer는 폴더 타깃 repo에 동봉 전제)
             api.upload_file(
@@ -109,6 +184,12 @@ def main(mode: str, strat: str, targets: str, dry_run: bool):
                 path_or_fileobj=local,
                 path_in_repo=os.path.basename(local),
             )
+            api.upload_file(
+                repo_id=repo,
+                path_or_fileobj=io.BytesIO(text.encode("utf-8")),
+                path_in_repo="README.md",
+            )
+            print("  README: uploaded README.md")
         print(f"  OK: https://huggingface.co/{repo}")
 
 

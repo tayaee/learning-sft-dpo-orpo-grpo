@@ -1,11 +1,37 @@
 #!/usr/bin/env bash
 # 60-serve-vllm.sh [mini|full] [target] (STRAT env, 기본 single) — Stage 8b. vLLM OpenAI-호환 서빙.
-# target: fft|qlora|fft-gptq|fft-awq|fft-fp8|qlora-gptq|qlora-awq|qlora-fp8|fft-gguf|qlora-gguf (기본 fft).
+# 인자 없이 실행하면 복사-붙여넣기용 실행 명령 20줄(mini 10+full 10)을 보여준다.
+# target: fft|fft-awq|fft-fp8|fft-gguf|fft-gptq|qlora|qlora-awq|qlora-fp8|qlora-gguf|qlora-gptq (기본 fft).
 # SOURCE=local|hf (기본 local; hf면 tayaee/* repo로 서빙). PORT 기본 8000.
-# 예: SOURCE=hf ./60-serve-vllm.sh mini fft-gptq
+# 예: ./60-serve-vllm.sh                       # 실행 명령 목록만 출력 (서빙 안 함)
+#     ./60-serve-vllm.sh mini fft
+#     SOURCE=hf ./60-serve-vllm.sh mini fft-gptq
 #     QTYPE=q4_k_m ./60-serve-vllm.sh mini fft-gguf  # GGUF 변종 선택 (기본 q8_0)
 #     62-infer-examples.py --model tayaee/Llama-3.2-1B-math-fft-gptq-mini (별도 터미널)
 set -euo pipefail
+if [ $# -eq 0 ]; then
+  source "$(dirname "$0")/config/common.env" mini
+  STRAT="${STRAT:-single}"
+  echo "[STRAT=$STRAT] copy & paste (terminal1):"
+  for m in mini full; do
+    for t in fft fft-awq fft-fp8 fft-gguf fft-gptq qlora qlora-awq qlora-fp8 qlora-gguf qlora-gptq; do
+      case "$t" in
+        fft)        SUF="synthetic-fft-$m-$STRAT" ;;
+        qlora)      SUF="synthetic-qlora-$m-$STRAT-merged" ;;
+        fft-gptq)   SUF="synthetic-fft-$m-$STRAT-gptq" ;;
+        fft-awq)    SUF="synthetic-fft-$m-$STRAT-awq" ;;
+        fft-fp8)    SUF="synthetic-fft-$m-$STRAT-fp8" ;;
+        qlora-gptq) SUF="synthetic-qlora-$m-$STRAT-merged-gptq" ;;
+        qlora-awq)  SUF="synthetic-qlora-$m-$STRAT-merged-awq" ;;
+        qlora-fp8)  SUF="synthetic-qlora-$m-$STRAT-merged-fp8" ;;
+        fft-gguf)   SUF="synthetic-fft-$m-$STRAT-gguf/model-${QTYPE:-q8_0}.gguf" ;;
+        qlora-gguf) SUF="synthetic-qlora-$m-$STRAT-merged-gguf/model-${QTYPE:-q8_0}.gguf" ;;
+      esac
+      echo "./60-serve-vllm.sh $m $t  # $P5_MODELS/$SUF"
+    done
+  done
+  exit 0
+fi
 source "$(dirname "$0")/config/common.env" "${1:-mini}"
 STRAT="${STRAT:-single}"
 case "$STRAT" in single|ddp|fsdp) ;; *) echo "STRAT must be single|ddp|fsdp" >&2; exit 1;; esac
@@ -26,7 +52,7 @@ case "$TARGET" in
   qlora-fp8)   SUF="synthetic-qlora-$MODE-$STRAT-merged-fp8"; QUANT="compressed-tensors" ;;
   fft-gguf|gguf)  SUF="synthetic-fft-$MODE-$STRAT-gguf"; QUANT="gguf"; TARGET="fft-gguf" ;;
   qlora-gguf)  SUF="synthetic-qlora-$MODE-$STRAT-merged-gguf"; QUANT="gguf" ;;
-  *) echo "target: fft|qlora|fft-gptq|fft-awq|fft-fp8|qlora-gptq|qlora-awq|qlora-fp8|fft-gguf|qlora-gguf" >&2; exit 1 ;;
+  *) echo "target: fft|fft-awq|fft-fp8|fft-gguf|fft-gptq|qlora|qlora-awq|qlora-fp8|qlora-gguf|qlora-gptq" >&2; exit 1 ;;
 esac
 
 # HF repo명 규칙은 58-upload-hf.py repo_name()과 동일 (single 동결, full 무표기).
@@ -50,5 +76,5 @@ exec "$VLLM_BIN" serve "$MODEL" \
   --tensor-parallel-size "$TP" \
   ${QUANT:+--quantization "$QUANT"} \
   --max-model-len 2048 \
-  --gpu-memory-utilization "${GPU_UTIL:-0.9}" \
+  --gpu-memory-utilization "${GPU_UTIL:-0.5}" \
   --trust-remote-code
