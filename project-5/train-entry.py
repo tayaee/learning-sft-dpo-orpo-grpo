@@ -82,6 +82,11 @@ def set_seed(seed):
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--model", default="unsloth/Llama-3.2-1B")
+    p.add_argument(
+        "--revision",
+        default=os.environ.get("BASE_REVISION", ""),
+        help="HF 리비전 고정 (기본 $BASE_REVISION, 1년 후 재현용). 빈 값이면 floating.",
+    )
     p.add_argument("--train", required=True)
     p.add_argument("--out", required=True)
     p.add_argument("--epochs", type=int, default=1)
@@ -207,7 +212,7 @@ def main():
     from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
     from trl import SFTConfig, SFTTrainer
 
-    tok = AutoTokenizer.from_pretrained(a.model)
+    tok = AutoTokenizer.from_pretrained(a.model, revision=a.revision or None)
     added = []
     if tok.pad_token is None:
         added.append(PAD_TOKEN)
@@ -243,10 +248,12 @@ def main():
             bnb_4bit_quant_type="nf4",
         )
         model = AutoModelForCausalLM.from_pretrained(
-            a.model, quantization_config=bnb, dtype=dtype
+            a.model, quantization_config=bnb, dtype=dtype, revision=a.revision or None
         )
     else:
-        model = AutoModelForCausalLM.from_pretrained(a.model, dtype=dtype)
+        model = AutoModelForCausalLM.from_pretrained(
+            a.model, dtype=dtype, revision=a.revision or None
+        )
 
     # main.py resize_at_begin: PEFT 래핑보다 먼저 수행 (래핑 후 resize 불가).
     # 신규 토큰 임베딩을 기존 평균으로 초기화.

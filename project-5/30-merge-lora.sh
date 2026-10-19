@@ -18,8 +18,8 @@ if [ -f "$OUT/config.json" ] && p5_fresh "$OUT/config.json" "$SRC/adapter_config
   exit 0
 fi
 mkdir -p "$OUT"
-p5_log "base=$BASE out=$OUT"
-(set -x; uv run "$P5_ROOT/30-merge-lora.py" --mode "$MODE" --strat "$STRAT" --base "$BASE")
+p5_log "base=$BASE rev=$BASE_REVISION out=$OUT"
+(set -x; uv run "$P5_ROOT/30-merge-lora.py" --mode "$MODE" --strat "$STRAT" --base "$BASE" --revision "$BASE_REVISION")
 
 echo ---- result ----
 (set -x; ls -l "$OUT")

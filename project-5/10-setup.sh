@@ -1,40 +1,52 @@
 #!/usr/bin/env bash
 # 10-setup.sh — 양 노드에서 1회씩 실행. 학습 없음.
+# 재현성: uv.lock + .python-version + requirements-frozen.txt 기준.
+# 상세 핀 목록은 REPRODUCIBILITY.md.
 set -euo pipefail
 cd "$(dirname "$0")"  # uv가 project-5/pyproject.toml을 프로젝트로 인식하도록 고정
 source "$(dirname "$0")/config/common.env"
 p5_repro_echo
 
-p5_log "repo=$REPO_ROOT infra=$INFRA python=$(python3 --version 2>&1)"
+p5_log "repo=$REPO_ROOT infra=$INFRA python=$(python3 --version 2>&1) uv=$(uv --version 2>&1)"
+p5_log "pins: BASE_REVISION=$BASE_REVISION TEACHER_REVISION=$TEACHER_REVISION MASKED_REV=$MASKED_REV LLAMACPP_REV=$LLAMACPP_REV"
+if [ -n "${UV_MIN:-}" ]; then
+  _uvv="$(uv --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)"
+  if [ -n "$_uvv" ] && [ "$(printf '%s\n%s\n' "$UV_MIN" "$_uvv" | sort -V | head -n 1)" != "$UV_MIN" ]; then
+    echo "REFUSE: uv $_uvv < min $UV_MIN — uv를 업그레이드하라" >&2; exit 1
+  fi
+  unset _uvv
+fi
 
-echo + uv sync
-uv sync 2>/dev/null || p5_log "WARN: root uv sync 실패 — 개별 venv로 진행"
+# 락 기준 설치 ( --frozen: lock과 pyproject 불일치 시 실패 = 드리프트 즉시 감지 ).
+echo + uv sync --frozen
+uv sync --frozen
 
-# llmcompressor는 resolver 충돌 회피를 위해 --no-deps로 별도 설치 (상세: pyproject.toml NOTE)
-
+# llmcompressor는 resolver 충돌 회피를 위해 --no-deps로 별도 설치 (상세: pyproject.toml NOTE).
+# lock 밖이므로 버전을 명시 고정. 2026-10-19 실측: 0.14.0.
 echo + uv pip install --no-deps "llmcompressor==0.14.0"
-uv pip install --no-deps "llmcompressor==0.14.0" 2>/dev/null || p5_log "WARN: llmcompressor install failed, skip 42/43"
+uv pip install --no-deps "llmcompressor==0.14.0"
 
-# compressed-tensors==0.19.0: llmcompressor==0.14.0이 요구. pyproject에 함께
-# 적으면 vllm(==0.17.0 요구)과 unsatisfiable이 되므로 여기서 별도 설치.
-# (--no-deps 설치라 의존성을 안 맞춰줌. vLLM AWQ/FP8 로딩 동작은 50-eval에서 확인)
-echo + uv pip install "compressed-tensors==0.19.0"
-uv pip install "compressed-tensors==0.19.0" 2>/dev/null | tail -1 || p5_log "WARN: compressed-tensors install failed, skip 42/43"
+# compressed-tensors는 lock(vllm==0.31.0 → ==0.17.0)을 기준으로 사용한다.
+# 과거 0.19.0 별도 설치는 uv sync가 되돌려 실측 0.17.0으로 동작 확인됨 — 오버라이드 삭제.
+# (--no-deps llmcompressor가 의존성을 안 맞추므로 vLLM AWQ/FP8 로딩은 50-eval에서 확인.)
+p5_log "compressed-tensors=$(uv pip show compressed-tensors 2>/dev/null | awk '/^Version:/{print $2}')"
 
-# torchvision은 pyproject.toml에 고정됨 (uv sync가 설치).
-# torchaudio는 여전히 불필요 → 제거 유지.
-
-echo + uv pip uninstall -y torchaudio
-uv pip uninstall -y torchaudio 2>/dev/null | tail -1 || true
+# torchaudio는 lock의 transitive로 남아도 제거하지 않는다 (제거해도 다음 sync에서
+# 복원되어 드리프트만 유발. vLLM warmup에 불필요해도 존재 자체는 무해).
 
 mkdir -p "$P5_SHARED"/{datasets,models,outputs,hf-cache,vllm-cache}
 
-p5_log "upstream check: $MASKED"
+p5_log "upstream check: $MASKED (pinned $MASKED_REV)"
 if [ ! -d "$MASKED/.git" ]; then
   git clone https://github.com/changyuchen347/maskedthought "$MASKED" \
     || p5_log "WARN: clone failed, clone manually if offline"
-else
-  p5_log "maskedthought present, reference only"
+fi
+if [ -d "$MASKED/.git" ]; then
+  _mr="$(git -C "$MASKED" rev-parse HEAD 2>/dev/null || true)"
+  if [ "$_mr" != "$MASKED_REV" ]; then
+    p5_log "WARN: maskedthought HEAD=$_mr != pinned $MASKED_REV (참조용이므로 경고만)"
+  fi
+  unset _mr
 fi
 
 p5_log "copy vendored data to shared datasets (if missing, via .tmp+rename)"
@@ -45,6 +57,12 @@ for _bn in gsm8k-train.jsonl gsm8k-test.jsonl; do
 done
 unset _bn
 
+p5_log "HF pinned revisions (cache pre-check, download는 각 stage가 revision으로 수행)"
+for _r in "unsloth/Llama-3.2-1B:$BASE_REVISION" "meta-llama/Llama-3.1-8B-Instruct:$TEACHER_REVISION"; do
+  p5_log "want ${_r}"
+done
+unset _r
+
 p5_log "HF login check (Llama gated)"
 
 (set -x; "$HF_BIN" auth whoami 2>/dev/null) || echo "-> 'uv run hf auth login' required"
@@ -52,6 +70,17 @@ p5_log "HF login check (Llama gated)"
 p5_log "GPU check"
 nvidia-smi -L 2>/dev/null || echo "-> no nvidia-smi, check on DGX OS"
 (set -x; "$VENV_BIN/python" -c "import torch; print('torch', torch.__version__, 'cuda', torch.cuda.is_available(), torch.cuda.device_count())" 2>/dev/null || true)
+
+p5_log "llamacpp check (pinned $LLAMACPP_REV)"
+if [ -d "${LLAMACPP:-$HOME/git/llama.cpp}/.git" ]; then
+  _lr="$(git -C "${LLAMACPP:-$HOME/git/llama.cpp}" rev-parse HEAD 2>/dev/null || true)"
+  if [ "$_lr" != "$LLAMACPP_REV" ]; then
+    p5_log "WARN: llama.cpp HEAD=$_lr != pinned $LLAMACPP_REV (GGUF 바이트 동일성 보장 안 됨)"
+  fi
+  unset _lr
+else
+  p5_log "WARN: no llama.cpp checkout (GGUF 단계에서 필요)"
+fi
 
 p5_log "OK. shared=$P5_SHARED (compare ls on spark1/spark2)"
 

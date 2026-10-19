@@ -25,9 +25,9 @@ if p5_fresh "$OUT" "$IN"; then
   (set -x; wc -l "$OUT")
   exit 0
 fi
-p5_log "teacher=$TEACHER_MODEL tp=$TP maxlen=$MAXLEN n=$SYNTH_N gpu_mem_util=$VLLM_GPU_MEM_UTIL max_num_seqs=$VLLM_MAX_NUM_SEQS"
+p5_log "teacher=$TEACHER_MODEL rev=$TEACHER_REVISION tp=$TP maxlen=$MAXLEN n=$SYNTH_N gpu_mem_util=$VLLM_GPU_MEM_UTIL max_num_seqs=$VLLM_MAX_NUM_SEQS"
 (set -x; uv run "$P5_ROOT/22-teacher-to-generate-syn-data.py" --mode "$MODE" --tp "$TP" --maxlen "$MAXLEN" \
-  --teacher "$TEACHER_MODEL" --n "$SYNTH_N" --gpu-mem-util "$VLLM_GPU_MEM_UTIL" \
+  --teacher "$TEACHER_MODEL" --revision "$TEACHER_REVISION" --n "$SYNTH_N" --gpu-mem-util "$VLLM_GPU_MEM_UTIL" \
   --max-num-seqs "$VLLM_MAX_NUM_SEQS")
 
 echo ---- result ----

@@ -25,6 +25,7 @@ def main(
     n: int,
     gpu_mem_util: float,
     max_num_seqs: int,
+    revision: str = "",
 ):
     import pandas as pd
     from transformers import AutoTokenizer
@@ -32,7 +33,7 @@ def main(
 
     df = pd.read_parquet(f"{SHARED}/datasets/prompts-{mode}.parquet").head(n)
     df = df.reset_index(drop=True)
-    tok = AutoTokenizer.from_pretrained(teacher)
+    tok = AutoTokenizer.from_pretrained(teacher, revision=revision or None)
 
     def to_chat(p):
         return tok.apply_chat_template(
@@ -41,6 +42,7 @@ def main(
 
     llm = LLM(
         model=teacher,  # teacher 8B, student 1B
+        revision=revision or None,
         tensor_parallel_size=tp,  # tp1
         max_model_len=maxlen,  # 8192 (mini/full 통일)
         trust_remote_code=True,
@@ -85,6 +87,11 @@ if __name__ == "__main__":
     ap.add_argument("--tp", type=int, default=1)
     ap.add_argument("--maxlen", type=int, default=8192)
     ap.add_argument("--teacher", default="meta-llama/Llama-3.1-8B-Instruct")
+    ap.add_argument(
+        "--revision",
+        default=os.environ.get("TEACHER_REVISION", ""),
+        help="HF 리비전 고정 (기본 $TEACHER_REVISION, 1년 후 재현용).",
+    )
     ap.add_argument("--n", type=int, default=None)
     ap.add_argument(
         "--gpu-mem-util",
@@ -111,4 +118,4 @@ if __name__ == "__main__":
         if a.max_num_seqs is not None
         else int(os.environ.get("VLLM_MAX_NUM_SEQS", "8"))
     )
-    main(a.mode, a.tp, a.maxlen, a.teacher, n, a.gpu_mem_util, max_num_seqs)
+    main(a.mode, a.tp, a.maxlen, a.teacher, n, a.gpu_mem_util, max_num_seqs, a.revision)

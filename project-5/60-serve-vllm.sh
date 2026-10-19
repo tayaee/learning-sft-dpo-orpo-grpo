@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 60-serve-vllm.sh [mini|full] [target] (STRAT env, 기본 single) — Stage 8b. vLLM OpenAI-호환 서빙.
-# 인자 없이 실행하면 복사-붙여넣기용 실행 명령 20줄(mini 10+full 10)을 보여준다.
-# target: fft|fft-awq|fft-fp8|fft-gguf|fft-gptq|qlora|qlora-awq|qlora-fp8|qlora-gguf|qlora-gptq (기본 fft).
+# 인자 없이 실행하면 복사-붙여넣기용 실행 명령 20줄을 PPL 실측순으로 보여준다.
+# target: fft|fft-fp8|fft-awq|fft-gptq|fft-gguf|qlora|qlora-fp8|qlora-awq|qlora-gptq|qlora-gguf (기본 fft, 품질순).
 # SOURCE=local|hf (기본 local; hf면 tayaee/* repo로 서빙). PORT 기본 8000.
 # 예: ./60-serve-vllm.sh                       # 실행 명령 목록만 출력 (서빙 안 함)
 #     ./60-serve-vllm.sh mini fft
@@ -12,23 +12,39 @@ set -euo pipefail
 if [ $# -eq 0 ]; then
   source "$(dirname "$0")/config/common.env" mini
   STRAT="${STRAT:-single}"
-  echo "[STRAT=$STRAT] copy & paste (terminal1):"
-  for m in mini full; do
-    for t in fft fft-awq fft-fp8 fft-gguf fft-gptq qlora qlora-awq qlora-fp8 qlora-gguf qlora-gptq; do
-      case "$t" in
-        fft)        SUF="synthetic-fft-$m-$STRAT" ;;
-        qlora)      SUF="synthetic-qlora-$m-$STRAT-merged" ;;
-        fft-gptq)   SUF="synthetic-fft-$m-$STRAT-gptq" ;;
-        fft-awq)    SUF="synthetic-fft-$m-$STRAT-awq" ;;
-        fft-fp8)    SUF="synthetic-fft-$m-$STRAT-fp8" ;;
-        qlora-gptq) SUF="synthetic-qlora-$m-$STRAT-merged-gptq" ;;
-        qlora-awq)  SUF="synthetic-qlora-$m-$STRAT-merged-awq" ;;
-        qlora-fp8)  SUF="synthetic-qlora-$m-$STRAT-merged-fp8" ;;
-        fft-gguf)   SUF="synthetic-fft-$m-$STRAT-gguf/model-${QTYPE:-q8_0}.gguf" ;;
-        qlora-gguf) SUF="synthetic-qlora-$m-$STRAT-merged-gguf/model-${QTYPE:-q8_0}.gguf" ;;
-      esac
-      echo "./60-serve-vllm.sh $m $t  # $P5_MODELS/$SUF"
-    done
+  # PPL 실측순 (출처: outputs/ppl-{full,mini}-single/summary.json).
+  # 1차 method(transformers vs gguf — 엔진 상이, PPL 교차비교 금지),
+  # 2차 fft vs qlora, 각 그룹 내 PPL 오름차순.
+  echo "[STRAT=$STRAT] copy & paste (terminal1, PPL순):"
+  echo "# transformers"
+  for spec in \
+    "full fft-awq 4.489" "full fft 4.549" "full fft-fp8 4.570" "full fft-gptq 4.604" \
+    "full qlora 4.990" "full qlora-gptq 5.045" "full qlora-fp8 5.342" "full qlora-awq 5.840" \
+    "mini fft 9.867" "mini fft-fp8 10.035" "mini fft-gptq 10.164" "mini fft-awq 10.635" \
+    "mini qlora 9.867" "mini qlora-fp8 10.035" "mini qlora-gptq 10.164" "mini qlora-awq 10.683"; do
+    read -r m t ppl <<< "$spec"
+    case "$t" in
+      fft)        SUF="synthetic-fft-$m-$STRAT" ;;
+      qlora)      SUF="synthetic-qlora-$m-$STRAT-merged" ;;
+      fft-gptq)   SUF="synthetic-fft-$m-$STRAT-gptq" ;;
+      fft-awq)    SUF="synthetic-fft-$m-$STRAT-awq" ;;
+      fft-fp8)    SUF="synthetic-fft-$m-$STRAT-fp8" ;;
+      qlora-gptq) SUF="synthetic-qlora-$m-$STRAT-merged-gptq" ;;
+      qlora-awq)  SUF="synthetic-qlora-$m-$STRAT-merged-awq" ;;
+      qlora-fp8)  SUF="synthetic-qlora-$m-$STRAT-merged-fp8" ;;
+    esac
+    printf '%-34s # ppl %s | %s\n' "./60-serve-vllm.sh $m $t" "$ppl" "$P5_MODELS/$SUF"
+  done
+  echo "# gguf (llama.cpp, q8_0 서빙분 PPL)"
+  for spec in \
+    "full fft-gguf 2.780" "full qlora-gguf 2.747" \
+    "mini fft-gguf 2.720" "mini qlora-gguf 2.720"; do
+    read -r m t ppl <<< "$spec"
+    case "$t" in
+      fft-gguf)   SUF="synthetic-fft-$m-$STRAT-gguf/model-${QTYPE:-q8_0}.gguf" ;;
+      qlora-gguf) SUF="synthetic-qlora-$m-$STRAT-merged-gguf/model-${QTYPE:-q8_0}.gguf" ;;
+    esac
+    printf '%-34s # ppl %s | %s\n' "./60-serve-vllm.sh $m $t" "$ppl" "$P5_MODELS/$SUF"
   done
   exit 0
 fi
@@ -52,7 +68,7 @@ case "$TARGET" in
   qlora-fp8)   SUF="synthetic-qlora-$MODE-$STRAT-merged-fp8"; QUANT="compressed-tensors" ;;
   fft-gguf|gguf)  SUF="synthetic-fft-$MODE-$STRAT-gguf"; QUANT="gguf"; TARGET="fft-gguf" ;;
   qlora-gguf)  SUF="synthetic-qlora-$MODE-$STRAT-merged-gguf"; QUANT="gguf" ;;
-  *) echo "target: fft|fft-awq|fft-fp8|fft-gguf|fft-gptq|qlora|qlora-awq|qlora-fp8|qlora-gguf|qlora-gptq" >&2; exit 1 ;;
+  *) echo "target: fft|fft-fp8|fft-awq|fft-gptq|fft-gguf|qlora|qlora-fp8|qlora-awq|qlora-gptq|qlora-gguf" >&2; exit 1 ;;
 esac
 
 # HF repo명 규칙은 58-upload-hf.py repo_name()과 동일 (single 동결, full 무표기).

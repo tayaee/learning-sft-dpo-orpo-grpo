@@ -17,7 +17,7 @@ MASK_TOKEN = "<mask>"
 PAD_TOKEN = "[PAD]"
 
 
-def main(mode: str, base: str, strat: str):
+def main(mode: str, base: str, strat: str, revision: str = ""):
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -57,7 +57,9 @@ def main(mode: str, base: str, strat: str):
         tok.pad_token = PAD_TOKEN
     print(f"[{mode}] vocab {n0} -> {len(tok)}")
 
-    model = AutoModelForCausalLM.from_pretrained(base, dtype=torch.bfloat16)
+    model = AutoModelForCausalLM.from_pretrained(
+        base, dtype=torch.bfloat16, revision=revision or None
+    )
     model.resize_token_embeddings(len(tok))
     model = PeftModel.from_pretrained(model, adapter)
     model = model.merge_and_unload()
@@ -77,5 +79,10 @@ if __name__ == "__main__":
         choices=["single", "ddp", "fsdp"],
     )
     ap.add_argument("--base", default=BASE)
+    ap.add_argument(
+        "--revision",
+        default=os.environ.get("BASE_REVISION", ""),
+        help="HF 리비전 고정 (기본 $BASE_REVISION, 1년 후 재현용).",
+    )
     a = ap.parse_args()
-    main(a.mode, a.base, a.strat)
+    main(a.mode, a.base, a.strat, a.revision)

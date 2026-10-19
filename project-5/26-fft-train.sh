@@ -39,7 +39,7 @@ p5_log "log: $TRAIN_LOG"
 # 분산(WORLD=2)은 양쪽이 다 돌아야 해서 락 없음.
 [ "$WORLD" = "1" ] && p5_lock "$OUT" nowait
 (set -x; "${LAUNCH[@]}" "$P5_ROOT/train-entry.py" \
-  --model "$BASE_MODEL" --train "$P5_DATASETS/synthetic-$MODE.jsonl" \
+  --model "$BASE_MODEL" --revision "$BASE_REVISION" --train "$P5_DATASETS/synthetic-$MODE.jsonl" \
   --out "$OUT" --epochs "$EPOCHS" --mode "$MODE" \
   --strategy "$STRAT" --accum "$ACCUM" --expect-world "$WORLD" \
   --max_rows "$GSM_ROWS" --report_to "${REPORT_TO:-trackio,wandb}") 2>&1 | sed -u "s/^/[rank${NODE_RANK:-0}]: /" | tee -a "$TRAIN_LOG"
