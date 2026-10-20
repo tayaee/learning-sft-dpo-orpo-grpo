@@ -44,153 +44,197 @@
 | spark1 | spark2 |
 |---|---|
 | # A는 spark1 단독 (아래 전부 spark1) | # spark2: 실행 없음 |
+| # 0. 원샷 (권장) | |
+| `./run-mini-single.sh` | |
+| # 아래는 단계별 수동 실행 (원샷과 동등) | |
 | # 1. 베이스라인 FFT | |
 | `./14-baseline-train.sh mini single` | |
+| `./16-compare-strategies.sh mini` | |
 | # 2a. 후보 선별 | |
-| `uv run 18-select-candidates.py --mode mini` | |
+| `./18-select-candidates.sh mini` | |
 | # 2b. 프롬프트 생성 | |
-| `uv run 20-build-prompts.py --mode mini` | |
+| `./20-build-prompts.sh mini` | |
 | # 2b. 합성 생성 | |
-| `./22-generate.sh mini` | |
+| `./22-teacher-to-generate-syn-data.sh mini` | |
 | # 2c. 후처리 | |
-| `uv run 24-postprocess.py --mode mini` | |
+| `./24-postprocess.sh mini` | |
 | # 3. 합성 FFT | |
 | `./26-fft-train.sh mini single` | |
 | # 3. QLoRA | |
 | `./28-qlora-train.sh mini single` | |
-| # 4. AWQ | |
-| `uv run 40-quant-awq.py --mode mini` | |
-| # 4. FP8 | |
-| `uv run 41-quant-fp8.py --mode mini` | |
-| # 4. GGUF 5종 | |
-| `./42-quant-gguf.sh mini` | |
-| # 4. GPTQ | |
-| `uv run 43-quant-gptq.py --mode mini` | |
-| # 5. LoRA 병합 | |
-| `uv run 50-merge-lora.py --mode mini` | |
-| # 5. 평가 | |
-| `./51-eval.sh mini` | |
-| # 5. 채점 | |
-| `uv run 52-score.py --mode mini` | |
-| # 6. 업로드 (선택) | |
-| `./53-upload-hf.sh mini` | |
-| # 6. 서빙 (선택, 별도 터미널 유지) | |
+| # 3. LoRA 병합 (양자화 전에 먼저) | |
+| `./30-merge-lora.sh mini` | |
+| # 4. PTQ-FFT: AWQ / FP8 / GPTQ | |
+| `./32-quant-fft-awq.sh mini` | |
+| `./34-quant-fft-fp8.sh mini` | |
+| `./38-quant-fft-gptq.sh mini` | |
+| # 4. PTQ-FFT: GGUF 5종 | |
+| `./36-quant-fft-gguf.sh mini` | |
+| # 5. PTQ-QLoRA: AWQ / FP8 / GPTQ (입력=merged) | |
+| `./40-quant-qlora-awq.sh mini` | |
+| `./42-quant-qlora-fp8.sh mini` | |
+| `./46-quant-qlora-gptq.sh mini` | |
+| # 5. PTQ-QLoRA: GGUF 5종 | |
+| `./44-quant-qlora-gguf.sh mini` | |
+| # 6. PPL 게이트 | |
+| `./48-measure-ppl.sh mini` | |
+| # 7. 평가 (HF 9종) | |
+| `./50-eval.sh mini` | |
+| # 7. 평가 (GGUF 10종, 빌드 필요) | |
+| `./52-eval-gguf.sh mini` | |
+| # 7. 채점 + 리포트 | |
+| `./54-score.sh mini` | |
+| `./56-report.sh mini` | |
+| # 8. 업로드 (선택) | |
+| `./58-upload-hf.sh mini` | |
+| # 8. 서빙 (선택, 별도 터미널 유지) | |
 | `./60-serve-vllm.sh mini fft` | |
-| # 6. 추론 예제 (선택, 서빙 기동 후 다른 터미널) | |
-| `uv run 61-infer-examples.py --model tayaee/p5-1B-math-fft-mini` | |
+| # 8. GGUF 서빙 (선택, llama-server) | |
+| `./61-serve-gguf.sh mini fft-gguf` | |
+| # 8. 추론 예제 (선택, 서빙 기동 후 다른 터미널) | |
+| `./62-infer-examples.sh tayaee/Llama-3.2-1B-math-fft-mini 3` | |
+| # 8. 전 모델 순회 (선택, 단일 터미널) | |
+| `./64-serve-infer-all.sh 3` | |
 
 ## B. full-single — 실전 1노드, spark1만 (~10시간 내외, 추정)
 
 | spark1 | spark2 |
 |---|---|
 | # B는 spark1 단독 (아래 전부 spark1) | # spark2: 실행 없음 |
+| # 0. 원샷 (권장, 밤샘) | |
+| `./run-full-single.sh` | |
+| # 아래는 단계별 수동 실행 (원샷과 동등) | |
 | # 1. 베이스라인 FFT | |
 | `./14-baseline-train.sh full single` | |
+| `./16-compare-strategies.sh full` | |
 | # 2a. 후보 선별 | |
-| `uv run 18-select-candidates.py --mode full` | |
+| `./18-select-candidates.sh full` | |
 | # 2b. 프롬프트 생성 | |
-| `uv run 20-build-prompts.py --mode full` | |
+| `./20-build-prompts.sh full` | |
 | # 2b. 합성 생성 (가장 오래 걸림, 밤에 권장) | |
-| `./22-generate.sh full` | |
+| `./22-teacher-to-generate-syn-data.sh full` | |
 | # (10k ≈ 5~6시간: mini 실측 200개/8.3분 기준 외삽) | |
 | # 2c. 후처리 | |
-| `uv run 24-postprocess.py --mode full` | |
+| `./24-postprocess.sh full` | |
 | # 3. 합성 FFT | |
 | `./26-fft-train.sh full single` | |
 | # 3. QLoRA | |
 | `./28-qlora-train.sh full single` | |
-| # 4. AWQ | |
-| `uv run 40-quant-awq.py --mode full` | |
-| # 4. FP8 | |
-| `uv run 41-quant-fp8.py --mode full` | |
-| # 4. GGUF 5종 | |
-| `./42-quant-gguf.sh full` | |
-| # 4. GPTQ | |
-| `uv run 43-quant-gptq.py --mode full` | |
-| # 5. LoRA 병합 | |
-| `uv run 50-merge-lora.py --mode full` | |
-| # 5. 평가 | |
-| `./51-eval.sh full` | |
-| # 5. 채점 | |
-| `uv run 52-score.py --mode full` | |
-| # 6. 업로드 (선택) | |
-| `./53-upload-hf.sh full` | |
-| # 6. 서빙 (선택, 별도 터미널 유지) | |
+| # 3. LoRA 병합 (양자화 전에 먼저) | |
+| `./30-merge-lora.sh full` | |
+| # 4. PTQ-FFT: AWQ / FP8 / GPTQ / GGUF 5종 | |
+| `./32-quant-fft-awq.sh full` | |
+| `./34-quant-fft-fp8.sh full` | |
+| `./38-quant-fft-gptq.sh full` | |
+| `./36-quant-fft-gguf.sh full` | |
+| # 5. PTQ-QLoRA: AWQ / FP8 / GPTQ / GGUF 5종 | |
+| `./40-quant-qlora-awq.sh full` | |
+| `./42-quant-qlora-fp8.sh full` | |
+| `./46-quant-qlora-gptq.sh full` | |
+| `./44-quant-qlora-gguf.sh full` | |
+| # 6. PPL 게이트 | |
+| `./48-measure-ppl.sh full` | |
+| # 7. 평가 + 채점 + 리포트 | |
+| `./50-eval.sh full` | |
+| `./52-eval-gguf.sh full` | |
+| `./54-score.sh full` | |
+| `./56-report.sh full` | |
+| # 8. 업로드 (선택) | |
+| `./58-upload-hf.sh full` | |
+| # 8. 서빙 (선택, 별도 터미널 유지) | |
 | `./60-serve-vllm.sh full fft` | |
-| # 6. 추론 예제 (선택, 서빙 기동 후 다른 터미널) | |
-| `uv run 61-infer-examples.py --model tayaee/p5-1B-math-fft-full` | |
+| # 8. 추론 예제 (선택, 서빙 기동 후 다른 터미널) | |
+| `./62-infer-examples.sh tayaee/Llama-3.2-1B-math-fft 3` | |
 
 ## C. full-ddp — 2노드 DDP, spark1 master + spark2 slave
 
 | spark1 | spark2 |
 |---|---|
+| # 0. 원샷 (권장) | |
+| `./run-full-ddp.sh` | `./run-full-ddp.sh` |
+| # 아래는 단계별 수동 실행 (원샷과 동등) | |
 | # 1. 베이스라인 DDP (rank 0 먼저 기동) | # 1. 베이스라인 DDP (rank 0 기동 후 실행) |
 | `INFRA=dgx-spark-2x ./14-baseline-train.sh full ddp` | `INFRA=dgx-spark-2x ./14-baseline-train.sh full ddp` |
+| # 1. 전략 비교 (spark1 단독) | # spark2: 대기 |
+| `./16-compare-strategies.sh full` | |
 | # 2a. 후보 선별 (spark1 단독) | # spark2: 대기 |
-| `uv run 18-select-candidates.py --mode full` | |
+| `./18-select-candidates.sh full` | |
 | # 2b. 프롬프트 생성 (spark1 단독) | # spark2: 대기 |
-| `uv run 20-build-prompts.py --mode full` | |
+| `./20-build-prompts.sh full` | |
 | # 2b. 합성 생성 (spark1 단독, INFRA 없이 1x 기본) | # spark2: 대기 |
-| `./22-generate.sh full` | |
+| `./22-teacher-to-generate-syn-data.sh full` | |
 | # 2c. 후처리 (spark1 단독) | # spark2: 대기 |
-| `uv run 24-postprocess.py --mode full` | |
+| `./24-postprocess.sh full` | |
 | # 3. 합성 FFT DDP (rank 0 먼저 기동) | # 3. 합성 FFT DDP (rank 0 기동 후 실행) |
 | `INFRA=dgx-spark-2x ./26-fft-train.sh full ddp` | `INFRA=dgx-spark-2x ./26-fft-train.sh full ddp` |
 | # 3. QLoRA DDP (rank 0 먼저 기동) | # 3. QLoRA DDP (rank 0 기동 후 실행) |
 | `INFRA=dgx-spark-2x ./28-qlora-train.sh full ddp` | `INFRA=dgx-spark-2x ./28-qlora-train.sh full ddp` |
-| # 4. AWQ (spark1 단독) | # spark2: 대기 |
-| `uv run 40-quant-awq.py --mode full` | |
-| # 4. FP8 (spark1 단독) | # spark2: 대기 |
-| `uv run 41-quant-fp8.py --mode full` | |
-| # 4. GGUF 5종 (spark1 단독) | # spark2: 대기 |
-| `./42-quant-gguf.sh full` | |
-| # 4. GPTQ (spark1 단독) | # spark2: 대기 |
-| `uv run 43-quant-gptq.py --mode full` | |
-| # 5. LoRA 병합 (spark1 단독) | # spark2: 대기 |
-| `uv run 50-merge-lora.py --mode full` | |
-| # 5. 평가 (spark1 단독) | # spark2: 대기 |
-| `./51-eval.sh full` | |
-| # 5. 채점 (spark1 단독) | # spark2: 대기 |
-| `uv run 52-score.py --mode full` | |
-| # 6. 업로드 (spark1 단독, 선택) | # spark2: 대기 |
-| `./53-upload-hf.sh full` | |
-| # 6. 서빙 (spark1 단독, 선택, 별도 터미널 유지) | # spark2: 대기 |
-| `./60-serve-vllm.sh full fft` | |
-| # 6. 추론 예제 (spark1 단독, 선택, 서빙 기동 후 다른 터미널) | # spark2: 대기 |
-| `uv run 61-infer-examples.py --model tayaee/p5-1B-math-fft-full` | |
+| # 3. LoRA 병합 (spark1 단독, 양자화 전에 먼저) | # spark2: 대기 |
+| `STRAT=ddp ./30-merge-lora.sh full` | |
+| # 4. PTQ-FFT (spark1 단독) | # spark2: 대기 |
+| `STRAT=ddp ./32-quant-fft-awq.sh full` | |
+| `STRAT=ddp ./34-quant-fft-fp8.sh full` | |
+| `STRAT=ddp ./38-quant-fft-gptq.sh full` | |
+| `STRAT=ddp ./36-quant-fft-gguf.sh full` | |
+| # 5. PTQ-QLoRA (spark1 단독) | # spark2: 대기 |
+| `STRAT=ddp ./40-quant-qlora-awq.sh full` | |
+| `STRAT=ddp ./42-quant-qlora-fp8.sh full` | |
+| `STRAT=ddp ./46-quant-qlora-gptq.sh full` | |
+| `STRAT=ddp ./44-quant-qlora-gguf.sh full` | |
+| # 6. PPL 게이트 (spark1 단독) | # spark2: 대기 |
+| `STRAT=ddp ./48-measure-ppl.sh full` | |
+| # 7. 평가+채점+리포트 (spark1 단독) | # spark2: 대기 |
+| `STRAT=ddp ./50-eval.sh full` | |
+| `STRAT=ddp ./52-eval-gguf.sh full` | |
+| `STRAT=ddp ./54-score.sh full` | |
+| `STRAT=ddp ./56-report.sh full` | |
+| # 8. 업로드 (spark1 단독, 선택) | # spark2: 대기 |
+| `STRAT=ddp ./58-upload-hf.sh full` | |
+| # 8. 서빙 (spark1 단독, 선택, 별도 터미널 유지) | # spark2: 대기 |
+| `STRAT=ddp ./60-serve-vllm.sh full fft` | |
+| # 8. 추론 예제 (spark1 단독, 선택, 서빙 기동 후 다른 터미널) | # spark2: 대기 |
+| `./62-infer-examples.sh tayaee/Llama-3.2-1B-math-fft-ddp 3` | |
 
 ## D. full-fsdp — 2노드 FSDP, spark1 master + spark2 slave
 
 | spark1 | spark2 |
 |---|---|
+| # 0. 원샷 (권장) | |
+| `./run-full-fsdp.sh` | `./run-full-fsdp.sh` |
+| # 아래는 단계별 수동 실행 (원샷과 동등) | |
 | # 1. 베이스라인 FSDP (rank 0 먼저 기동) | # 1. 베이스라인 FSDP (rank 0 기동 후 실행) |
 | `INFRA=dgx-spark-2x ./14-baseline-train.sh full fsdp` | `INFRA=dgx-spark-2x ./14-baseline-train.sh full fsdp` |
 | # 2a. 후보 선별 (spark1 단독) | # spark2: 대기 |
-| `uv run 18-select-candidates.py --mode full` | |
+| `./18-select-candidates.sh full` | |
 | # 2b. 프롬프트 생성 (spark1 단독) | # spark2: 대기 |
-| `uv run 20-build-prompts.py --mode full` | |
+| `./20-build-prompts.sh full` | |
 | # 2b. 합성 생성 (spark1 단독, INFRA 없이 1x 기본) | # spark2: 대기 |
-| `./22-generate.sh full` | |
+| `./22-teacher-to-generate-syn-data.sh full` | |
 | # 2c. 후처리 (spark1 단독) | # spark2: 대기 |
-| `uv run 24-postprocess.py --mode full` | |
+| `./24-postprocess.sh full` | |
 | # 3. 합성 FFT FSDP (rank 0 먼저 기동) | # 3. 합성 FFT FSDP (rank 0 기동 후 실행) |
 | `INFRA=dgx-spark-2x ./26-fft-train.sh full fsdp` | `INFRA=dgx-spark-2x ./26-fft-train.sh full fsdp` |
-| # 3. QLoRA FSDP (rank 0 먼저 기동, 학습용 — 강의는 비권장) | # 3. QLoRA FSDP (rank 0 기동 후 실행, 학습용) |
+| # 3. QLoRA FSDP (rank 0 먼저 기동, 학습용) | # 3. QLoRA FSDP (rank 0 기동 후 실행, 학습용) |
 | `INFRA=dgx-spark-2x ./28-qlora-train.sh full fsdp` | `INFRA=dgx-spark-2x ./28-qlora-train.sh full fsdp` |
-| # 4. AWQ (spark1 단독) | # spark2: 대기 |
-| `uv run 40-quant-awq.py --mode full` | |
-| # 4. FP8 (spark1 단독) | # spark2: 대기 |
-| `uv run 41-quant-fp8.py --mode full` | |
-| # 4. GGUF 5종 (spark1 단독) | # spark2: 대기 |
-| `./42-quant-gguf.sh full` | |
-| # 4. GPTQ (spark1 단독) | # spark2: 대기 |
-| `uv run 43-quant-gptq.py --mode full` | |
-| # 5. LoRA 병합 (spark1 단독) | # spark2: 대기 |
-| `uv run 50-merge-lora.py --mode full` | |
-| # 5. 평가 (spark1 단독) | # spark2: 대기 |
-| `./51-eval.sh full` | |
-| # 5. 채점 (spark1 단독) | # spark2: 대기 |
-| `uv run 52-score.py --mode full` | |
+| # 3. LoRA 병합 (spark1 단독, 양자화 전에 먼저) | # spark2: 대기 |
+| `STRAT=fsdp ./30-merge-lora.sh full` | |
+| # 4. PTQ-FFT (spark1 단독) | # spark2: 대기 |
+| `STRAT=fsdp ./32-quant-fft-awq.sh full` | |
+| `STRAT=fsdp ./34-quant-fft-fp8.sh full` | |
+| `STRAT=fsdp ./38-quant-fft-gptq.sh full` | |
+| `STRAT=fsdp ./36-quant-fft-gguf.sh full` | |
+| # 5. PTQ-QLoRA (spark1 단독) | # spark2: 대기 |
+| `STRAT=fsdp ./40-quant-qlora-awq.sh full` | |
+| `STRAT=fsdp ./42-quant-qlora-fp8.sh full` | |
+| `STRAT=fsdp ./46-quant-qlora-gptq.sh full` | |
+| `STRAT=fsdp ./44-quant-qlora-gguf.sh full` | |
+| # 6. PPL 게이트 (spark1 단독) | # spark2: 대기 |
+| `STRAT=fsdp ./48-measure-ppl.sh full` | |
+| # 7. 평가+채점+리포트 (spark1 단독) | # spark2: 대기 |
+| `STRAT=fsdp ./50-eval.sh full` | |
+| `STRAT=fsdp ./52-eval-gguf.sh full` | |
+| `STRAT=fsdp ./54-score.sh full` | |
+| `STRAT=fsdp ./56-report.sh full` | |
 | # 참고. 1x 단독 FSDP 동작 학습 (spark1만) | # spark2: 실행 없음 |
 | `./14-baseline-train.sh mini fsdp` | |
 
@@ -204,9 +248,9 @@
 
 - 3전략은 effective batch 64·seed 동일 조건에서도 bit-identical이 아닐 수 있다
   (allreduce vs reduce-scatter 합산 순서, dataloader 샤딩 차이).
-- 하류(Stage 4~6) 입력은 항상 `-single` 산출물을 쓴다.
+- 하류(Stage 4~7) 입력은 항상 `-single` 산출물을 쓴다.
 - `INFRA=`는 명령 앞에 붙이는 방식이다. 셸 전체에 export했다면 추론계
-  (22/51/60) 실행 시 `TP=1`을 앞에 붙인다.
+  (22/50/52/60/61) 실행 시 `TP=1`을 앞에 붙인다.
 - `meta-llama/Llama-3.2-1B`는 gated 403이 나면 tayaee 계정으로 라이선스 승인 후
   사용한다. smoke는 `BASE_MODEL=unsloth/Llama-3.2-1B` 미러로 돌렸다
   (teacher `meta-llama/Llama-3.1-8B-Instruct`는 토큰으로 바로 접근됨).

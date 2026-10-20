@@ -27,11 +27,11 @@
 | 2b. 프롬프트+생성 | `20-build-prompts.py`, `22-teacher-to-generate-syn-data.sh/py` | 후보 → `template.txt` 프롬프트 10k → Llama-3.1-8B-Instruct(vLLM) → `generated-<mode>.csv` (+invalid 재생성 루프) |
 | 2c. 후처리 | `24-postprocess.py` | 생성 CSV → Q/A split, 패턴 제거 → `synthetic-<mode>.jsonl` (`source`/`target` 리스트형) |
 | 3. 합성 SFT+merge | `26-fft-train.sh` / `28-qlora-train.sh` / `30-merge-lora.py` | `synthetic-<mode>.jsonl` → `synthetic-fft-…/` (FFT) + `synthetic-qlora-…/` (어댑터) → `synthetic-qlora-…-merged/` (bf16 풀모델) |
-| 4. PTQ(FFT) | `36-quant-fft-gguf.sh`, `40/41/43-quant-fft-*.py` | FFT **single** 결과 → AWQ-4bit / **FP8(w8a8)** / GGUF 5종 / GPTQ-4bit-g128 |
-| 5. PTQ(QLoRA) | `44-quant-qlora-gguf.sh`, `50/51/53-quant-qlora-*.py` | QLoRA-merged 결과 → 동일 5종 (`...-merged-awq/fp8/gguf-5종/gptq`). 양자화 총 HF 6종 + GGUF 10종 |
+| 4. PTQ(FFT) | `32-quant-fft-awq.sh`, `34-quant-fft-fp8.sh`, `36-quant-fft-gguf.sh`, `38-quant-fft-gptq.py` | FFT **single** 결과 → AWQ-4bit / **FP8(w8a8)** / GGUF 5종 / GPTQ-4bit-g128 (HF 3종 + GGUF 5종) |
+| 5. PTQ(QLoRA) | `40-quant-qlora-awq.sh`, `42-quant-qlora-fp8.sh`, `44-quant-qlora-gguf.sh`, `46-quant-qlora-gptq.py` | QLoRA-merged 결과 → 동일 4종 (`...-merged-awq/fp8/gguf-5종/gptq`). 양자화 총 HF 6종 + GGUF 10종 |
 | 6. PPL 게이트 | `48-measure-ppl.sh/py` | base + FP 2종 + 양자화 16종 → in-domain PPL + Δ판정 (Δ<0.3 Accept / 0.3~1.0 Conditional / ≥1.0 Discard, GGUF 10종은 llama-perplexity) |
-| 7. 평가 | `50-eval.sh/py`, `54-score.py` | base / fft / qlora / fft-gptq/awq/fp8 / qlora-gptq/awq/fp8 → `eval-<mode>/` → 정답 추출 (`####` / `The answer is` / OpenAI-mini 보조). GGUF 10종은 `52-eval-gguf.sh`(llama-completion) 별도 |
-| 8. 배포 | `58-upload-hf.sh/py`, `60-serve-vllm.sh`, `62-infer-examples.py` | 산출물 → `tayaee/*` 업로드 → vLLM OpenAI-호환 서빙 → 추론 예제 |
+| 7. 평가 | `50-eval.sh/py`, `52-eval-gguf.sh/py`, `54-score.py`, `56-report.sh/py` | base / fft / qlora / fft-gptq/awq/fp8 / qlora-gptq/awq/fp8 (HF 9종) → `eval-<mode>-<strat>/` → 정답 추출 (`####` / `The answer is` / OpenAI-mini 보조). GGUF 10종은 `52-eval-gguf.sh`(llama-completion) 별도, `56-report.sh`로 PPL+score 종합 |
+| 8. 배포 | `58-upload-hf.sh/py`, `60-serve-vllm.sh`, `61-serve-gguf.sh`, `62-infer-examples.py`, `64-serve-infer-all.sh` | 산출물 → `tayaee/*` 업로드 → vLLM/llama-server OpenAI-호환 서빙 → 추론 예제 |
 
 핵심 포인트 (강의에서 강조, 구현에 반영):
 - 로그의 `gram loss/acc`는 커스텀 트레이너 용어 — **CE loss 하락만 볼 것**.
@@ -61,7 +61,7 @@
 3. GSM8K 임베딩과 cosine_similarity → GSM8K당 상위 1000개 중 랜덤 100개 → 약 12k.
 4. HF push는 `tayaee/alpaca_syntheticdatagen_prompt-<mode>`.
 
-### Stage 2b. 프롬프트 생성 + vLLM 합성 (`21`, `22`)
+### Stage 2b. 프롬프트 생성 + vLLM 합성 (`20`, `22`)
 1. 후보에서 2개씩 샘플 → `instruction(+input)` 합쳐 `assets/template.txt`의 `{dg_instruct}/{dg_output}` 포맷 → `prompt` 컬럼 (full 10k).
 2. teacher `meta-llama/Llama-3.1-8B-Instruct` + `apply_chat_template` →
    `SamplingParams(temp 0.5, top_p 0.8, top_k 5, rep_penalty 1.05, max 2048)`.
@@ -77,7 +77,7 @@ Q/A 마커 기준 split + 케이스별 예외 + 잔여 패턴 제거 + `rstrip` 
 - QLoRA (`28-qlora-train.sh`): 4bit nf4 double_quant, LoRA r16/a32/d0.05,
   target `q/k/v/o/gate/down/up` (+`embed/lm_head`는 modules_to_save).
   FSDP+QLoRA 조합은 강의대로 비권장 (fsdp 전략은 학습용으로만 수행).
-- merge (`30-merge-lora.py`, 31 직후): base bf16 로드 → 특수토큰 동일 추가 →
+- merge (`30-merge-lora.sh`, 28 직후): base bf16 로드 → 특수토큰 동일 추가 →
   `resize_token_embeddings` → `merge_and_unload()` → `*-single-merged/` (bf16 풀모델).
   resize 생략시 size-mismatch. merged가 Stage 5 PTQ와 Stage 7 평가의 입력.
 
@@ -91,7 +91,7 @@ Q/A 마커 기준 split + 케이스별 예외 + 잔여 패턴 제거 + `rstrip` 
 4. **GPTQ** (`38-quant-fft-gptq.py`, `gptqmodel`): 4bit-g128, damp 0.1 + synthetic 캘리브 토크나이즈 →
    `save_quantized` + tokenizer 동봉.
 
-### Stage 5. PTQ-QLoRA (입력: `32` merged 결과)
+### Stage 5. PTQ-QLoRA (입력: `30` merged 결과)
 - `40-quant-qlora-awq.py` / `42-quant-qlora-fp8.py` / `44-quant-qlora-gguf.sh` / `46-quant-qlora-gptq.py`:
   Stage 4와 동일 플로우, 입력만 `synthetic-qlora-<mode>-single-merged` →
   출력 `...-merged-awq/fp8/gguf-5종/gptq`. HF 6종 + GGUF 10종과 합쳐 양자화 총 16종.
@@ -106,21 +106,22 @@ Q/A 마커 기준 split + 케이스별 예외 + 잔여 패턴 제거 + `rstrip` 
    (미빌드 시 해당 타깃만 SKIP, 부모와 엔진 상이 note). 결과 `outputs/ppl-<mode>/` (summary.json + 타깃별).
 
 ### Stage 7. Inference·평가
-1. vLLM greedy (`71`): `SamplingParams(temp 0, max 512)`, `prompt_no_input` 포맷.
+1. vLLM greedy (`50`): `SamplingParams(temp 0, max 512)`, `prompt_no_input` 포맷.
    타깃: base / fft / qlora(-merged) / fft-gptq/awq/fp8 / qlora-gptq/awq/fp8 (HF 9종).
    양자화 타깃은 quant flag 부여. GGUF 10종은 vLLM 미지원이라 `52-eval-gguf.sh`(llama-completion)로 별도 평가.
-2. 채점 (`72`): `#### <숫자>` 추출, invalid율/acc/BLEU. base처럼 `The answer is`를 안 뱉는
+2. 채점 (`54`): `#### <숫자>` 추출, invalid율/acc/BLEU. base처럼 `The answer is`를 안 뱉는
    모델은 CSV 덤프 후 OpenAI `gpt-4o-mini`로 답만 재추출 (강의 방식, 선택).
 
 ## Stage 8. 업로드·서빙·추론 예제
-1. 업로드 (`73`): `TARGETS` 매핑(fft/qlora/fft-gptq/awq/fp8/gguf + qlora-gptq/awq/fp8/gguf)대로
+1. 업로드 (`58`): `TARGETS` 매핑(fft/qlora/fft-gptq/awq/fp8/gguf + qlora-gptq/awq/fp8/gguf)대로
    `tayaee/<base>-math-<target>-<mode>` 생성+업로드. 로컬 산출물 없으면 SKIP.
-2. 서빙 (`80`): `vllm serve <model> --served-model-name <repo> --tensor-parallel-size $TP`
+2. 서빙 (`60`): `vllm serve <model> --served-model-name <repo> --tensor-parallel-size $TP`
    + 타깃별 `--quantization` (gptq/awq/fp8/gguf), `--max-model-len 2048`,
    `--gpu-memory-utilization 0.9` (env `GPU_UTIL`로 조정). `SOURCE=hf`면 Hub repo 직접 서빙.
-3. 추론 예제 (`81`): gsm8k-test 앞 N개 + 한국어 1문제를 학습과 동일 `prompt_no_input`
+   GGUF는 `61-serve-gguf.sh` (llama-server, vLLM 미지원).
+3. 추론 예제 (`62`): gsm8k-test 앞 N개 + 한국어 1문제를 학습과 동일 `prompt_no_input`
    포맷으로 completions API 요청 (`temperature 0`, chat template이 없어 chat API는 400).
-   서버는 별도 터미널에서 실행.
+   서버는 별도 터미널에서 실행. `64-serve-infer-all.sh`로 전 모델 순회도 가능.
 
 ## 2. 버전표 (2024 강의 → 본 repo)
 
@@ -146,23 +147,24 @@ Q/A 마커 기준 split + 케이스별 예외 + 잔여 패턴 제거 + `rstrip` 
 | Stage | 스크립트 | mini 시간 | 구분 | 비고 |
 |---|---|---|---|---|
 | 0 | `10-setup.sh` | ~10분 | 추정 | 초회 패키지 다운로드 포함. 2회目以降 수십초 |
-| 1 | `10-baseline` | ~3.5분 | 실측 | 256행·4스텝. 전량 7473행 시 20.4분 실측(train_runtime 1224s) |
-| 2a | `20-select` | 15초 | 실측 | 임베딩 캐시 적중 시. 첫 실행은 52k 인코딩 수 분 추가 |
-| 2b | `21-build` | 1초 | 실측 | 200프롬프트 포맷 |
+| 1 | `14-baseline` | ~3.5분 | 실측 | 256행·4스텝. 전량 7473행 시 20.4분 실측(train_runtime 1224s) |
+| 2a | `18-select` | 15초 | 실측 | 임베딩 캐시 적중 시. 첫 실행은 52k 인코딩 수 분 추가 |
+| 2b | `20-build` | 1초 | 실측 | 200프롬프트 포맷 |
 | 2b | `22-teacher-generate` | ~3분 | 추정 | 64프롬프트. 200개 시 8.3분 실측(500s, 재생성 3회). 8B teacher 상주 후 기준, 첫 다운로드는 15GB 별도(~25분) |
 | 2c | `24-postprocess` | ~10초 | 추정 | 188 kept / 12 dropped |
-| 3 | `30-fft` | 2.2분 | 실측 | train_runtime 133.5s, 3스텝, loss 1.50 |
-| 3 | `31-qlora` | 2.3분 | 실측 | train_runtime 139.1s, 3스텝, loss 1.62 |
-| 3 | `32-merge` | ~3분 | 추정 | 1B 로드 + 병합 + 저장 (구 `50-merge`) |
-| 4 | `40-fft-awq` | ~6분 | 추정 | oneshot smoothing + 112모듈 compress + 저장 |
-| 4 | `41-fft-fp8` | ~5분 | 추정 | 40과 동형 |
-| 4 | `42-fft-gguf` | ~2분 | 실측 | f16 기변환 시 quantize 타입당 ~10초 ×5 (convert 별도). llama.cpp CPU 빌드 별도 ~10분(1회) |
-| 4 | `43-fft-gptq` | ~4분 | 추정 | 1B 로드 + 4캘리브 + 저장 |
-| 5 | `50~53-qlora-*` | ~17분 | 추정 | Stage 4와 동형 ×4 (merged 입력, AWQ 6분+FP8 5분+GGUF 2분+GPTQ 4분) |
-| 6 | `60-ppl` | ~8분 | 추정 | 19타깃 × 32텍스트 (GGUF 10종은 llama-perplexity) |
+| 3 | `26-fft` | 2.2분 | 실측 | train_runtime 133.5s, 3스텝, loss 1.50 |
+| 3 | `28-qlora` | 2.3분 | 실측 | train_runtime 139.1s, 3스텝, loss 1.62 |
+| 3 | `30-merge` | ~3분 | 추정 | 1B 로드 + 병합 + 저장 |
+| 4 | `32-fft-awq` | ~6분 | 추정 | oneshot smoothing + 112모듈 compress + 저장 |
+| 4 | `34-fft-fp8` | ~5분 | 추정 | 32와 동형 |
+| 4 | `36-fft-gguf` | ~2분 | 실측 | f16 기변환 시 quantize 타입당 ~10초 ×5 (convert 별도). llama.cpp CPU 빌드 별도 ~10분(1회) |
+| 4 | `38-fft-gptq` | ~4분 | 추정 | 1B 로드 + 4캘리브 + 저장 |
+| 5 | `40/42/44/46-qlora-*` | ~17분 | 추정 | Stage 4와 동형 ×4 (merged 입력, AWQ 6분+FP8 5분+GGUF 2분+GPTQ 4분) |
+| 6 | `48-ppl` | ~8분 | 추정 | 19타깃 × 32텍스트 (GGUF 10종은 llama-perplexity) |
 | 7 | `50-eval` | ~9분 | 추정 | 9타깃×10개 (1타깃 85초 실측, GGUF 제외). 50개 시 ~20분 |
 | 7 | `52-eval-gguf` | ~30분 | 추정 | 10타깃×10개, llama-completion CPU 추론 (빌드 필요, 미빌드 시 SKIP) |
 | 7 | `54-score` | ~5초 | 추정 | 19타깃 acc/invalid 표 (3스텝 undertraining이면 acc 0.000, §1 Stage 7 참조) |
-| 8 | `74-upload` | ~10분 | 추정 | ~14GB→약 25GB(8종) 업로드, 회선依存 |
-| 8 | `80-serve` | ~3분 | 실측 | 기동~`/v1/models` UP (1B 모델 상주 후) |
-| 8 | `81-infer` | ~30초 | 추정 | 3문항 completions 왕복 |
+| 7 | `56-report` | ~5초 | 추정 | PPL+score 종합 리포트 |
+| 8 | `58-upload` | ~10분 | 추정 | ~14GB→약 25GB(8종) 업로드, 회선依存 |
+| 8 | `60-serve` | ~3분 | 실측 | 기동~`/v1/models` UP (1B 모델 상주 후) |
+| 8 | `62-infer` | ~30초 | 추정 | 3문항 completions 왕복 |
