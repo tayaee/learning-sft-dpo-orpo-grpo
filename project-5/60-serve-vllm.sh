@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # 60-serve-vllm.sh [mini|full] [target] (STRAT env, 기본 single) — Stage 8b. vLLM OpenAI-호환 서빙.
 # 인자 없이 실행하면 복사-붙여넣기용 실행 명령 20줄을 PPL 실측순으로 보여준다.
-# target: fft|fft-fp8|fft-awq|fft-gptq|fft-gguf|qlora|qlora-fp8|qlora-awq|qlora-gptq|qlora-gguf (기본 fft, 품질순).
+# target: fft|fft-fp8|fft-awq|fft-gptq|qlora|qlora-fp8|qlora-awq|qlora-gptq (기본 fft, 품질순).
+# (GGUF는 61-serve-gguf.sh llama-server 사용 — vLLM GGUF 미지원.)
 # SOURCE=local|hf (기본 local; hf면 tayaee/* repo로 서빙). PORT 기본 8000.
 # 예: ./60-serve-vllm.sh                       # 실행 명령 목록만 출력 (서빙 안 함)
 #     ./60-serve-vllm.sh mini fft
 #     SOURCE=hf ./60-serve-vllm.sh mini fft-gptq
-#     QTYPE=q4_k_m ./60-serve-vllm.sh mini fft-gguf  # GGUF 변종 선택 (기본 q8_0)
+#     QTYPE=q4_k_m ./61-serve-gguf.sh mini fft-gguf  # GGUF 변종 선택 (기본 q8_0)
 #     62-infer-examples.py --model tayaee/Llama-3.2-1B-math-fft-gptq-mini (별도 터미널)
 set -euo pipefail
 if [ $# -eq 0 ]; then
@@ -35,7 +36,7 @@ if [ $# -eq 0 ]; then
     esac
     printf '%-34s # ppl %s | %s\n' "./60-serve-vllm.sh $m $t" "$ppl" "$P5_MODELS/$SUF"
   done
-  echo "# gguf (llama.cpp, q8_0 서빙분 PPL)"
+  echo "# gguf → 61-serve-gguf.sh llama-server (llama.cpp, q8_0 서빙분 PPL)"
   for spec in \
     "full fft-gguf 2.780" "full qlora-gguf 2.747" \
     "mini fft-gguf 2.720" "mini qlora-gguf 2.720"; do
@@ -44,7 +45,7 @@ if [ $# -eq 0 ]; then
       fft-gguf)   SUF="synthetic-fft-$m-$STRAT-gguf/model-${QTYPE:-q8_0}.gguf" ;;
       qlora-gguf) SUF="synthetic-qlora-$m-$STRAT-merged-gguf/model-${QTYPE:-q8_0}.gguf" ;;
     esac
-    printf '%-34s # ppl %s | %s\n' "./60-serve-vllm.sh $m $t" "$ppl" "$P5_MODELS/$SUF"
+    printf '%-34s # ppl %s | %s\n' "./61-serve-gguf.sh $m $t" "$ppl" "$P5_MODELS/$SUF"
   done
   exit 0
 fi

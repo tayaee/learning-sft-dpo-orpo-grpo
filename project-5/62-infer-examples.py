@@ -1,10 +1,10 @@
 """62-infer-examples.py — Stage 8c. 서빙 중인 모델에 추론 예제 요청.
-60-serve-vllm.sh가 띄운 OpenAI-호환 엔드포인트로 질의한다.
+60-serve-vllm.sh / 61-serve-gguf.sh(llama-server)가 띄운 OpenAI-호환 엔드포인트로 질의한다.
 예제는 벤더링된 gsm8k-test.jsonl 앞 N개 + 한국어 수학 1문제로,
 학습/평가와 동일한 prompt_no_input 포맷을 **completions** API로 보낸다
 (서빙 토크나이저에 chat template이 없어 chat API는 400).
 
-  # 터미널1: ./60-serve-vllm.sh mini fft (또는 full fft)
+  # 터미널1: ./60-serve-vllm.sh mini fft (또는 full fft; GGUF는 ./61-serve-gguf.sh mini fft-gguf)
   # 터미널2:
   ./62-infer-examples.sh 3                                # 권장: 서빙 중 첫 모델 자동 사용
   ./62-infer-examples.sh tayaee/Llama-3.2-1B-math-fft-mini 3
