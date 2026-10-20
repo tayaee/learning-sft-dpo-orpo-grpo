@@ -23,8 +23,8 @@
 | spark1 | spark2 |
 |---|---|
 | # 0-1. repo 클론 (양 노드 동일) | # 0-1. repo 클론 (양 노드 동일) |
-| `git clone <repo-url> ~/git/learning-sft-and-rl` | `git clone <repo-url> ~/git/learning-sft-and-rl` |
-| `cd ~/git/learning-sft-and-rl/project-5` | `cd ~/git/learning-sft-and-rl/project-5` |
+| `git clone <repo-url> ~/git/learning-sft-rl-quantization` | `git clone <repo-url> ~/git/learning-sft-rl-quantization` |
+| `cd ~/git/learning-sft-rl-quantization/project-5` | `cd ~/git/learning-sft-rl-quantization/project-5` |
 | # 0-2. 환경 셋업 (양 노드 동일) | # 0-2. 환경 셋업 (양 노드 동일) |
 | `./10-setup.sh` | `./10-setup.sh` |
 | # 0-2b. 직접 `uv run`을 쓸 셸이면 필수 (sync 되돌림 방지) | # 0-2b. 직접 `uv run`을 쓸 셸이면 필수 (sync 되돌림 방지) |

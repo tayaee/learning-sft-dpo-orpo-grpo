@@ -1,4 +1,4 @@
-cd ~/git/learning-sft-and-rl/project-5
+cd ~/git/learning-sft-rl-quantization/project-5
 ./10-setup.sh
 uv run 18-select-candidates.py --mode mini
 uv run 20-build-prompts.py --mode mini

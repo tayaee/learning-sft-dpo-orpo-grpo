@@ -1,4 +1,4 @@
-cd ~/git/learning-sft-and-rl/project-5
+cd ~/git/learning-sft-rl-quantization/project-5
 ./10-setup.sh
 ./14-baseline-train.sh mini single
 uv run 18-select-candidates.py --mode mini

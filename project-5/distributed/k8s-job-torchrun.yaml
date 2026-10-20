@@ -33,4 +33,4 @@ spec:
         - name: shared
           hostPath: { path: /rosenas/data/AIML }  # TODO: 운영은 PVC로 교체
         - name: repo
-          hostPath: { path: /home/user1/git/learning-sft-and-rl }
+          hostPath: { path: ~/git/learning-sft-rl-quantization }

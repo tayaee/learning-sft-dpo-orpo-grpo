@@ -31,7 +31,7 @@
 ## 1. 선호 데이터 생성 (10–30분)
 
 ```bash
-cd /home/user1/git/learning-sft-and-rl
+cd ~/git/learning-sft-rl-quantization
 # 권장: 드라이버 스크립트 사용 (모드별 SFT 모델/경로 자동 선택)
 phase/pref/algorithm/dpo/tool/axolotl/rl-dpo-01-make-rl-dpo-data.sh full     # → data/dpo-full-out/train_rl-dpo.jsonl (+ sample)
 phase/pref/algorithm/dpo/tool/axolotl/rl-dpo-01-make-rl-dpo-data.sh mini    # → data/dpo-mini-out/train_rl-dpo.jsonl (+ sample)
@@ -104,7 +104,7 @@ cat phase/pref/algorithm/dpo/tool/axolotl/config/qwen2.5-1.5b-rl-dpo.yaml | head
 ## 4. DPO 학습 (30–60분)
 
 ```bash
-cd /home/user1/git/learning-sft-and-rl
+cd ~/git/learning-sft-rl-quantization
 
 # 모니터링 (별도 터미널)
 watch -n 5 nvidia-smi
@@ -128,7 +128,7 @@ uv run axolotl train phase/pref/algorithm/dpo/tool/axolotl/config/qwen2.5-1.5b-r
 > merge된 base+LoRA 모델이 있어야 `query_rl_dpo.py`로 추론할 수 있습니다.
 
 ```bash
-cd /home/user1/git/learning-sft-and-rl
+cd ~/git/learning-sft-rl-quantization
 phase/pref/algorithm/dpo/tool/axolotl/rl-dpo-06-merge.sh full
 ```
 

@@ -31,8 +31,8 @@ if [ ${#MISSING_PKGS[@]} -gt 0 ]; then
   uv add "${MISSING_PKGS[@]}"
 fi
 
-KERNEL_DISPLAY_NAME="Python (learning-sft-and-rl)"
-KERNEL_NAME="learning-sft-and-rl"
+KERNEL_DISPLAY_NAME="Python (learning-sft-rl-quantization)"
+KERNEL_NAME="learning-sft-rl-quantization"
 if ! uv run jupyter kernelspec list 2>/dev/null | grep -q "$KERNEL_NAME"; then
   echo "Registering kernel: $KERNEL_NAME"
   uv run ipython kernel install --user --name="$KERNEL_NAME" --display-name="$KERNEL_DISPLAY_NAME" >/dev/null 2>&1 || true

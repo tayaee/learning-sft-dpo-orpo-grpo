@@ -11,7 +11,7 @@
   full=강의 스케일. 모드별 산출물이 덮어쓰지 않게 분리된다.
 - infra 선택: `INFRA=dgx-spark-1x | dgx-spark-2x` (기본 1x).
   `PROFILE=1x | 2x` 약칭도 된다. `infra/<INFRA>/env.sh`를 그대로 쓴다.
-- 이 repo는 spark1·spark2 양쪽에 같은 경로(`~/git/learning-sft-and-rl`)로
+- 이 repo는 spark1·spark2 양쪽에 같은 경로(`~/git/learning-sft-rl-quantization`)로
   clone 하고, `/rosenas/data/AIML/`을 양쪽에서 같이 본다.
 - 공용 산출물: `/rosenas/data/AIML/project-5-shared/{datasets,models,outputs,hf-cache,vllm-cache}`
 - HF 업로드는 `tayaee/*` (원본 `DopeorNope/*` 대체).

@@ -37,7 +37,7 @@ ORPO 는 NLL(SFT 성격)과 선호 손실을 동시에 최적화하므로,
 DPO 데이터가 있으면 재사용(권장), 없으면 먼저 DPO 데이터를 만든다.
 
 ```bash
-cd /home/user1/git/learning-sft-and-rl
+cd ~/git/learning-sft-rl-quantization
 
 # DPO 데이터가 없다면: phase/pref/algorithm/dpo/tool/axolotl/rl-dpo-01-make-rl-dpo-data.sh mini
 phase/pref/algorithm/orpo/tool/axolotl/rl-orpo-01-make-orpo-data.sh mini    # → data/orpo-mini-out/train_rl-orpo.jsonl

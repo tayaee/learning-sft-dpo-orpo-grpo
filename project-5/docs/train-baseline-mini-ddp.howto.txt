@@ -1,7 +1,7 @@
 # spark1
-cd ~/git/learning-sft-and-rl/project-5
+cd ~/git/learning-sft-rl-quantization/project-5
 # spark2
-cd ~/git/learning-sft-and-rl/project-5
+cd ~/git/learning-sft-rl-quantization/project-5
 # spark1
 ./10-setup.sh
 # spark2

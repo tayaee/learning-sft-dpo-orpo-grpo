@@ -127,7 +127,7 @@ cat phase/rl/algorithm/grpo/tool/axolotl/config/qwen2.5-1.5b-rl-grpo.yaml | head
 ## 4. GRPO 학습 (30–60분, use_vllm=false)
 
 ```bash
-cd /home/user1/git/learning-sft-and-rl
+cd ~/git/learning-sft-rl-quantization
 
 # 모니터링 (별도 터미널)
 watch -n 5 nvidia-smi
@@ -174,7 +174,7 @@ uv run axolotl train phase/rl/algorithm/grpo/tool/axolotl/config/qwen2.5-1.5b-rl
 > merge된 base+LoRA 모델이 있어야 `query_rl_grpo.py`로 추론할 수 있습니다.
 
 ```bash
-cd /home/user1/git/learning-sft-and-rl
+cd ~/git/learning-sft-rl-quantization
 phase/rl/algorithm/grpo/tool/axolotl/rl-grpo-06-merge.sh full
 ```
 

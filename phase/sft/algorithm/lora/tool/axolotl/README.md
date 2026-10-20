@@ -9,7 +9,7 @@
 ## 0. 환경 확인 (30초)
 
 ```bash
-cd /home/user1/git/learning-sft-and-rl
+cd ~/git/learning-sft-rl-quantization
 
 # GPU / CUDA
 nvidia-smi -L                                # NVIDIA GB10 (Blackwell)
@@ -77,7 +77,7 @@ cat phase/sft/algorithm/lora/tool/axolotl/config/qwen2.5-1.5b-sft.yaml | head -2
 ## 4. SFT 학습 (50–80분)
 
 ```bash
-cd /home/user1/git/learning-sft-and-rl
+cd ~/git/learning-sft-rl-quantization
 
 # 모니터링 (별도 터미널)
 watch -n 5 nvidia-smi
@@ -109,7 +109,7 @@ tail -f logs/sft.log                  # 다른 터미널에서
 > merge된 base+LoRA 모델이 있어야 `query_sft.py`로 추론할 수 있습니다.
 
 ```bash
-cd /home/user1/git/learning-sft-and-rl
+cd ~/git/learning-sft-rl-quantization
 
 phase/sft/algorithm/lora/tool/axolotl/sft-07-merge.sh
 # 또는:

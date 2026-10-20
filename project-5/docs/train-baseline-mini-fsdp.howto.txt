@@ -1,3 +1,3 @@
-cd ~/git/learning-sft-and-rl/project-5
+cd ~/git/learning-sft-rl-quantization/project-5
 ./10-setup.sh
 ./14-baseline-train.sh mini fsdp
