@@ -18,7 +18,7 @@ if [ $# -eq 0 ]; then
   echo "[STRAT=$STRAT] copy & paste (terminal1, PPL순):"
   echo "# transformers"
   for spec in \
-    "full fft-awq 4.489" "full fft 4.549" "full fft-fp8 4.570" "full fft-gptq 4.604" \
+    "full fft 4.549" "full fft-awq 4.489" "full fft-fp8 4.570" "full fft-gptq 4.604" \
     "full qlora 4.990" "full qlora-gptq 5.045" "full qlora-fp8 5.342" "full qlora-awq 5.840" \
     "mini fft 9.867" "mini fft-fp8 10.035" "mini fft-gptq 10.164" "mini fft-awq 10.635" \
     "mini qlora 9.867" "mini qlora-fp8 10.035" "mini qlora-gptq 10.164" "mini qlora-awq 10.683"; do
