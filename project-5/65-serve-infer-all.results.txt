@@ -1,0 +1,109 @@
+파이프라인 연습
+                                                          Records   Build  InstructScore   CorrectScore
+    logs/62.tayaee__llama-3.2-1b-math-fft.log             9466      1h44m  5   5   5   5   x   o   x   x
+    logs/62.tayaee__llama-3.2-1b-math-fft-awq.log         9466+256  0h3m   5   5   5   0   x   x   x   x
+    logs/62.tayaee__llama-3.2-1b-math-fft-fp8.log         9466+256  0h1m   5   5   4   5   x   x   x   x
+    logs/62.tayaee__llama-3.2-1b-math-fft-gguf.log        9466      0h2m   5   5   5   5   x   o   x   x
+    logs/62.tayaee__llama-3.2-1b-math-fft-gptq.log        9466+256  0h2m   0   5   5   0
+
+    logs/62.tayaee__llama-3.2-1b-math-fft-mini.log        62        0h3m   0   0   0   0
+    logs/62.tayaee__llama-3.2-1b-math-fft-awq-mini.log    62+32     0h1m   0   0   0   0
+    logs/62.tayaee__llama-3.2-1b-math-fft-fp8-mini.log    62+32     0h1m   5   0   3   0
+    logs/62.tayaee__llama-3.2-1b-math-fft-gguf-mini.log   62        0h1m   0   0   0   0
+    logs/62.tayaee__llama-3.2-1b-math-fft-gptq-mini.log   62+32     0h2m   5   0   0   0
+
+    logs/62.tayaee__llama-3.2-1b-math-qlora.log           9466      2h25m  5   5   4   5   x   x   x   x
+    logs/62.tayaee__llama-3.2-1b-math-qlora-awq.log       9466+256  0h3m   0   0   5   0
+    logs/62.tayaee__llama-3.2-1b-math-qlora-fp8.log       9466+256  0h1m   5   5   5   5   x   x   x   x
+    logs/62.tayaee__llama-3.2-1b-math-qlora-gguf.log      9466      0h2m   5   5   5   0   x   x   x   x
+    logs/62.tayaee__llama-3.2-1b-math-qlora-gptq.log      9466+256  0h2m   5   5   5   5   x   x   x   x
+
+    logs/62.tayaee__llama-3.2-1b-math-qlora-mini.log      62        0h5m   0   0   0   0
+    logs/62.tayaee__llama-3.2-1b-math-qlora-awq-mini.log  62+32     0h1m   0   0   0   0
+    logs/62.tayaee__llama-3.2-1b-math-qlora-fp8-mini.log  62+32     0h1m   0   0   0   0
+    logs/62.tayaee__llama-3.2-1b-math-qlora-gguf-mini.log 62        0h1m   0   0   0   0
+    logs/62.tayaee__llama-3.2-1b-math-qlora-gptq-mini.log 62+32     0h2m   4   0   0   0
+
+Math 1B
+    어디까지 가능한가
+        순수 SFT(지도 학습)만으로는 1B 모델에 데이터를 아무리 쏟아부어도 GSM8K 해결에 명확한 한계가 오지만
+        RL(강화학습)과 장문 CoT(Test-Time Compute)를 결합하면 1B 모델로도 80~85% 이상의 높은 정답률을 달성할 수 있습니다
+
+    1B급 모델 중 GSM8K 최강자
+        Qwen2.5-Math-1.5B
+            수식, 코드, 논문텍스트 수조 개의 토큰으로 학습한 모델
+            CoT 기준 84~85%
+            코드 실행 결합 시 88%
+        DeepSeek-R1-Distill-Qwen-1.5B
+            수만개의 단계별 검증 데이터 사용하여 학습한 모델
+            88 ~ 89%
+
+    최상 품질 1B 수학 모델 만들려면 데이터 얼마나 준비해야 할까
+        SFT용 
+            고품질 다단계 CoT 증류 데이터 50k ~ 100k 필요
+            답만 포함시키면 100% 오답만 낸다. CoT 필요함.
+        Verifiable RL용
+            문제 + 정답 규칙 (rule-based verifier) 20k ~ 50k 필요
+        TIR (Tool-integrated) 병행시
+            Python 코드 포함 데이터 30k ~ 50k 필요
+            코드 실행하여 값을 가져오게 튜닝하면 20~30%p 정답률 상승 가능하다.
+
+7B 계획
+    학습 데이터 필요량
+        SFT용 최소 10k ~ 20k개 CoT 데이터 준비, 권장 50k ~ 100k개 CoT 데이터 학습
+        1B와 달리 7B에서는 권장량 주입 시 일반화가 일어난다
+
+    예상 학습 시간
+        FFT FSDP
+            노드 1  28~36GB
+            노드 2  28~36GB
+            학습 시간 1h10m ~ 1h30m (10k, 3 epochs, seq_len 2k)
+        FFT DDP
+            노드 1  55~65GB
+            노드 2  55~65GB
+            학습 시간 1h ~ 1h15m
+        QLoRA
+            노드 1  8~12GB
+            학습 시간 1h40m ~ 2h
+
+    모델 퍼블리싱 계획
+        FP8 (E4M3) for vllm/tensorrt-llm
+        AWQ (W4A16) for vllm
+        GGUF (Q5_K_M) for llama.cpp
+
+    베이스라인 학습
+        gsm8k + math 문제 CoT 데이터를 최소 20k 권장 50k를 준비하여
+        dgx spark 2x 에서 
+        fsdp (bf16)으로 학습
+        bf16 으로 배포
+        vllm 으로 추론
+
+13B 계획
+    학습 데이터 필요량
+        SFT용 최소 20k ~ 30k개 CoT 데이터 준비, 권장 50k ~ 100k개 CoT 데이터 학습
+        파라미터 용량이 충분해 CoT 다단계 추론 논리와 MATH 응용 문제 일반화 가능
+
+    예상 학습 시간
+        FFT FSDP (FULL_SHARD) [권장]
+            노드 1  52~68GB
+            노드 2  52~68GB
+            학습 시간 2h10m ~ 2h45m (10k, 3 epochs, seq_len 2k) / 약 11h ~ 14h (50k)
+        FFT DDP [비권장 - OOM 위험]
+            노드 1  110~125GB
+            노드 2  110~125GB
+            학습 시간 2h ~ 2h20m (10k)
+        QLoRA
+            노드 1  14~18GB
+            학습 시간 3h ~ 3h40m (10k)
+
+    모델 퍼블리싱 계획
+        FP8 (E4M3) for vllm/tensorrt-llm [품질 손실 <0.5%, 서빙 VRAM 14~16GB]
+        AWQ (W4A16) for vllm [서빙 VRAM 8~10GB]
+        GGUF (Q5_K_M) for llama.cpp
+
+    베이스라인 학습
+        gsm8k + math 문제 CoT 데이터를 최소 20k 권장 50k를 준비하여
+        dgx spark 2x 에서 
+        fsdp (bf16)으로 학습
+        bf16 으로 배포
+        vllm 으로 추론
